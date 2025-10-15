@@ -8,6 +8,8 @@ import br.com.utfpr.gerenciamento.server.minio.util.FileTypeUtils;
 import br.com.utfpr.gerenciamento.server.model.Email;
 import br.com.utfpr.gerenciamento.server.model.Item;
 import br.com.utfpr.gerenciamento.server.model.ItemImage;
+import br.com.utfpr.gerenciamento.server.repository.EmprestimoItemRepository;
+import br.com.utfpr.gerenciamento.server.repository.EmprestimoRepository;
 import br.com.utfpr.gerenciamento.server.repository.ItemImageRepository;
 import br.com.utfpr.gerenciamento.server.repository.ItemRepository;
 import br.com.utfpr.gerenciamento.server.service.EmailService;
@@ -38,15 +40,16 @@ public class ItemServiceImpl extends CrudServiceImpl<Item, Long> implements Item
   private final ItemImageRepository itemImageRepository;
 
   private final ModelMapper modelMapper;
+  private final EmprestimoItemRepository emprestimoItemRepository;
 
   public ItemServiceImpl(
-      ItemRepository itemRepository,
-      EmailService emailService,
-      RelatorioService relatorioService,
-      MinioService minioService,
-      MinioConfig minioConfig,
-      ItemImageRepository itemImageRepository,
-      ModelMapper modelMapper) {
+          ItemRepository itemRepository,
+          EmailService emailService,
+          RelatorioService relatorioService,
+          MinioService minioService,
+          MinioConfig minioConfig,
+          ItemImageRepository itemImageRepository,
+          ModelMapper modelMapper, EmprestimoItemRepository emprestimoItemRepository) {
     this.itemRepository = itemRepository;
     this.emailService = emailService;
     this.relatorioService = relatorioService;
@@ -54,6 +57,7 @@ public class ItemServiceImpl extends CrudServiceImpl<Item, Long> implements Item
     this.minioConfig = minioConfig;
     this.itemImageRepository = itemImageRepository;
     this.modelMapper = modelMapper;
+    this.emprestimoItemRepository = emprestimoItemRepository;
   }
 
   @Override
@@ -83,6 +87,10 @@ public class ItemServiceImpl extends CrudServiceImpl<Item, Long> implements Item
             .map(this::convertToDto)
             .toList();
     }
+  }
+
+  public BigDecimal disponivelParaEmprestimo(Long itemId){
+    return emprestimoItemRepository.findQtdeEmprestadaByItemIdAndEmprestimo_DataDevolucaoIsNull(itemId);
   }
 
   @Override
@@ -220,6 +228,6 @@ public class ItemServiceImpl extends CrudServiceImpl<Item, Long> implements Item
 
   @Override
   public ItemResponseDto convertToDto(Item entity) {
-    return modelMapper.map(entity, ItemResponseDto.class);
+    return modelMapper.map(entity, ItemResponseDto.class).setDisponivelParaEmprestimo(disponivelParaEmprestimo(entity.getId()));
   }
 }

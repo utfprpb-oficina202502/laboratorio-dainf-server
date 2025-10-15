@@ -98,7 +98,7 @@ public class UsuarioServiceImpl extends CrudServiceImpl<Usuario, Long>
   @Override
   @Transactional(readOnly = true)
   public Usuario findByUsername(String username) {
-    username = normalizeUsername(username);
+//    username = normalizeUsername(username);
     // Usa versão SEM permissoes (LAZY) - mais performática para uso geral
     return usuarioRepository.findByUsernameOrEmail(username, username);
   }
@@ -106,7 +106,7 @@ public class UsuarioServiceImpl extends CrudServiceImpl<Usuario, Long>
   @Override
   @Transactional(readOnly = true)
   public Usuario findByUsernameForAuthentication(String username) {
-    username = normalizeUsername(username);
+//    username = normalizeUsername(username);
     // Usa versão COM permissoes (@EntityGraph) - necessário para autenticação
     return usuarioRepository.findWithPermissoesByUsernameOrEmail(username, username);
   }

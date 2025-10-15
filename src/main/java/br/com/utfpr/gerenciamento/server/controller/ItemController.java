@@ -24,6 +24,8 @@ public class ItemController extends CrudController<Item, Long> {
   @Override
   protected CrudService<Item, Long> getService() {
     return itemService;
+
+
   }
 
   @Override
