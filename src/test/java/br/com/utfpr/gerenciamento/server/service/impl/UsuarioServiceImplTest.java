@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import br.com.utfpr.gerenciamento.server.dto.PermissaoResponseDTO;
+import br.com.utfpr.gerenciamento.server.dto.UsuarioResponseDto;
 import br.com.utfpr.gerenciamento.server.model.Permissao;
 import br.com.utfpr.gerenciamento.server.model.Usuario;
 import br.com.utfpr.gerenciamento.server.repository.NadaConstaRepository;
@@ -492,9 +493,13 @@ class UsuarioServiceImplTest {
   @Test
   void testSaveUsuarioWithPermissoes() {
     usuario.setPermissoes(Set.of(permissao1, permissao2));
-    when(permissaoService.findAllById(anySet())).thenReturn(List.of(permissao1, permissao2));
+    UsuarioResponseDto usuarioResponseDto = new UsuarioResponseDto();
+    usuarioResponseDto.setPermissoes(usuario.getPermissoes());
+    when(usuarioService.convertToDTO(usuario)).thenReturn(usuarioResponseDto);
+    when(permissaoService.findAllByIdEntity(anySet())).thenReturn(List.of(permissao1, permissao2));
     when(usuarioRepository.save(any(Usuario.class))).thenReturn(usuario);
-    Usuario result = usuarioService.save(usuario);
+
+    var result = usuarioService.save(usuario);
     assertNotNull(result);
     assertEquals(2, result.getPermissoes().size());
   }
@@ -503,7 +508,7 @@ class UsuarioServiceImplTest {
   void testSaveUsuarioWithoutPermissoes() {
     usuario.setPermissoes(null);
     when(usuarioRepository.save(any(Usuario.class))).thenReturn(usuario);
-    Usuario result = usuarioService.save(usuario);
+    Usuario result = usuarioService.convertToEntity(usuarioService.save(usuario));
     assertNotNull(result);
     assertEquals(0, result.getPermissoes().size());
   }

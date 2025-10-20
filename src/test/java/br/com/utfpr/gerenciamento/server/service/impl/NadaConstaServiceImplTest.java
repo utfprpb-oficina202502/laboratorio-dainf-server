@@ -84,7 +84,7 @@ class NadaConstaServiceImplTest {
     doNothing()
         .when(emailService)
         .sendEmailWithTemplate(any(), anyString(), anyString(), anyString());
-    when(usuarioService.save(any(Usuario.class))).thenReturn(usuario);
+    when(usuarioService.save(any(Usuario.class))).thenReturn(usuarioService.convertToDTO( usuario));
     NadaConstaResponseDto dto = service.solicitarNadaConsta("123456");
     assertNotNull(dto);
     verify(emailService)

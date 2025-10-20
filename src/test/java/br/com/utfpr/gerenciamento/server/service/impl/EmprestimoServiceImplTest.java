@@ -146,7 +146,7 @@ class EmprestimoServiceImplTest {
   void testChangePrazoDevolucao() {
     emp.setUsuarioResponsavel(usuarioResponsavel);
     assertNotNull(emp.getUsuarioResponsavel());
-    when(service.findOne(anyLong())).thenReturn(emp);
+    when(service.convertToEntity(service.findOne(anyLong()))).thenReturn(emp);
     // Mock correto: repositório
     when(emprestimoRepository.save(any(Emprestimo.class))).thenReturn(emp);
     doNothing()
@@ -246,7 +246,7 @@ class EmprestimoServiceImplTest {
     Emprestimo emp = new Emprestimo();
     EmprestimoResponseDto dto = new EmprestimoResponseDto();
     when(modelMapper.map(emp, EmprestimoResponseDto.class)).thenReturn(dto);
-    EmprestimoResponseDto result = service.convertToDto(emp);
+    EmprestimoResponseDto result = service.convertToDTO(emp);
     assertEquals(dto, result);
   }
 }

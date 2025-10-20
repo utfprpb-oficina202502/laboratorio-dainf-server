@@ -25,7 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class NadaConstaServiceImpl extends CrudServiceImpl<NadaConsta, Long>
+public class NadaConstaServiceImpl extends CrudServiceImpl<NadaConsta, Long,NadaConstaResponseDto>
     implements NadaConstaService {
 
   private final NadaConstaRepository nadaConstaRepository;
@@ -153,5 +153,14 @@ public class NadaConstaServiceImpl extends CrudServiceImpl<NadaConsta, Long>
       usuarioService.save(usuario);
     }
     return convertToDto(nadaConsta);
+  }
+
+  @Override
+  public NadaConstaResponseDto convertToDTO(NadaConsta entity) {
+    return modelMapper.map(entity, NadaConstaResponseDto.class);
+  }
+  @Override
+  public NadaConsta convertToEntity(NadaConstaResponseDto entity) {
+    return modelMapper.map(entity, NadaConsta.class);
   }
 }
