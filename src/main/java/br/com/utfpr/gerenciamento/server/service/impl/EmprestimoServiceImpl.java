@@ -189,6 +189,13 @@ public  class EmprestimoServiceImpl extends CrudServiceImpl<Emprestimo, Long,Emp
   }
 
   @Override
+  @Transactional(readOnly = true)
+  public java.util.List<Emprestimo> findAllEmprestimosAbertosByUsuario(String username) {
+    var usuario = usuarioService.findByUsername(username);
+    return emprestimoRepository.findAllByUsuarioEmprestimoAndDataDevolucaoIsNull(usuario);
+  }
+
+  @Override
   @Transactional
   public void changePrazoDevolucao(Long idEmprestimo, LocalDate novaData) {
     var emprestimo = this.convertToEntity( super.findOne(idEmprestimo));
