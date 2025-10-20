@@ -23,11 +23,9 @@ public class ItemResponseDto {
   private TipoItem tipoItem;
 
   private BigDecimal saldo;
-
   private BigDecimal disponivelParaEmprestimo;
 
   private BigDecimal disponivelEmprestimoCalculado;
-
   private BigDecimal valor;
 
   private GrupoResponseDto grupo;
