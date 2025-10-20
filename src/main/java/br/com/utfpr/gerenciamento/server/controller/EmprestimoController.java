@@ -9,11 +9,13 @@ import br.com.utfpr.gerenciamento.server.service.*;
 import br.com.utfpr.gerenciamento.server.util.DateUtil;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.stream.Collectors;
+
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("emprestimo")
-public class EmprestimoController extends CrudController<Emprestimo, Long> {
+public class EmprestimoController extends CrudController<Emprestimo, Long,EmprestimoResponseDto> {
 
   private final EmprestimoService emprestimoService;
   private final ItemService itemService;
@@ -32,24 +34,27 @@ public class EmprestimoController extends CrudController<Emprestimo, Long> {
   }
 
   @Override
-  protected CrudService<Emprestimo, Long> getService() {
+  protected CrudService<Emprestimo, Long,EmprestimoResponseDto> getService() {
     return emprestimoService;
   }
 
   @Override
-  public List<Emprestimo> findAll() {
-    return this.emprestimoService.findAllEmprestimosAbertos();
+  public List<EmprestimoResponseDto> findAll() {
+    return this.emprestimoService.findAllEmprestimosAbertos()
+            .stream()
+            .map(emprestimoService::convertToDTO)
+            .collect(Collectors.toList());
   }
 
   @PostMapping("save-emprestimo")
   public EmprestimoResponseDto save(
       @RequestBody Emprestimo emprestimo, @RequestParam("idReserva") Long idReserva) {
     preSave(emprestimo);
-    Emprestimo toReturn = getService().save(emprestimo);
+    Emprestimo toReturn = emprestimoService.convertToEntity(getService().save(emprestimo));
     postSave(emprestimo);
     if (idReserva != 0) reservaService.finalizarReserva(idReserva);
 
-    return emprestimoService.convertToDto(toReturn);
+    return emprestimoService.convertToDTO(toReturn);
   }
 
   @PostMapping("save-devolucao")
@@ -62,7 +67,7 @@ public class EmprestimoController extends CrudController<Emprestimo, Long> {
       emprestimo.setDataDevolucao(LocalDate.now());
     }
 
-    Emprestimo toReturn = emprestimoService.save(emprestimo);
+    Emprestimo toReturn = emprestimoService.convertToEntity(emprestimoService.save(emprestimo));
     emprestimo.getEmprestimoDevolucaoItem().stream()
         .filter(empDevItem -> empDevItem.getStatusDevolucao().equals(StatusDevolucao.D))
         .forEach(
@@ -77,7 +82,7 @@ public class EmprestimoController extends CrudController<Emprestimo, Long> {
       saidaService.createSaidaByDevolucaoEmprestimo(listItensToSaida);
     }
     emprestimoService.sendEmailConfirmacaoDevolucao(emprestimo);
-    return emprestimoService.convertToDto(toReturn);
+    return emprestimoService.convertToDTO(toReturn);
   }
 
   @Override
@@ -85,7 +90,7 @@ public class EmprestimoController extends CrudController<Emprestimo, Long> {
     // se está editando, ele retorna o saldo de todos os itens, para depois baixar novamente com os
     // valores atualizados
     if (object.getId() != null) {
-      Emprestimo old = emprestimoService.findOne(object.getId());
+      Emprestimo old = emprestimoService.convertToEntity( emprestimoService.findOne(object.getId()));
       old.getEmprestimoItem().stream()
           .forEach(
               empItem ->
@@ -111,27 +116,19 @@ public class EmprestimoController extends CrudController<Emprestimo, Long> {
 
   @Override
   public void postSave(Emprestimo object) {
-    object.getEmprestimoItem().stream()
-        .forEach(
-            saidaItem ->
-                itemService.diminuiSaldoItem(
-                    saidaItem.getItem().getId(), saidaItem.getQtde(), true));
+    //object.getEmprestimoItem().stream()
+    //    .forEach(
+    //        saidaItem ->
+    //              itemService.diminuiSaldoItem(
+    //               saidaItem.getItem().getId(), saidaItem.getQtde(), true));
     emprestimoService.sendEmailConfirmacaoEmprestimo(object);
   }
 
-  @Override
-  public void postDelete(Emprestimo object) {
-    object.getEmprestimoItem().stream()
-        .forEach(
-            saidaItem ->
-                itemService.aumentaSaldoItem(saidaItem.getItem().getId(), saidaItem.getQtde()));
-    saidaService.deleteSaidaByEmprestimo(object.getId());
-  }
 
   @PostMapping("filter")
   public List<EmprestimoResponseDto> filter(@RequestBody EmprestimoFilter emprestimoFilter) {
     return emprestimoService.filter(emprestimoFilter).stream()
-        .map(emprestimoService::convertToDto)
+        .map(emprestimoService::convertToDTO)
         .toList();
   }
 
@@ -139,7 +136,7 @@ public class EmprestimoController extends CrudController<Emprestimo, Long> {
   public List<EmprestimoResponseDto> findAllByUsuarioEmprestimo(
       @PathVariable("username") String username) {
     return emprestimoService.findAllUsuarioEmprestimo(username).stream()
-        .map(emprestimoService::convertToDto)
+        .map(emprestimoService::convertToDTO)
         .toList();
   }
 

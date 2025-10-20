@@ -36,7 +36,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class EmprestimoServiceImpl extends CrudServiceImpl<Emprestimo, Long>
+public  class EmprestimoServiceImpl extends CrudServiceImpl<Emprestimo, Long,EmprestimoResponseDto>
     implements EmprestimoService {
 
   private final EmprestimoRepository emprestimoRepository;
@@ -79,7 +79,7 @@ public class EmprestimoServiceImpl extends CrudServiceImpl<Emprestimo, Long>
   @Transactional
   @PreAuthorize("hasAnyRole('" + ROLE_LABORATORISTA_NAME + "', '" + ROLE_ADMINISTRADOR_NAME + "')")
   @InvalidateDashboardCache
-  public Emprestimo save(Emprestimo entity) {
+  public EmprestimoResponseDto save(Emprestimo entity) {
     entity.setUsuarioEmprestimo(
         usuarioRepository.getReferenceById(entity.getUsuarioEmprestimo().getId()));
     entity.setUsuarioResponsavel(
@@ -91,6 +91,8 @@ public class EmprestimoServiceImpl extends CrudServiceImpl<Emprestimo, Long>
 
     return super.save(entity);
   }
+
+
 
   /**
    * Deleta um empréstimo por ID e invalida o cache de dashboard.
@@ -189,7 +191,7 @@ public class EmprestimoServiceImpl extends CrudServiceImpl<Emprestimo, Long>
   @Override
   @Transactional
   public void changePrazoDevolucao(Long idEmprestimo, LocalDate novaData) {
-    var emprestimo = super.findOne(idEmprestimo);
+    var emprestimo = this.convertToEntity( super.findOne(idEmprestimo));
     emprestimo.setPrazoDevolucao(novaData);
     super.save(emprestimo);
     emailService.sendEmailWithTemplate(
@@ -248,8 +250,12 @@ public class EmprestimoServiceImpl extends CrudServiceImpl<Emprestimo, Long>
   }
 
   @Override
-  public EmprestimoResponseDto convertToDto(Emprestimo entity) {
+  public EmprestimoResponseDto convertToDTO(Emprestimo entity) {
     return modelMapper.map(entity, EmprestimoResponseDto.class);
+  }
+  @Override
+  public Emprestimo convertToEntity(EmprestimoResponseDto entity) {
+    return modelMapper.map(entity, Emprestimo.class);
   }
 
   private EmprestimoTemplate converterEmprestimoToObjectTemplate(Emprestimo e) {

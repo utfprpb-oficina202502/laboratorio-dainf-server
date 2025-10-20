@@ -12,7 +12,7 @@ import org.springframework.web.multipart.MultipartHttpServletRequest;
 
 @RestController
 @RequestMapping("item")
-public class ItemController extends CrudController<Item, Long> {
+public class ItemController extends CrudController<Item, Long,ItemResponseDto> {
 
   private final ItemService itemService;
   private List<ItemImage> imagesToCopy;
@@ -22,9 +22,8 @@ public class ItemController extends CrudController<Item, Long> {
   }
 
   @Override
-  protected CrudService<Item, Long> getService() {
+  protected CrudService<Item, Long,ItemResponseDto> getService() {
     return itemService;
-
 
   }
 

@@ -31,7 +31,7 @@ import org.springframework.web.multipart.MultipartHttpServletRequest;
 
 @Service
 @Slf4j
-public class ItemServiceImpl extends CrudServiceImpl<Item, Long> implements ItemService {
+public  class ItemServiceImpl extends CrudServiceImpl<Item, Long,ItemResponseDto> implements ItemService {
   private final ItemRepository itemRepository;
   private final EmailService emailService;
   private final RelatorioService relatorioService;
@@ -65,6 +65,8 @@ public class ItemServiceImpl extends CrudServiceImpl<Item, Long> implements Item
     return itemRepository;
   }
 
+
+
   @Override
   @Transactional
   public List<ItemResponseDto> itemComplete(String query, Boolean hasEstoque) {
@@ -72,19 +74,19 @@ public class ItemServiceImpl extends CrudServiceImpl<Item, Long> implements Item
     if ("".equalsIgnoreCase(query)) {
       if (hasEstoque)
         return itemRepository.findAllBySaldoIsGreaterThanOrderByNome(zero).stream()
-            .map(this::convertToDto)
+            .map(this::convertToDTO)
             .toList();
-      else return itemRepository.findAllByOrderByNome().stream().map(this::convertToDto).toList();
+      else return itemRepository.findAllByOrderByNome().stream().map(this::convertToDTO).toList();
     } else {
       if (hasEstoque)
         return itemRepository
             .findByNomeLikeIgnoreCaseAndSaldoIsGreaterThanOrderByNome("%" + query + "%", zero)
             .stream()
-            .map(this::convertToDto)
+            .map(this::convertToDTO)
             .toList();
       else
         return itemRepository.findByNomeLikeIgnoreCaseOrderByNome("%" + query + "%").stream()
-            .map(this::convertToDto)
+            .map(this::convertToDTO)
             .toList();
     }
   }
@@ -96,7 +98,7 @@ public class ItemServiceImpl extends CrudServiceImpl<Item, Long> implements Item
   @Override
   @Transactional(readOnly = true)
   public List<ItemResponseDto> findByGrupo(Long id) {
-    return itemRepository.findByGrupoIdOrderByNome(id).stream().map(this::convertToDto).toList();
+    return itemRepository.findByGrupoIdOrderByNome(id).stream().map(this::convertToDTO).toList();
   }
 
   @Override
@@ -138,7 +140,7 @@ public class ItemServiceImpl extends CrudServiceImpl<Item, Long> implements Item
   @Transactional
   public void saveImages(
       MultipartHttpServletRequest files, HttpServletRequest request, Long idItem) {
-    Item item = this.findOne(idItem);
+    Item item = convertToEntity( this.findOne(idItem));
     var anexos = files.getFiles("anexos[]");
     List<ItemImage> list = new ArrayList<>();
     for (MultipartFile anexo : anexos) {
@@ -174,7 +176,7 @@ public class ItemServiceImpl extends CrudServiceImpl<Item, Long> implements Item
         log.error("Erro ao remover imagem do MinIO: {}", ex.getMessage());
       }
     }
-    Item i = this.findOne(idItem);
+    Item i = convertToEntity(this.findOne(idItem));
     i.getImageItem().removeIf(itemImage -> itemImage.getId().equals(image.getId()));
     this.save(i);
   }
@@ -219,15 +221,40 @@ public class ItemServiceImpl extends CrudServiceImpl<Item, Long> implements Item
               ItemImage image = new ItemImage();
               image.setContentType(itemImage.getContentType());
               image.setNameImage(itemImage.getNameImage());
-              image.setItem(item);
+              image.setItem(convertToEntity(item));
               toReturn.add(image);
             });
     item.setImageItem(toReturn);
-    this.save(item);
+    this.save(convertToEntity(item));
+  }
+
+
+  @Override
+  public ItemResponseDto convertToDTO(Item entity) {
+    ItemResponseDto dto = modelMapper.map(entity, ItemResponseDto.class);
+
+    if (dto.getTipoItem().name().equals("P")) {
+      BigDecimal disponivel = disponivelParaEmprestimo(entity.getId());
+      BigDecimal saldo = dto.getSaldo();
+
+      // Evita NullPointerException
+      if (saldo == null) saldo = BigDecimal.ZERO;
+      if (disponivel == null) disponivel = BigDecimal.ZERO;
+
+      dto.setDisponivelParaEmprestimo(disponivel);
+      dto.setDisponivelEmprestimoCalculado(saldo.subtract(disponivel));
+    }else{
+      dto.setDisponivelEmprestimoCalculado(dto.getSaldo());
+    }
+
+    return dto;
   }
 
   @Override
-  public ItemResponseDto convertToDto(Item entity) {
-    return modelMapper.map(entity, ItemResponseDto.class).setDisponivelParaEmprestimo(disponivelParaEmprestimo(entity.getId()));
+  public Item convertToEntity(ItemResponseDto entity) {
+    return modelMapper.map(entity, Item.class);
   }
+
+
+
 }

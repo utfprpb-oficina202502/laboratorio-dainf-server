@@ -1,71 +1,75 @@
 package br.com.utfpr.gerenciamento.server.service.impl;
 
 import br.com.utfpr.gerenciamento.server.service.CrudService;
-import jakarta.persistence.criteria.Predicate;
-import java.io.Serializable;
-import java.util.List;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.*;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.transaction.annotation.Transactional;
 
-public abstract class CrudServiceImpl<T, ID extends Serializable> implements CrudService<T, ID> {
+import jakarta.persistence.criteria.Predicate;
+import java.io.Serializable;
+import java.util.List;
+import java.util.stream.Collectors;
+
+public abstract class CrudServiceImpl<T, ID extends Serializable, DTO> implements CrudService<T, ID, DTO> {
 
   protected abstract JpaRepository<T, ID> getRepository();
 
+  // Métodos padrão (entidades puras)
   @Override
   @Transactional(readOnly = true)
-  public List<T> findAll() {
-    return getRepository().findAll();
-  }
-
-  @Override
-  @Transactional(readOnly = true)
-  public List<T> findAll(Sort sort) {
-    return getRepository().findAll(sort);
+  public List<DTO> findAll() {
+    return getRepository().findAll().stream().map(this::convertToDTO).collect(Collectors.toList());
   }
 
   @Override
   @Transactional(readOnly = true)
-  public Page<T> findAll(Pageable pageable) {
-    return getRepository().findAll(pageable);
+  public List<DTO> findAll(Sort sort) {
+    return getRepository().findAll(sort).stream().map(this::convertToDTO).collect(Collectors.toList());
   }
 
   @Override
-  @Transactional // (readOnly = false)
-  public T save(T entity) {
-    return getRepository().save(entity);
-  }
-
-  @Override
-  @Transactional
-  public T saveAndFlush(T entity) {
-    return getRepository().saveAndFlush(entity);
+  @Transactional(readOnly = true)
+  public Page<DTO> findAll(Pageable pageable) {
+    return getRepository().findAll(pageable).map(this::convertToDTO);
   }
 
   @Override
   @Transactional
-  public Iterable<T> save(Iterable<T> iterable) {
-    return getRepository().saveAll(iterable);
+  public DTO save(T entity) {
+    return convertToDTO(getRepository().save(entity));
   }
 
   @Override
   @Transactional
+  public DTO saveAndFlush(T entity) {
+    return convertToDTO(getRepository().saveAndFlush(entity));
+  }
+
+  @Override
+  public Iterable<DTO> save(Iterable<T> iterable) {
+    return null;
+  }
+
+  @Override
   public void flush() {
-    getRepository().flush();
+
   }
 
   @Override
   @Transactional(readOnly = true)
-  public T findOne(ID id) {
-    return getRepository().getOne(id);
+  public DTO findOne(ID id) {
+    return convertToDTO(getRepository().getReferenceById(id));
+  }
+
+  @Override
+  public List<DTO> findAllById(Iterable<ID> ids) {
+    return List.of();
   }
 
   @Override
   @Transactional(readOnly = true)
-  public List<T> findAllById(Iterable<ID> ids) {
+  public List<T> findAllByIdEntity(Iterable<ID> ids) {
     return getRepository().findAllById(ids);
   }
 
@@ -76,9 +80,8 @@ public abstract class CrudServiceImpl<T, ID extends Serializable> implements Cru
   }
 
   @Override
-  @Transactional(readOnly = true)
   public long count() {
-    return getRepository().count();
+    return 0;
   }
 
   @Override
@@ -88,21 +91,13 @@ public abstract class CrudServiceImpl<T, ID extends Serializable> implements Cru
   }
 
   @Override
-  @Transactional
   public void delete(T entity) {
-    getRepository().delete(entity);
+
   }
 
   @Override
-  @Transactional
   public void delete(Iterable<T> iterable) {
-    getRepository().deleteAll(iterable);
-  }
 
-  @Override
-  @Transactional
-  public void deleteAll() {
-    getRepository().deleteAll();
   }
 
   @Override
@@ -115,21 +110,18 @@ public abstract class CrudServiceImpl<T, ID extends Serializable> implements Cru
 
       String likeFilter = "%" + filter.toLowerCase() + "%";
 
-      Predicate[] predicates =
-          root.getModel().getDeclaredSingularAttributes().stream()
-              .filter(
-                  attr -> {
-                    Class<?> javaType = attr.getJavaType();
-                    return javaType.equals(String.class) || Number.class.isAssignableFrom(javaType);
-                  })
-              .map(
-                  attr -> {
-                    if (attr.getJavaType().equals(String.class)) {
-                      return cb.like(cb.lower(root.get(attr.getName())), likeFilter);
-                    } else {
-                      return cb.like(cb.toString(root.get(attr.getName())), likeFilter);
-                    }
-                  })
+      Predicate[] predicates = root.getModel().getDeclaredSingularAttributes().stream()
+              .filter(attr -> {
+                Class<?> javaType = attr.getJavaType();
+                return javaType.equals(String.class) || Number.class.isAssignableFrom(javaType);
+              })
+              .map(attr -> {
+                if (attr.getJavaType().equals(String.class)) {
+                  return cb.like(cb.lower(root.get(attr.getName())), likeFilter);
+                } else {
+                  return cb.like(cb.toString(root.get(attr.getName())), likeFilter);
+                }
+              })
               .toArray(Predicate[]::new);
 
       return cb.or(predicates);
@@ -137,9 +129,14 @@ public abstract class CrudServiceImpl<T, ID extends Serializable> implements Cru
   }
 
   @Override
+  public void deleteAll() {
+
+  }
+
+  @Override
   @Transactional
-  public Page<T> findAllSpecification(Specification<T> specification, Pageable pageable) {
+  public Page<DTO> findAllSpecification(Specification<T> specification, Pageable pageable) {
     return ((org.springframework.data.jpa.repository.JpaSpecificationExecutor<T>) getRepository())
-        .findAll(specification, pageable);
+            .findAll(specification, pageable).map(this::convertToDTO);
   }
 }

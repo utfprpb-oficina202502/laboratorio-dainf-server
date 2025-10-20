@@ -13,7 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class PaisServiceImpl extends CrudServiceImpl<Pais, Long> implements PaisService {
+public  class PaisServiceImpl extends CrudServiceImpl<Pais, Long, PaisResponseDto> implements PaisService {
 
   private final PaisRepository paisRepository;
 
@@ -39,10 +39,10 @@ public class PaisServiceImpl extends CrudServiceImpl<Pais, Long> implements Pais
     // Cache agressivo: Lista de países raramente muda
     // TTL: 6 horas (configurado em CacheConfig)
     if ("".equalsIgnoreCase(query)) {
-      return this.paisRepository.findAll().stream().map(this::convertToDto).toList();
+      return this.paisRepository.findAll().stream().map(this::convertToDTO).toList();
     } else {
       return this.paisRepository.findByNomeLikeIgnoreCase("%" + query + "%").stream()
-          .map(this::convertToDto)
+          .map(this::convertToDTO)
           .toList();
     }
   }
@@ -50,7 +50,7 @@ public class PaisServiceImpl extends CrudServiceImpl<Pais, Long> implements Pais
   @Override
   @Transactional
   @CacheEvict(value = "paises", allEntries = true)
-  public Pais save(Pais pais) {
+  public PaisResponseDto save(Pais pais) {
     // Limpa cache ao salvar país
     return super.save(pais);
   }
@@ -64,7 +64,12 @@ public class PaisServiceImpl extends CrudServiceImpl<Pais, Long> implements Pais
   }
 
   @Override
-  public PaisResponseDto convertToDto(Pais entity) {
+  public PaisResponseDto convertToDTO(Pais entity) {
     return modelMapper.map(entity, PaisResponseDto.class);
+  }
+
+  @Override
+  public Pais convertToEntity(PaisResponseDto entity) {
+    return modelMapper.map(entity, Pais.class);
   }
 }

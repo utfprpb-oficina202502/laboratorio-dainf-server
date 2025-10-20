@@ -138,7 +138,7 @@ public class AuthController {
     }
     user.setEmailVerificado(true); // OAuth emails são pré-verificados pelo Google
 
-    return usuarioService.save(user);
+    return  usuarioService.convertToEntity( usuarioService.save(user));
   }
 
   /**

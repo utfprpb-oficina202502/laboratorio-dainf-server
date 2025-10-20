@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class GrupoServiceImpl extends CrudServiceImpl<Grupo, Long> implements GrupoService {
+public  class GrupoServiceImpl extends CrudServiceImpl<Grupo, Long,GrupoResponseDto> implements GrupoService {
 
   private final GrupoRepository grupoRepository;
 
@@ -43,5 +43,15 @@ public class GrupoServiceImpl extends CrudServiceImpl<Grupo, Long> implements Gr
   @Override
   public GrupoResponseDto convertToDto(Grupo entity) {
     return modelMapper.map(entity, GrupoResponseDto.class);
+  }
+
+  @Override
+  public GrupoResponseDto convertToDTO(Grupo entity) {
+    return modelMapper.map(entity, GrupoResponseDto.class);
+  }
+
+  @Override
+  public Grupo convertToEntity(GrupoResponseDto entity) {
+    return modelMapper.map(entity, Grupo.class);
   }
 }

@@ -16,7 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class ReservaServiceImpl extends CrudServiceImpl<Reserva, Long> implements ReservaService {
+public  class ReservaServiceImpl extends CrudServiceImpl<Reserva, Long, ReservaResponseDto> implements ReservaService {
 
   private final ReservaRepository reservaRepository;
   private final UsuarioService usuarioService;
@@ -42,7 +42,7 @@ public class ReservaServiceImpl extends CrudServiceImpl<Reserva, Long> implement
 
   @Override
   @Transactional
-  public Reserva save(Reserva reserva) {
+  public ReservaResponseDto save(Reserva reserva) {
     reserva.setUsuario(
         usuarioService.findByUsername(
             (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal()));
@@ -55,19 +55,19 @@ public class ReservaServiceImpl extends CrudServiceImpl<Reserva, Long> implement
     var usuario =
         usuarioService.findByUsername(
             (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal());
-    return reservaRepository.findAllByUsuario(usuario).stream().map(this::convertToDto).toList();
+    return reservaRepository.findAllByUsuario(usuario).stream().map(this::convertToDTO).toList();
   }
 
   @Override
   @Transactional(readOnly = true)
   public List<ReservaResponseDto> findAllByIdItem(Long idItem) {
-    return reservaRepository.findReservaByIdItem(idItem).stream().map(this::convertToDto).toList();
+    return reservaRepository.findReservaByIdItem(idItem).stream().map(this::convertToDTO).toList();
   }
 
   @Override
   @Transactional
   public void finalizarReserva(Long idReserva) {
-    var reserva = this.findOne(idReserva);
+    var reserva = convertToEntity(this.findOne(idReserva));
     emailService.sendEmailWithTemplate(
         converterObjectToTemplateEmail(reserva),
         reserva.getUsuario().getEmail(),
@@ -86,8 +86,13 @@ public class ReservaServiceImpl extends CrudServiceImpl<Reserva, Long> implement
   }
 
   @Override
-  public ReservaResponseDto convertToDto(Reserva entity) {
+  public ReservaResponseDto convertToDTO(Reserva entity) {
     return modelMapper.map(entity, ReservaResponseDto.class);
+  }
+
+  @Override
+  public Reserva convertToEntity(ReservaResponseDto entity) {
+    return modelMapper.map(entity, Reserva.class);
   }
 
   public ReservaTemplate converterObjectToTemplateEmail(Reserva reserva) {

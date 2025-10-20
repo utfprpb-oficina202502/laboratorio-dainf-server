@@ -1,48 +1,44 @@
 package br.com.utfpr.gerenciamento.server.controller;
 
 import br.com.utfpr.gerenciamento.server.service.CrudService;
-import java.io.Serializable;
-import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.web.bind.annotation.*;
 
-public abstract class CrudController<T, ID extends Serializable> {
+import java.io.Serializable;
+import java.util.List;
+import java.util.stream.Collectors;
 
-  protected abstract CrudService<T, ID> getService();
+public abstract class CrudController<T, ID extends Serializable, DTO> {
+
+  protected abstract CrudService<T, ID,DTO> getService();
 
   @GetMapping
-  public List<T> findAll() {
-    return getService().findAll(Sort.by("id"));
+  public List<DTO> findAll() {
+    return getService()
+            .findAll(Sort.by("id"));
   }
 
   @PostMapping
-  public T save(@RequestBody T object) {
-    preSave(object);
-    T toReturn = getService().save(object);
-    postSave(object);
-    return toReturn;
+  public DTO save(@RequestBody T entity) {
+    return getService().save(entity);
   }
 
   public void preSave(T object) {}
-
   public void postSave(T object) {}
 
   @GetMapping("{id}")
-  public T findone(@PathVariable("id") ID id) {
-    return getService().findOne(id);
+  public DTO findOne(@PathVariable("id") ID id) {
+    DTO dto = getService().findOne(id);
+    return dto != null ? dto : null;
   }
 
   @DeleteMapping("{id}")
   public void delete(@PathVariable("id") ID id) {
-    T object = getService().findOne(id);
     getService().delete(id);
-    postDelete(object);
   }
-
-  public void postDelete(T object) {}
 
   @GetMapping("exists/{id}")
   public boolean exists(@PathVariable ID id) {
@@ -55,20 +51,26 @@ public abstract class CrudController<T, ID extends Serializable> {
   }
 
   @GetMapping("page")
-  public Page<T> findAllPaged(
-      @RequestParam("page") int page,
-      @RequestParam("size") int size,
-      @RequestParam(required = false) String filter,
-      @RequestParam(required = false) String order,
-      @RequestParam(required = false) Boolean asc) {
+  public Page<DTO> findAllPaged(
+          @RequestParam("page") int page,
+          @RequestParam("size") int size,
+          @RequestParam(required = false) String filter,
+          @RequestParam(required = false) String order,
+          @RequestParam(required = false) Boolean asc) {
+
     PageRequest pageRequest = PageRequest.of(page, size);
     if (order != null && asc != null) {
-      pageRequest =
-          PageRequest.of(page, size, asc ? Sort.Direction.ASC : Sort.Direction.DESC, order);
+      pageRequest = PageRequest.of(page, size, asc ? Sort.Direction.ASC : Sort.Direction.DESC, order);
     }
+
+    Page<DTO> pageResult;
     if (filter != null && !filter.isEmpty()) {
       Specification<T> spec = getService().filterByAllFields(filter);
-      return getService().findAllSpecification(spec, pageRequest);
-    } else return getService().findAll(pageRequest);
+      pageResult = getService().findAllSpecification(spec, pageRequest);
+    } else {
+      pageResult = getService().findAll(pageRequest);
+    }
+
+    return pageResult;
   }
 }

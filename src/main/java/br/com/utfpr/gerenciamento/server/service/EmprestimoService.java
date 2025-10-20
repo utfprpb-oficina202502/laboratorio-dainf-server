@@ -10,7 +10,7 @@ import br.com.utfpr.gerenciamento.server.model.filter.EmprestimoFilter;
 import java.time.LocalDate;
 import java.util.List;
 
-public interface EmprestimoService extends CrudService<Emprestimo, Long> {
+public interface EmprestimoService extends CrudService<Emprestimo, Long,EmprestimoResponseDto> {
 
   List<Emprestimo> findAllByDataEmprestimoBetween(LocalDate dtIni, LocalDate dtFim);
 
@@ -34,5 +34,4 @@ public interface EmprestimoService extends CrudService<Emprestimo, Long> {
 
   void sendEmailPrazoDevolucaoProximo();
 
-  EmprestimoResponseDto convertToDto(Emprestimo entity);
 }

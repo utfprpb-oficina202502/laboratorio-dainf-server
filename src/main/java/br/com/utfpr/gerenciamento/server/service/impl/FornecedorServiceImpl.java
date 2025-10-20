@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class FornecedorServiceImpl extends CrudServiceImpl<Fornecedor, Long>
+public  class FornecedorServiceImpl extends CrudServiceImpl<Fornecedor, Long, FornecedorResponseDto>
     implements FornecedorService {
 
   private final FornecedorRepository fornecedorRepository;
@@ -41,5 +41,15 @@ public class FornecedorServiceImpl extends CrudServiceImpl<Fornecedor, Long>
   @Override
   public FornecedorResponseDto convertToDto(Fornecedor entity) {
     return modelMapper.map(entity, FornecedorResponseDto.class);
+  }
+
+  @Override
+  public FornecedorResponseDto convertToDTO(Fornecedor entity) {
+    return modelMapper.map(entity, FornecedorResponseDto.class);
+  }
+
+  @Override
+  public Fornecedor convertToEntity(FornecedorResponseDto entity) {
+    return modelMapper.map(entity, Fornecedor.class);
   }
 }

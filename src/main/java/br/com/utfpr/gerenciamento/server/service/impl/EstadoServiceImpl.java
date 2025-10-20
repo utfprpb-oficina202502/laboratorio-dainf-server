@@ -1,5 +1,6 @@
 package br.com.utfpr.gerenciamento.server.service.impl;
 
+import br.com.utfpr.gerenciamento.server.dto.EmprestimoResponseDto;
 import br.com.utfpr.gerenciamento.server.dto.EstadoResponseDto;
 import br.com.utfpr.gerenciamento.server.model.Estado;
 import br.com.utfpr.gerenciamento.server.repository.EstadoRepository;
@@ -13,7 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class EstadoServiceImpl extends CrudServiceImpl<Estado, Long> implements EstadoService {
+public  class EstadoServiceImpl extends CrudServiceImpl<Estado, Long, EstadoResponseDto> implements EstadoService {
 
   private final EstadoRepository estadoRepository;
 
@@ -39,17 +40,17 @@ public class EstadoServiceImpl extends CrudServiceImpl<Estado, Long> implements 
     // Cache agressivo: Estados brasileiros (27) raramente mudam
     // TTL: 6 horas (configurado em CacheConfig)
     if (query == null || query.isBlank()) {
-      return estadoRepository.findAll().stream().map(this::convertToDto).toList();
+      return estadoRepository.findAll().stream().map(this::convertToDTO).toList();
     } else {
       return estadoRepository.findByNomeLikeIgnoreCase("%" + query + "%").stream()
-          .map(this::convertToDto)
+          .map(this::convertToDTO)
           .toList();
     }
   }
 
   @Override
   @CacheEvict(value = "estados", allEntries = true)
-  public Estado save(Estado estado) {
+  public EstadoResponseDto save(Estado estado) {
     // Limpa cache ao salvar estado
     return super.save(estado);
   }
@@ -62,7 +63,13 @@ public class EstadoServiceImpl extends CrudServiceImpl<Estado, Long> implements 
   }
 
   @Override
-  public EstadoResponseDto convertToDto(Estado entity) {
+  public EstadoResponseDto convertToDTO(Estado entity) {
     return modelMapper.map(entity, EstadoResponseDto.class);
   }
+
+  @Override
+  public Estado convertToEntity(EstadoResponseDto entity) {
+    return modelMapper.map(entity, Estado.class);
+  }
+
 }

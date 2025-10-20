@@ -12,7 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class CidadeServiceImpl extends CrudServiceImpl<Cidade, Long> implements CidadeService {
+public abstract class CidadeServiceImpl extends CrudServiceImpl<Cidade, Long,CidadeResponseDto> implements CidadeService {
 
   private final CidadeRepository cidadeRepository;
 

@@ -26,6 +26,8 @@ public class ItemResponseDto {
 
   private BigDecimal disponivelParaEmprestimo;
 
+  private BigDecimal disponivelEmprestimoCalculado;
+
   private BigDecimal valor;
 
   private GrupoResponseDto grupo;

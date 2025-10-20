@@ -8,7 +8,7 @@ import br.com.utfpr.gerenciamento.server.model.Usuario;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
-public interface UsuarioService extends CrudService<Usuario, Long> {
+public interface UsuarioService extends CrudService<Usuario, Long, UsuarioResponseDto> {
 
   Page<UsuarioResponseDto> usuarioComplete(String query, Pageable pageable);
 
@@ -30,7 +30,6 @@ public interface UsuarioService extends CrudService<Usuario, Long> {
 
   Usuario updateUsuario(Usuario usuario);
 
-  UsuarioResponseDto convertToDto(Usuario entity);
 
   Usuario convertToEntity(UsuarioResponseDto entityDto);
 

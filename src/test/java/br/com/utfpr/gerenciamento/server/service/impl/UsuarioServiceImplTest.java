@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+import br.com.utfpr.gerenciamento.server.dto.PermissaoResponseDTO;
 import br.com.utfpr.gerenciamento.server.model.Permissao;
 import br.com.utfpr.gerenciamento.server.model.Usuario;
 import br.com.utfpr.gerenciamento.server.repository.RecoverPasswordRepository;
@@ -11,6 +12,8 @@ import br.com.utfpr.gerenciamento.server.repository.UsuarioRepository;
 import br.com.utfpr.gerenciamento.server.service.EmailService;
 import br.com.utfpr.gerenciamento.server.service.PermissaoService;
 import java.util.*;
+import java.util.stream.Collectors;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -72,7 +75,7 @@ class UsuarioServiceImplTest {
     when(usuarioRepository.save(any(Usuario.class))).thenReturn(usuario);
 
     // When
-    Usuario resultado = usuarioService.save(usuario);
+    Usuario resultado = usuarioService.convertToEntity( usuarioService.save(usuario));
 
     // Then: Deve criar Set vazio, não lançar NPE
     assertNotNull(resultado);
@@ -88,7 +91,7 @@ class UsuarioServiceImplTest {
     when(usuarioRepository.save(any(Usuario.class))).thenReturn(usuario);
 
     // When
-    Usuario resultado = usuarioService.save(usuario);
+    Usuario resultado =  usuarioService.convertToEntity(usuarioService.save(usuario));
 
     // Then: Deve manter Set vazio
     assertNotNull(resultado);
@@ -107,11 +110,17 @@ class UsuarioServiceImplTest {
 
     usuario.setPermissoes(permissoesComNull);
 
-    when(permissaoService.findAllById(any())).thenReturn(Collections.singletonList(permissao1));
+    when(permissaoService.findAllById(any()))
+            .thenReturn(
+                    Collections.singletonList(permissao1)
+                            .stream()
+                            .map(permissaoService::convertToDTO)
+                            .collect(Collectors.toList())
+            );
     when(usuarioRepository.save(any(Usuario.class))).thenReturn(usuario);
 
     // When
-    Usuario resultado = usuarioService.save(usuario);
+    Usuario resultado = usuarioService.convertToEntity( usuarioService.save(usuario));
 
     // Then: Deve filtrar nulls e processar apenas permissão válida
     assertNotNull(resultado);
@@ -138,11 +147,17 @@ class UsuarioServiceImplTest {
 
     usuario.setPermissoes(permissoes);
 
-    when(permissaoService.findAllById(any())).thenReturn(Collections.singletonList(permissao1));
+    when(permissaoService.findAllById(any()))
+            .thenReturn(
+                    Collections.singletonList(permissao1)
+                            .stream()
+                            .map(permissaoService::convertToDTO)
+                            .collect(Collectors.toList())
+            );
     when(usuarioRepository.save(any(Usuario.class))).thenReturn(usuario);
 
     // When
-    Usuario resultado = usuarioService.save(usuario);
+    Usuario resultado = usuarioService.convertToEntity( usuarioService.save(usuario));
 
     // Then: Deve ignorar permissão sem ID e processar apenas a válida
     assertNotNull(resultado);
@@ -159,18 +174,26 @@ class UsuarioServiceImplTest {
   @Test
   void save_DeveUsarBatchFetchingParaMultiplasPermissoes() {
     // Given: Usuário com múltiplas permissões
-    Set<Permissao> permissoes = new HashSet<>();
-    permissoes.add(permissao1);
-    permissoes.add(permissao2);
+    Set<PermissaoResponseDTO> permissoes = new HashSet<>();
+    permissoes.add(permissaoService.convertToDTO(permissao1));
+    permissoes.add(permissaoService.convertToDTO(permissao2));
 
-    usuario.setPermissoes(permissoes);
+    usuario.setPermissoes(permissoes.stream().map(permissaoService::convertToEntity).collect(Collectors.toSet()));
 
     List<Permissao> permissoesResolvidas = Arrays.asList(permissao1, permissao2);
-    when(permissaoService.findAllById(any())).thenReturn(permissoesResolvidas);
+
+
+    when(permissaoService.findAllById(any()))
+            .thenReturn(
+                    Arrays.asList(permissao1, permissao2)
+                            .stream()
+                            .map(permissaoService::convertToDTO)
+                            .collect(Collectors.toList())
+            );
     when(usuarioRepository.save(any(Usuario.class))).thenReturn(usuario);
 
     // When
-    Usuario resultado = usuarioService.save(usuario);
+    Usuario resultado = usuarioService.convertToEntity( usuarioService.save(usuario));
 
     // Then: Deve chamar findAllById UMA VEZ (batch), não N vezes
     assertNotNull(resultado);
@@ -201,7 +224,7 @@ class UsuarioServiceImplTest {
     when(usuarioRepository.save(any(Usuario.class))).thenReturn(usuario);
 
     // When
-    Usuario resultado = usuarioService.save(usuario);
+    Usuario resultado = usuarioService.convertToEntity( usuarioService.save(usuario));
 
     // Then: Deve criar Set vazio, não lançar exceção
     assertNotNull(resultado);
@@ -217,11 +240,11 @@ class UsuarioServiceImplTest {
 
     usuario.setPermissoes(permissoesInput);
 
-    when(permissaoService.findAllById(any())).thenReturn(Collections.singletonList(permissao1));
+    when(permissaoService.findAllById(any())).thenReturn(Collections.singletonList(permissao1).stream().map(permissaoService::convertToDTO).collect(Collectors.toList()));
     when(usuarioRepository.save(any(Usuario.class))).thenReturn(usuario);
 
     // When
-    Usuario resultado = usuarioService.save(usuario);
+    Usuario resultado = usuarioService.convertToEntity( usuarioService.save(usuario));
 
     // Then: Permissões devem ser resolvidas e atribuídas ao usuário
     assertNotNull(resultado);
@@ -250,7 +273,7 @@ class UsuarioServiceImplTest {
     when(usuarioRepository.save(any(Usuario.class))).thenReturn(usuario);
 
     // When
-    Usuario resultado = usuarioService.save(usuario);
+    Usuario resultado = usuarioService.convertToEntity( usuarioService.save(usuario));
 
     // Then: Senha deve ser encodada
     assertNotNull(resultado);
@@ -269,7 +292,7 @@ class UsuarioServiceImplTest {
     when(usuarioRepository.save(any(Usuario.class))).thenReturn(usuario);
 
     // When
-    Usuario resultado = usuarioService.save(usuario);
+    Usuario resultado = usuarioService.convertToEntity( usuarioService.save(usuario));
 
     // Then: Senha não deve ser re-encodada
     assertNotNull(resultado);

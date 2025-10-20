@@ -2,32 +2,38 @@ package br.com.utfpr.gerenciamento.server.service;
 
 import java.io.Serializable;
 import java.util.List;
+
+import br.com.utfpr.gerenciamento.server.dto.EmprestimoResponseDto;
+import br.com.utfpr.gerenciamento.server.model.Emprestimo;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 
-public interface CrudService<T, ID extends Serializable> {
+public interface CrudService<T, ID extends Serializable,DTO> {
 
-  List<T> findAll();
+  List<DTO> findAll();
 
-  List<T> findAll(Sort sort);
+  List<DTO> findAll(Sort sort);
 
-  Page<T> findAll(Pageable pageable);
+  Page<DTO> findAll(Pageable pageable);
 
-  Page<T> findAllSpecification(Specification<T> specification, Pageable pageable);
+  Page<DTO> findAllSpecification(Specification<T> specification, Pageable pageable);
 
-  T save(T entity);
+  DTO save(T entity);
 
-  T saveAndFlush(T entity);
+  DTO saveAndFlush(T entity);
 
-  Iterable<T> save(Iterable<T> iterable);
+  Iterable<DTO> save(Iterable<T> iterable);
 
   void flush();
 
-  T findOne(ID id);
+  DTO findOne(ID id);
 
-  List<T> findAllById(Iterable<ID> ids);
+  List<DTO> findAllById(Iterable<ID> ids);
+  public abstract DTO convertToDTO(T entity);
+  public abstract T convertToEntity(DTO entity);
+  List<T> findAllByIdEntity(Iterable<ID> ids);
 
   boolean exists(ID id);
 

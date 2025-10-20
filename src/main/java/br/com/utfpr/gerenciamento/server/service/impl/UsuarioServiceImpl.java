@@ -32,7 +32,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class UsuarioServiceImpl extends CrudServiceImpl<Usuario, Long>
+public  class UsuarioServiceImpl extends CrudServiceImpl<Usuario, Long, UsuarioResponseDto>
     implements UsuarioService, UserDetailsService {
 
   public static final String EMAIL_SUBJECT_CONFIRMACAO =
@@ -88,11 +88,11 @@ public class UsuarioServiceImpl extends CrudServiceImpl<Usuario, Long>
   @Transactional(readOnly = true)
   public Page<UsuarioResponseDto> usuarioComplete(String query, Pageable pageable) {
     if ("".equalsIgnoreCase(query)) {
-      return usuarioRepository.findAll(pageable).map(this::convertToDto);
+      return usuarioRepository.findAll(pageable).map(this::convertToDTO);
     }
     return usuarioRepository
         .findByNomeLikeIgnoreCase("%" + query + "%", pageable)
-        .map(this::convertToDto);
+        .map(this::convertToDTO);
   }
 
   @Override
@@ -132,22 +132,22 @@ public class UsuarioServiceImpl extends CrudServiceImpl<Usuario, Long>
   public Page<UsuarioResponseDto> usuarioCompleteByUserAndDocAndNome(
       String query, Pageable pageable) {
     if (query == null || query.isBlank()) {
-      return usuarioRepository.findAllCustom(pageable).map(this::convertToDto);
+      return usuarioRepository.findAllCustom(pageable).map(this::convertToDTO);
     }
     return usuarioRepository
         .findUsuarioCompleteCustom("%" + query.toUpperCase() + "%", pageable)
-        .map(this::convertToDto);
+        .map(this::convertToDTO);
   }
 
   @Override
   @Transactional(readOnly = true)
   public Page<UsuarioResponseDto> usuarioCompleteLab(String query, Pageable pageable) {
     if (query == null || query.isBlank()) {
-      return usuarioRepository.findAllCustomLab(pageable).map(this::convertToDto);
+      return usuarioRepository.findAllCustomLab(pageable).map(this::convertToDTO);
     }
     return usuarioRepository
         .findUsuarioCompleteCustomLab("%" + query.toUpperCase() + "%", pageable)
-        .map(this::convertToDto);
+        .map(this::convertToDTO);
   }
 
   @Override
@@ -167,22 +167,21 @@ public class UsuarioServiceImpl extends CrudServiceImpl<Usuario, Long>
 
   @Override
   @Transactional
-  public Usuario save(Usuario usuario) {
+  public UsuarioResponseDto save(Usuario usuario) {
     if (usuario.getPassword() != null && !Util.isPasswordEncoded(usuario.getPassword()))
       usuario.setPassword(passwordEncoder.encode(usuario.getPassword()));
 
     // Normaliza permissões para evitar NPE e usa batch fetching (1 query em vez de N)
     Set<Permissao> permissoesInput = usuario.getPermissoes();
     if (permissoesInput != null && !permissoesInput.isEmpty()) {
-      Set<Long> permissaoIds =
-          permissoesInput.stream()
+      Set<Long> permissaoIds = permissoesInput.stream()
               .filter(Objects::nonNull)
               .map(Permissao::getId)
               .filter(Objects::nonNull)
               .collect(Collectors.toSet());
 
       if (!permissaoIds.isEmpty()) {
-        Set<Permissao> permissoes = new HashSet<>(permissaoService.findAllById(permissaoIds));
+        Set<Permissao> permissoes = new HashSet<>(permissaoService.findAllByIdEntity(new ArrayList<>(permissaoIds)));
         usuario.setPermissoes(permissoes);
       } else {
         usuario.setPermissoes(new HashSet<>());
@@ -198,7 +197,7 @@ public class UsuarioServiceImpl extends CrudServiceImpl<Usuario, Long>
     return super.save(usuario);
   }
 
-  public UsuarioResponseDto convertToDto(Usuario entity) {
+  public UsuarioResponseDto convertToDTO(Usuario entity) {
     return modelMapper.map(entity, UsuarioResponseDto.class);
   }
 
@@ -295,7 +294,7 @@ public class UsuarioServiceImpl extends CrudServiceImpl<Usuario, Long>
   @Override
   @Transactional
   public Usuario updatePassword(Usuario usuario, String senhaAtual) {
-    Usuario userTemp = this.findOne(usuario.getId());
+    Usuario userTemp = convertToEntity( this.findOne(usuario.getId()));
     usuario.setEmailVerificado(userTemp.getEmailVerificado());
     if (passwordEncoder.matches(senhaAtual, userTemp.getPassword())) {
       userTemp.setPassword(passwordEncoder.encode(usuario.getPassword()));

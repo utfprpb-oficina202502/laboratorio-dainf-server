@@ -1,6 +1,9 @@
 package br.com.utfpr.gerenciamento.server.service.impl;
 
+import br.com.utfpr.gerenciamento.server.dto.ReservaResponseDto;
+import br.com.utfpr.gerenciamento.server.dto.SaidaResponseDTO;
 import br.com.utfpr.gerenciamento.server.model.EmprestimoDevolucaoItem;
+import br.com.utfpr.gerenciamento.server.model.Reserva;
 import br.com.utfpr.gerenciamento.server.model.Saida;
 import br.com.utfpr.gerenciamento.server.model.SaidaItem;
 import br.com.utfpr.gerenciamento.server.model.dashboards.DashboardItensSaidas;
@@ -9,17 +12,21 @@ import br.com.utfpr.gerenciamento.server.service.SaidaService;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+
+import org.modelmapper.ModelMapper;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class SaidaServiceImpl extends CrudServiceImpl<Saida, Long> implements SaidaService {
+public  class SaidaServiceImpl extends CrudServiceImpl<Saida, Long, SaidaResponseDTO> implements SaidaService {
 
   private final SaidaRepository saidaRepository;
+  private final ModelMapper modelMapper;
 
-  public SaidaServiceImpl(SaidaRepository saidaRepository) {
+  public SaidaServiceImpl(SaidaRepository saidaRepository, ModelMapper modelMapper) {
     this.saidaRepository = saidaRepository;
+    this.modelMapper = modelMapper;
   }
 
   @Override
@@ -68,4 +75,15 @@ public class SaidaServiceImpl extends CrudServiceImpl<Saida, Long> implements Sa
       saidaRepository.delete(saidaToDelete);
     }
   }
+
+  @Override
+  public SaidaResponseDTO convertToDTO(Saida entity) {
+    return modelMapper.map(entity, SaidaResponseDTO.class);
+  }
+
+  @Override
+  public Saida convertToEntity(SaidaResponseDTO entity) {
+    return modelMapper.map(entity, Saida.class);
+  }
+
 }

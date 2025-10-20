@@ -8,7 +8,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import org.springframework.web.multipart.MultipartHttpServletRequest;
 
-public interface ItemService extends CrudService<Item, Long> {
+public interface ItemService extends CrudService<Item, Long,ItemResponseDto> {
 
   List<ItemResponseDto> itemComplete(String query, Boolean hasEstoque);
 
@@ -32,5 +32,5 @@ public interface ItemService extends CrudService<Item, Long> {
 
   void copyImagesItem(List<ItemImage> itemImages, Long id);
 
-  ItemResponseDto convertToDto(Item entity);
+
 }

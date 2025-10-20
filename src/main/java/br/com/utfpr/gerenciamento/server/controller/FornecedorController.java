@@ -9,16 +9,17 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("fornecedor")
-public class FornecedorController extends CrudController<Fornecedor, Long> {
+public class FornecedorController extends CrudController<Fornecedor, Long,FornecedorResponseDto> {
 
   private final FornecedorService fornecedorService;
+
 
   public FornecedorController(FornecedorService fornecedorService) {
     this.fornecedorService = fornecedorService;
   }
 
   @Override
-  protected CrudService<Fornecedor, Long> getService() {
+  protected CrudService<Fornecedor, Long,FornecedorResponseDto> getService() {
     return fornecedorService;
   }
 

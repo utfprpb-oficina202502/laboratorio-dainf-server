@@ -1,15 +1,18 @@
 package br.com.utfpr.gerenciamento.server.controller;
 
+import br.com.utfpr.gerenciamento.server.dto.CompraResponseDTO;
 import br.com.utfpr.gerenciamento.server.model.Compra;
+import br.com.utfpr.gerenciamento.server.model.Usuario;
 import br.com.utfpr.gerenciamento.server.service.CompraService;
 import br.com.utfpr.gerenciamento.server.service.CrudService;
 import br.com.utfpr.gerenciamento.server.service.ItemService;
+import br.com.utfpr.gerenciamento.server.service.impl.CompraServiceImpl;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("compra")
-public class CompraController extends CrudController<Compra, Long> {
+public class CompraController extends CrudController<Compra, Long, CompraResponseDTO> {
 
   private final CompraService compraService;
   private final ItemService itemService;
@@ -21,7 +24,7 @@ public class CompraController extends CrudController<Compra, Long> {
   }
 
   @Override
-  protected CrudService<Compra, Long> getService() {
+  protected CrudService<Compra, Long,CompraResponseDTO> getService() {
     return compraService;
   }
 
@@ -29,7 +32,7 @@ public class CompraController extends CrudController<Compra, Long> {
   public void preSave(Compra object) {
     if (object.getId() != null) {
       // remove o saldo antigo do item
-      compraOld = compraService.findOne(object.getId());
+      compraOld = compraService.convertToEntity( compraService.findOne(object.getId()));
       compraOld.getCompraItem().stream()
           .forEach(
               compraItem ->
@@ -47,7 +50,6 @@ public class CompraController extends CrudController<Compra, Long> {
                 itemService.aumentaSaldoItem(compraItem.getItem().getId(), compraItem.getQtde()));
   }
 
-  @Override
   public void postDelete(Compra object) {
     object.getCompraItem().stream()
         .forEach(

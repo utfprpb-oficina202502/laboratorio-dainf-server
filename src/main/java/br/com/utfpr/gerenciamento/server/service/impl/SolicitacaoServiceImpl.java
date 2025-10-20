@@ -12,7 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class SolicitacaoServiceImpl extends CrudServiceImpl<Solicitacao, Long>
+public  class SolicitacaoServiceImpl extends CrudServiceImpl<Solicitacao, Long,SolicitacaoResponseDto>
     implements SolicitacaoService {
 
   private final SolicitacaoRepository solicitacaoRepository;
@@ -38,12 +38,17 @@ public class SolicitacaoServiceImpl extends CrudServiceImpl<Solicitacao, Long>
   public List<SolicitacaoResponseDto> findAllByUsername(String username) {
     var usuario = usuarioService.findByUsername(username);
     return solicitacaoRepository.findAllByUsuario(usuario).stream()
-        .map(this::convertToDto)
+        .map(this::convertToDTO)
         .toList();
   }
 
   @Override
-  public SolicitacaoResponseDto convertToDto(Solicitacao entity) {
+  public SolicitacaoResponseDto convertToDTO(Solicitacao entity) {
     return modelMapper.map(entity, SolicitacaoResponseDto.class);
+  }
+
+  @Override
+  public Solicitacao convertToEntity(SolicitacaoResponseDto entity) {
+    return modelMapper.map(entity, Solicitacao.class);
   }
 }
