@@ -1,5 +1,6 @@
 package br.com.utfpr.gerenciamento.server.model;
 
+import br.com.utfpr.gerenciamento.server.annotation.FullNameValidator;
 import br.com.utfpr.gerenciamento.server.config.CustomAuthorityDeserializer;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -31,6 +32,7 @@ public class Usuario implements Serializable, UserDetails {
   @Column(name = "id")
   private Long id;
 
+  @FullNameValidator
   @Column(name = "nome", length = 255, nullable = false)
   private String nome;
 

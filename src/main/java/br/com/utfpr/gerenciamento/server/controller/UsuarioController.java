@@ -63,7 +63,7 @@ public class UsuarioController {
   }
 
   @PostMapping
-  public UsuarioResponseDto save(@RequestBody Usuario usuario) {
+  public UsuarioResponseDto save(@Valid @RequestBody Usuario usuario) {
     return usuarioService.convertToDto(usuarioService.save(usuario));
   }
 
