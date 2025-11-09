@@ -1,7 +1,5 @@
 package br.com.utfpr.gerenciamento.server.dto;
 
-import br.com.utfpr.gerenciamento.server.model.Item;
-import br.com.utfpr.gerenciamento.server.model.Saida;
 import java.math.BigDecimal;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -17,7 +15,7 @@ public class SaidaItemResponseDTO {
 
   private BigDecimal qtde;
 
-  private Item item;
+  private ItemResponseDto item;
 
-  private Saida saida;
+  private Long saidaId;
 }
