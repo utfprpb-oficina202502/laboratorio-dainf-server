@@ -293,4 +293,23 @@ public class EmprestimoSpecifications {
       case TODOS -> cb.conjunction();
     };
   }
+
+  /**
+   * Cria Specification para filtrar empréstimos por username do usuário empréstimo.
+   *
+   * <p>Usado para restringir visualização de empréstimos apenas ao próprio usuário (alunos e
+   * professores).
+   *
+   * @param username Username do usuário para filtrar
+   * @return Specification que filtra por usuarioEmprestimo.username
+   */
+  public static Specification<Emprestimo> byUsuarioEmprestimoUsername(String username) {
+    return (root, query, cb) -> {
+      if (username == null || username.isEmpty()) {
+        return cb.conjunction();
+      }
+      Join<Emprestimo, Usuario> usuarioJoin = root.join(USUARIO_EMPRESTIMO, JoinType.LEFT);
+      return cb.equal(usuarioJoin.get(USERNAME), username);
+    };
+  }
 }

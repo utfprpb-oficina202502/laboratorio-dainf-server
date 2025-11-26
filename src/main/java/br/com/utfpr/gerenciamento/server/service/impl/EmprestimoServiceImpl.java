@@ -141,6 +141,30 @@ public class EmprestimoServiceImpl extends CrudServiceImpl<Emprestimo, Long, Emp
     return self.findAllSpecification(spec, pageable);
   }
 
+  @Override
+  @Transactional(readOnly = true)
+  public Page<EmprestimoResponseDto> findAllPagedWithTextFilterByUsername(
+      String textFilter, String username, Pageable pageable) {
+    Specification<Emprestimo> spec;
+
+    // Adiciona filtro por username do usuário empréstimo
+    Specification<Emprestimo> userSpec = EmprestimoSpecifications.byUsuarioEmprestimoUsername(username);
+
+    if (textFilter != null && !textFilter.isEmpty()) {
+      // Combina filtro textual + filtro por usuário + JOIN FETCH
+      spec =
+          self.filterByAllFields(textFilter)
+              .and(userSpec)
+              .and(EmprestimoSpecifications.withFetchCollections());
+    } else {
+      // Apenas filtro por usuário + JOIN FETCH (sem filtro textual)
+      spec = userSpec.and(EmprestimoSpecifications.withFetchCollections());
+    }
+
+    // Usa self para garantir que @Transactional seja aplicado via proxy
+    return self.findAllSpecification(spec, pageable);
+  }
+
   /**
    * Metodo interno para executar Specification. Não deve ser chamado diretamente (use {@link
    * #findAllPagedWithTextFilter}).

@@ -9,11 +9,14 @@ import br.com.utfpr.gerenciamento.server.model.filter.EmprestimoFilter;
 import br.com.utfpr.gerenciamento.server.service.CrudService;
 import br.com.utfpr.gerenciamento.server.service.EmprestimoService;
 import br.com.utfpr.gerenciamento.server.util.DateUtil;
+import br.com.utfpr.gerenciamento.server.util.SecurityUtils;
 import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -31,9 +34,28 @@ public class EmprestimoController extends CrudController<Emprestimo, Long, Empre
     return emprestimoService;
   }
 
+  /**
+   * Verifica se o usuário autenticado possui role de ADMINISTRADOR ou LABORATORISTA.
+   *
+   * @return true se for admin ou laboratorista, false caso contrário
+   */
+  private boolean isAdminOrLaboratorista() {
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    return auth.getAuthorities().stream()
+        .anyMatch(
+            a ->
+                a.getAuthority().equals("ROLE_ADMINISTRADOR")
+                    || a.getAuthority().equals("ROLE_LABORATORISTA"));
+  }
+
   @Override
   public List<EmprestimoResponseDto> findAll() {
-    return this.emprestimoService.findAllEmprestimosAbertos();
+    if (isAdminOrLaboratorista()) {
+      return this.emprestimoService.findAllEmprestimosAbertos();
+    } else {
+      String username = SecurityUtils.getAuthenticatedUsername();
+      return this.emprestimoService.findAllEmprestimosAbertosByUsuario(username);
+    }
   }
 
   @PostMapping("save-emprestimo")
@@ -132,7 +154,12 @@ public class EmprestimoController extends CrudController<Emprestimo, Long, Empre
     }
     PageRequest pageRequest = PageRequest.of(page, size, sort);
 
-    // Usa novo método com cache key estável
-    return emprestimoService.findAllPagedWithTextFilter(filter, pageRequest);
+    // Filtra por usuário se não for admin ou laboratorista
+    if (isAdminOrLaboratorista()) {
+      return emprestimoService.findAllPagedWithTextFilter(filter, pageRequest);
+    } else {
+      String username = SecurityUtils.getAuthenticatedUsername();
+      return emprestimoService.findAllPagedWithTextFilterByUsername(filter, username, pageRequest);
+    }
   }
 }

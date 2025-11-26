@@ -26,6 +26,19 @@ public interface EmprestimoService extends CrudService<Emprestimo, Long, Emprest
    */
   Page<EmprestimoResponseDto> findAllPagedWithTextFilter(String textFilter, Pageable pageable);
 
+  /**
+   * Busca paginada com filtro textual filtrada por usuário específico.
+   *
+   * <p>Usado para alunos e professores visualizarem apenas seus próprios empréstimos.
+   *
+   * @param textFilter Filtro textual opcional (busca em todos os campos)
+   * @param username Username do usuário para filtrar empréstimos
+   * @param pageable Configuração de paginação e ordenação
+   * @return Página de empréstimos do usuário
+   */
+  Page<EmprestimoResponseDto> findAllPagedWithTextFilterByUsername(
+      String textFilter, String username, Pageable pageable);
+
   List<EmprestimoResponseDto> findAllByDataEmprestimoBetween(LocalDate dtIni, LocalDate dtFim);
 
   List<DashboardEmprestimoDia> countByDataEmprestimo(LocalDate dtIni, LocalDate dtFim);
