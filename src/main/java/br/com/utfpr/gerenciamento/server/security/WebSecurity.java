@@ -2,8 +2,38 @@ package br.com.utfpr.gerenciamento.server.security;
 
 import static br.com.utfpr.gerenciamento.server.enumeration.UserRole.ROLE_ADMINISTRADOR_NAME;
 import static br.com.utfpr.gerenciamento.server.enumeration.UserRole.ROLE_LABORATORISTA_NAME;
-import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.*;
+import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.ACTUATOR;
+import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.AUDIT_COUNT;
+import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.AUDIT_ENTIDADES;
+import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.AUDIT_HISTORICO;
+import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.AUDIT_REVISAO;
+import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.AUTH;
+import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.CIDADE;
+import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.COMPRA;
+import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.CONFIG;
+import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.EMPRESTIMO;
+import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.EMPRESTIMO_DEVOLUCAO;
+import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.EMPRESTIMO_FIND_ALL_BY_USERNAME;
+import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.EMPRESTIMO_SAVE;
+import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.ENTRADA;
+import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.ESTADO;
+import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.FORNECEDOR;
+import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.GRUPO;
+import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.ITEM;
 import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.NADACONSTA_SOLICITAR;
+import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.PAIS;
+import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.RELATORIO;
+import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.SAIDA;
+import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.TEST;
+import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.USUARIO;
+import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.USUARIO_CONFIRM_EMAIL;
+import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.USUARIO_FIND_BY_USERNAME;
+import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.USUARIO_INFO;
+import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.USUARIO_NEW_USER;
+import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.USUARIO_REQUEST_CODE_RESET;
+import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.USUARIO_RESEND_CONFIRM;
+import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.USUARIO_RESET_PASSWORD;
+import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.USUARIO_UPDATE;
 
 import br.com.utfpr.gerenciamento.server.repository.UsuarioRepository;
 import br.com.utfpr.gerenciamento.server.service.impl.UsuarioServiceImpl;
@@ -15,17 +45,21 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.core.env.Environment;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @EnableWebSecurity
+@EnableMethodSecurity(securedEnabled = true, jsr250Enabled = true)
 @Configuration
 public class WebSecurity {
   private final UsuarioServiceImpl usuarioService;
@@ -111,6 +145,8 @@ public class WebSecurity {
                     .hasAnyRole(ROLE_LABORATORISTA_NAME, ROLE_ADMINISTRADOR_NAME)
                     .requestMatchers(HttpMethod.DELETE, EMPRESTIMO)
                     .hasAnyRole(ROLE_LABORATORISTA_NAME, ROLE_ADMINISTRADOR_NAME)
+                    .requestMatchers(HttpMethod.GET, EMPRESTIMO_FIND_ALL_BY_USERNAME)
+                    .hasAnyRole(ROLE_LABORATORISTA_NAME, ROLE_ADMINISTRADOR_NAME)
 
                     // Nada Consta - solicitar requer LABORATORISTA ou ADMINISTRADOR
                     .requestMatchers(HttpMethod.POST, NADACONSTA_SOLICITAR)
@@ -123,6 +159,10 @@ public class WebSecurity {
                     .permitAll()
                     .requestMatchers(HttpMethod.GET, TEST)
                     .permitAll()
+
+                    // Auditoria - requer ADMINISTRADOR (endpoints explícitos)
+                    .requestMatchers(AUDIT_HISTORICO, AUDIT_COUNT, AUDIT_REVISAO, AUDIT_ENTIDADES)
+                    .hasRole(ROLE_ADMINISTRADOR_NAME)
 
                     // Actuator endpoints - requerem ADMINISTRADOR
                     .requestMatchers(ACTUATOR)
@@ -142,6 +182,11 @@ public class WebSecurity {
             new JWTAuthenticationFilter(
                 authenticationManager, usuarioService, usuarioRepository, env))
         .addFilter(new JWTAuthorizationFilter(authenticationManager, usuarioService, env))
+        .exceptionHandling(
+            exceptions ->
+                exceptions
+                    .authenticationEntryPoint(authenticationEntryPoint())
+                    .accessDeniedHandler(accessDeniedHandler()))
         .sessionManagement(
             session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .build();
@@ -150,6 +195,27 @@ public class WebSecurity {
   @Bean
   protected PasswordEncoder passwordEncoder() {
     return new BCryptPasswordEncoder();
+  }
+
+  /**
+   * Configura o AuthenticationEntryPoint para retornar 401 Unauthorized quando o usuario nao esta
+   * autenticado, seguindo o padrao RFC 9457 (Problem Details).
+   */
+  @Bean
+  public AuthenticationEntryPoint authenticationEntryPoint() {
+    return (request, response, authException) ->
+        ProblemDetailResponseWriter.writeUnauthorized(
+            response, "Autenticacao necessaria para acessar este recurso.");
+  }
+
+  /**
+   * Configura o AccessDeniedHandler para retornar 403 Forbidden quando o usuario este autenticado,
+   * mas não tem permissao para acessar o recurso, seguindo o padrao RFC 9457 (Problem Details).
+   */
+  @Bean
+  public AccessDeniedHandler accessDeniedHandler() {
+    return (request, response, accessDeniedException) ->
+        ProblemDetailResponseWriter.writeAccessDenied(response);
   }
 
   /**

@@ -1,5 +1,6 @@
 package br.com.utfpr.gerenciamento.server.service.impl;
 
+import br.com.utfpr.gerenciamento.server.dto.ItemListDto;
 import br.com.utfpr.gerenciamento.server.dto.ItemResponseDto;
 import br.com.utfpr.gerenciamento.server.enumeration.TipoItem;
 import br.com.utfpr.gerenciamento.server.event.item.EstoqueMinNotificacaoEvent;
@@ -14,6 +15,7 @@ import br.com.utfpr.gerenciamento.server.model.ItemImage;
 import br.com.utfpr.gerenciamento.server.repository.ItemImageRepository;
 import br.com.utfpr.gerenciamento.server.repository.ItemRepository;
 import br.com.utfpr.gerenciamento.server.repository.projection.ItemCompleteWithDisponibilidade;
+import br.com.utfpr.gerenciamento.server.repository.projection.ItemListProjection;
 import br.com.utfpr.gerenciamento.server.repository.projection.ItemWithQtdeEmprestada;
 import br.com.utfpr.gerenciamento.server.service.ItemService;
 import br.com.utfpr.gerenciamento.server.util.FileUtil;
@@ -26,6 +28,8 @@ import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,7 +40,7 @@ import org.springframework.web.multipart.MultipartHttpServletRequest;
 @Slf4j
 public class ItemServiceImpl extends CrudServiceImpl<Item, Long, ItemResponseDto>
     implements ItemService {
-  public static final String ITEM_NAO_ENCONTRADO_COM_ID = "Item não encontrado com ID: ";
+  private static final String ITEM_NAO_ENCONTRADO = "Item não encontrado.";
 
   /**
    * Endereço(s) de email para notificações administrativas.
@@ -140,6 +144,18 @@ public class ItemServiceImpl extends CrudServiceImpl<Item, Long, ItemResponseDto
   }
 
   @Override
+  @Transactional(readOnly = true)
+  public Page<ItemListDto> findAllPagedList(String filter, Pageable pageable) {
+    Page<ItemListProjection> page;
+    if (filter != null && !filter.isBlank()) {
+      page = itemRepository.findAllProjectedWithFilter(filter, pageable);
+    } else {
+      page = itemRepository.findAllProjected(pageable);
+    }
+    return page.map(ItemListDto::fromProjection);
+  }
+
+  @Override
   @Transactional
   public List<ItemResponseDto> itemComplete(String query, boolean disponivelParaEmprestimo) {
     // Normaliza query: null se for null, senão remove espaços em branco
@@ -171,7 +187,7 @@ public class ItemServiceImpl extends CrudServiceImpl<Item, Long, ItemResponseDto
     Item itemToSave =
         itemRepository
             .findById(idItem)
-            .orElseThrow(() -> new EntityNotFoundException(ITEM_NAO_ENCONTRADO_COM_ID + idItem));
+            .orElseThrow(() -> new EntityNotFoundException(ITEM_NAO_ENCONTRADO));
     if (!needValidationSaldo
         || Boolean.TRUE.equals(this.saldoItemIsValid(itemToSave.getSaldo(), qtde))) {
       itemToSave.setSaldo(itemToSave.getSaldo().subtract(qtde));
@@ -185,7 +201,7 @@ public class ItemServiceImpl extends CrudServiceImpl<Item, Long, ItemResponseDto
     Item itemToSave =
         itemRepository
             .findById(idItem)
-            .orElseThrow(() -> new EntityNotFoundException(ITEM_NAO_ENCONTRADO_COM_ID + idItem));
+            .orElseThrow(() -> new EntityNotFoundException(ITEM_NAO_ENCONTRADO));
     itemToSave.setSaldo(itemToSave.getSaldo().add(qtde));
     itemRepository.save(itemToSave);
   }
@@ -195,7 +211,7 @@ public class ItemServiceImpl extends CrudServiceImpl<Item, Long, ItemResponseDto
   public BigDecimal getSaldoItem(Long idItem) {
     return itemRepository
         .findById(idItem)
-        .orElseThrow(() -> new EntityNotFoundException(ITEM_NAO_ENCONTRADO_COM_ID + idItem))
+        .orElseThrow(() -> new EntityNotFoundException(ITEM_NAO_ENCONTRADO))
         .getSaldo();
   }
 
@@ -318,7 +334,7 @@ public class ItemServiceImpl extends CrudServiceImpl<Item, Long, ItemResponseDto
     ItemWithQtdeEmprestada projection =
         itemRepository
             .findByIdWithQtdeEmprestada(id)
-            .orElseThrow(() -> new EntityNotFoundException(ITEM_NAO_ENCONTRADO_COM_ID + id));
+            .orElseThrow(() -> new EntityNotFoundException(ITEM_NAO_ENCONTRADO));
 
     Item item = projection.getItem();
     BigDecimal qtdeEmprestada = projection.getQtdeEmprestada();

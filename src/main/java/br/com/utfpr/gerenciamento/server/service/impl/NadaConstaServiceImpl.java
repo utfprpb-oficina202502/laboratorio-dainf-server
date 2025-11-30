@@ -4,6 +4,7 @@ import br.com.utfpr.gerenciamento.server.dto.NadaConstaResponseDto;
 import br.com.utfpr.gerenciamento.server.enumeration.NadaConstaStatus;
 import br.com.utfpr.gerenciamento.server.event.nadaConsta.NadaConstaEmitidoEvent;
 import br.com.utfpr.gerenciamento.server.event.nadaConsta.NadaConstaPendenciasEvent;
+import br.com.utfpr.gerenciamento.server.exception.EntityNotFoundException;
 import br.com.utfpr.gerenciamento.server.exception.NadaConstaException;
 import br.com.utfpr.gerenciamento.server.model.Emprestimo;
 import br.com.utfpr.gerenciamento.server.model.NadaConsta;
@@ -14,6 +15,7 @@ import br.com.utfpr.gerenciamento.server.service.NadaConstaService;
 import br.com.utfpr.gerenciamento.server.service.SystemConfigService;
 import br.com.utfpr.gerenciamento.server.service.UsuarioService;
 import br.com.utfpr.gerenciamento.server.util.EmailUtils;
+import java.io.ByteArrayOutputStream;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -28,6 +30,9 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.thymeleaf.TemplateEngine;
+import org.thymeleaf.context.Context;
+import org.xhtmlrenderer.pdf.ITextRenderer;
 
 /**
  * Implementação do serviço de operações relacionadas ao Nada Consta.
@@ -68,6 +73,7 @@ public class NadaConstaServiceImpl extends CrudServiceImpl<NadaConsta, Long, Nad
   private final EmprestimoService emprestimoService;
   private final SystemConfigService systemConfigService;
   private final ApplicationEventPublisher eventPublisher;
+  private final TemplateEngine templateEngine;
 
   public NadaConstaServiceImpl(
       NadaConstaRepository nadaConstaRepository,
@@ -75,13 +81,15 @@ public class NadaConstaServiceImpl extends CrudServiceImpl<NadaConsta, Long, Nad
       ModelMapper modelMapper,
       EmprestimoService emprestimoService,
       SystemConfigService systemConfigService,
-      ApplicationEventPublisher eventPublisher) {
+      ApplicationEventPublisher eventPublisher,
+      TemplateEngine templateEngine) {
     this.nadaConstaRepository = nadaConstaRepository;
     this.usuarioService = usuarioService;
     this.modelMapper = modelMapper;
     this.emprestimoService = emprestimoService;
     this.systemConfigService = systemConfigService;
     this.eventPublisher = eventPublisher;
+    this.templateEngine = templateEngine;
   }
 
   @Override
@@ -111,6 +119,12 @@ public class NadaConstaServiceImpl extends CrudServiceImpl<NadaConsta, Long, Nad
     return modelMapper.map(nadaConstaResponseDto, NadaConsta.class);
   }
 
+  /**
+   * Busca todas as solicitacoes de Nada Consta de um usuario.
+   *
+   * @param username nome de usuario
+   * @return lista de DTOs de Nada Consta do usuario
+   */
   @Override
   @Transactional(readOnly = true)
   public List<NadaConstaResponseDto> findAllByUsername(String username) {
@@ -134,7 +148,6 @@ public class NadaConstaServiceImpl extends CrudServiceImpl<NadaConsta, Long, Nad
     if (usuario == null) {
       throw new NadaConstaException(USUARIO_NAO_ENCONTRADO);
     }
-    // Pre-check for open Nada Consta solicitation
     if (usuarioService.hasSolicitacaoNadaConstaPendingOrCompleted(usuario.getUsername())) {
       throw new NadaConstaException(SOLICITACAO_EXISTENTE);
     }
@@ -231,7 +244,6 @@ public class NadaConstaServiceImpl extends CrudServiceImpl<NadaConsta, Long, Nad
     if (emprestimosAbertos.isEmpty()) {
       nadaConsta.setStatus(NadaConstaStatus.COMPLETED);
       nadaConstaRepository.save(nadaConsta);
-      // Dispara evento de conclusão
       String destinatario = systemConfigService.getEmailNadaConsta();
       if (EmailUtils.isValidEmail(destinatario)) {
         Map<String, Object> templateData = new HashMap<>();
@@ -265,7 +277,6 @@ public class NadaConstaServiceImpl extends CrudServiceImpl<NadaConsta, Long, Nad
     }
     nadaConsta.setStatus(NadaConstaStatus.INVALIDATED);
     nadaConstaRepository.save(nadaConsta);
-    // Reativa o usuário vinculado
     Usuario usuario = nadaConsta.getUsuario();
     usuario.setAtivo(true);
     usuarioService.save(usuario);
@@ -286,7 +297,6 @@ public class NadaConstaServiceImpl extends CrudServiceImpl<NadaConsta, Long, Nad
     if (nadaConsta == null) {
       return false;
     }
-    // Verifica se o status é COMPLETED
     if (nadaConsta.getStatus() != NadaConstaStatus.COMPLETED) {
       log.warn(
           "Reenvio de Nada Consta não realizado - status inválido: {}", nadaConsta.getStatus());
@@ -324,8 +334,61 @@ public class NadaConstaServiceImpl extends CrudServiceImpl<NadaConsta, Long, Nad
     return true;
   }
 
+  /**
+   * Converte uma entidade NadaConsta para DTO de resposta.
+   *
+   * @param entity entidade a ser convertida
+   * @return DTO correspondente
+   */
   @Override
   public NadaConstaResponseDto convertToDto(NadaConsta entity) {
     return modelMapper.map(entity, NadaConstaResponseDto.class);
+  }
+
+  /**
+   * Gera o PDF da declaracao de Nada Consta.
+   *
+   * @param id identificador da solicitacao de Nada Consta
+   * @return bytes do PDF gerado
+   * @throws EntityNotFoundException se o Nada Consta nao for encontrado
+   * @throws NadaConstaException se o Nada Consta ainda nao foi emitido ou ocorreu erro na geracao
+   */
+  @Override
+  public byte[] gerarNadaConstaPdf(Long id) {
+    NadaConsta nadaConsta =
+        nadaConstaRepository
+            .findById(id)
+            .orElseThrow(() -> new EntityNotFoundException(NADA_CONSTA_NAO_ENCONTRADO));
+    if (nadaConsta.getStatus() != NadaConstaStatus.COMPLETED) {
+      throw new NadaConstaException("Nada Consta ainda não foi emitido.");
+    }
+    Usuario usuario = nadaConsta.getUsuario();
+    DateTimeFormatter formatter =
+        DateTimeFormatter.ofPattern(FORMAT_PT_BR, Locale.forLanguageTag(LOCALE_PT_BR));
+    LocalDate createdDate =
+        nadaConsta.getCreatedAt() != null
+            ? nadaConsta.getCreatedAt().toLocalDate()
+            : LocalDate.now();
+    String nomeAluno = usuario.getNome();
+    String registroAcademico = usuario.getDocumento();
+    String dataFormatada = createdDate.format(formatter);
+    String logoUrl = "file:src/main/resources/static/logo-fallback.png";
+    try {
+      Context context = new Context();
+      context.setVariable(NOME_ALUNO, nomeAluno);
+      context.setVariable(REGISTRO_ACADEMICO, registroAcademico);
+      context.setVariable(DATA_FORMATADA, dataFormatada);
+      context.setVariable("logoUrl", logoUrl);
+      String html = templateEngine.process("nada-consta-declaracao", context);
+      try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+        ITextRenderer renderer = new ITextRenderer();
+        renderer.setDocumentFromString(html);
+        renderer.layout();
+        renderer.createPDF(baos);
+        return baos.toByteArray();
+      }
+    } catch (Exception e) {
+      throw new NadaConstaException("Erro ao gerar PDF: " + e.getMessage());
+    }
   }
 }

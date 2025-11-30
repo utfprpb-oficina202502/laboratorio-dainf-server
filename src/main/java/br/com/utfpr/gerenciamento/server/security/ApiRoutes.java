@@ -83,6 +83,10 @@ public final class ApiRoutes {
   /** Salvar devolução */
   public static final String EMPRESTIMO_DEVOLUCAO = "/emprestimo/save-devolucao";
 
+  /** Buscar empréstimos por username */
+  public static final String EMPRESTIMO_FIND_ALL_BY_USERNAME =
+      "/emprestimo/find-all-by-username/**";
+
   // ============ Endpoints Públicos ============
   /** Autenticação (login) */
   public static final String AUTH = "/auth";
@@ -103,4 +107,17 @@ public final class ApiRoutes {
 
   /** Endpoint de solicitação de nada consta */
   public static final String NADACONSTA_SOLICITAR = "/nadaconsta/solicitar";
+
+  // ============ Auditoria Endpoints ============
+  /** Histórico de auditoria por entidade */
+  public static final String AUDIT_HISTORICO = "/audit/{entidade}/{id}";
+
+  /** Contagem de revisões */
+  public static final String AUDIT_COUNT = "/audit/{entidade}/{id}/count";
+
+  /** Informações de revisão específica */
+  public static final String AUDIT_REVISAO = "/audit/revisao/{revisao}";
+
+  /** Lista de entidades auditadas */
+  public static final String AUDIT_ENTIDADES = "/audit/entidades";
 }

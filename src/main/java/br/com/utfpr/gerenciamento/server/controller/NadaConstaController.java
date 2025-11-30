@@ -2,14 +2,14 @@ package br.com.utfpr.gerenciamento.server.controller;
 
 import br.com.utfpr.gerenciamento.server.dto.NadaConstaRequestDto;
 import br.com.utfpr.gerenciamento.server.dto.NadaConstaResponseDto;
+import br.com.utfpr.gerenciamento.server.exception.EntityNotFoundException;
+import br.com.utfpr.gerenciamento.server.exception.MethodNotAllowedException;
 import br.com.utfpr.gerenciamento.server.model.NadaConsta;
 import br.com.utfpr.gerenciamento.server.service.CrudService;
 import br.com.utfpr.gerenciamento.server.service.NadaConstaService;
 import jakarta.validation.Valid;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Controller responsável pelos endpoints de Nada Consta.
@@ -66,8 +66,7 @@ public class NadaConstaController extends CrudController<NadaConsta, Long, NadaC
   @Override
   @DeleteMapping("/{id}")
   public void delete(@PathVariable("id") Long id) {
-    throw new ResponseStatusException(
-        HttpStatus.METHOD_NOT_ALLOWED, "Não é permitido excluir nada consta.");
+    throw new MethodNotAllowedException("Não é permitido excluir Nada Consta.");
   }
 
   /**
@@ -78,12 +77,8 @@ public class NadaConstaController extends CrudController<NadaConsta, Long, NadaC
    */
   @PutMapping("/verificar-pendencias/{id}")
   public ResponseEntity<NadaConstaResponseDto> verificarPendencias(@PathVariable("id") Long id) {
-    try {
-      NadaConstaResponseDto response = nadaConstaService.verificarPendenciasNadaConsta(id);
-      return ResponseEntity.ok(response);
-    } catch (RuntimeException ex) {
-      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
-    }
+    NadaConstaResponseDto response = nadaConstaService.verificarPendenciasNadaConsta(id);
+    return ResponseEntity.ok(response);
   }
 
   /**
@@ -94,12 +89,8 @@ public class NadaConstaController extends CrudController<NadaConsta, Long, NadaC
    */
   @PutMapping("/invalidar/{id}")
   public ResponseEntity<NadaConstaResponseDto> invalidarNadaConsta(@PathVariable("id") Long id) {
-    try {
-      NadaConstaResponseDto response = nadaConstaService.invalidarNadaConsta(id);
-      return ResponseEntity.ok(response);
-    } catch (RuntimeException ex) {
-      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
-    }
+    NadaConstaResponseDto response = nadaConstaService.invalidarNadaConsta(id);
+    return ResponseEntity.ok(response);
   }
 
   /**
@@ -114,7 +105,22 @@ public class NadaConstaController extends CrudController<NadaConsta, Long, NadaC
     if (enviado) {
       return ResponseEntity.ok().build();
     } else {
-      return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+      throw new EntityNotFoundException("Nada Consta não encontrado ou não pode ser reenviado.");
     }
+  }
+
+  /**
+   * Retorna o PDF da declaração Nada Consta emitida.
+   *
+   * @param id Identificador da solicitação de Nada Consta
+   * @return PDF em bytes
+   */
+  @GetMapping(value = "/{id}/pdf", produces = "application/pdf")
+  public ResponseEntity<byte[]> getNadaConstaPdf(@PathVariable("id") Long id) {
+    byte[] pdf = nadaConstaService.gerarNadaConstaPdf(id);
+    return ResponseEntity.ok()
+        .header("Content-Disposition", "attachment; filename=nada-consta.pdf")
+        .header("X-Content-Type-Options", "nosniff")
+        .body(pdf);
   }
 }
