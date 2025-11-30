@@ -635,8 +635,9 @@ class EmprestimoSpecificationsTest {
     // Then
     assertNotNull(resultado);
     assertEquals(3, resultado.size());
-    assertTrue(resultado.stream()
-        .allMatch(emp -> emp.getUsuarioEmprestimo().getUsername().equals(username)));
+    assertTrue(
+        resultado.stream()
+            .allMatch(emp -> emp.getUsuarioEmprestimo().getUsername().equals(username)));
   }
 
   @Test
@@ -647,7 +648,8 @@ class EmprestimoSpecificationsTest {
     Specification<Emprestimo> spec = EmprestimoSpecifications.byUsuarioEmprestimoUsername(username);
 
     // When & Then
-    assertThrows(org.springframework.dao.InvalidDataAccessApiUsageException.class, 
+    assertThrows(
+        org.springframework.dao.InvalidDataAccessApiUsageException.class,
         () -> repository.findAll(spec));
   }
 
@@ -659,22 +661,25 @@ class EmprestimoSpecificationsTest {
     Specification<Emprestimo> spec = EmprestimoSpecifications.byUsuarioEmprestimoUsername(username);
 
     // When & Then
-    assertThrows(org.springframework.dao.InvalidDataAccessApiUsageException.class, 
+    assertThrows(
+        org.springframework.dao.InvalidDataAccessApiUsageException.class,
         () -> repository.findAll(spec));
   }
 
   @Test
-  @DisplayName("byUsuarioEmprestimoUsername - Deve retornar lista vazia quando usuário não tem empréstimos")
+  @DisplayName(
+      "byUsuarioEmprestimoUsername - Deve retornar lista vazia quando usuário não tem empréstimos")
   void testByUsuarioEmprestimoUsername_QuandoUsuarioNaoTemEmprestimos_DeveRetornarListaVazia() {
     // Given
     Permissao permissao = fixture.criarPermissao("ROLE_PROFESSOR");
     entityManager.persist(permissao);
-    
-    Usuario usuarioSemEmprestimos = fixture.criarUsuario("outro@teste.com", "Outro Usuario", permissao);
+
+    Usuario usuarioSemEmprestimos =
+        fixture.criarUsuario("outro@teste.com", "Outro Usuario", permissao);
     entityManager.persist(usuarioSemEmprestimos);
     entityManager.flush();
-    
-    Specification<Emprestimo> spec = 
+
+    Specification<Emprestimo> spec =
         EmprestimoSpecifications.byUsuarioEmprestimoUsername(usuarioSemEmprestimos.getUsername());
 
     // When
