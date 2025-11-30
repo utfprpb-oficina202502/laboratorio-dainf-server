@@ -621,4 +621,67 @@ class EmprestimoSpecificationsTest {
     assertFalse(result.isEmpty());
     assertTrue(duration < 1000, "Paginação deve completar em <1s, tempo atual: " + duration + "ms");
   }
+
+  @Test
+  @DisplayName("byUsuarioEmprestimoUsername - Deve filtrar empréstimos por username do usuário")
+  void testByUsuarioEmprestimoUsername_QuandoUsernameValido_DeveFiltrarCorretamente() {
+    // Given
+    String username = usuarioEmprestimo.getUsername();
+    Specification<Emprestimo> spec = EmprestimoSpecifications.byUsuarioEmprestimoUsername(username);
+
+    // When
+    List<Emprestimo> resultado = repository.findAll(spec);
+
+    // Then
+    assertNotNull(resultado);
+    assertEquals(3, resultado.size());
+    assertTrue(resultado.stream()
+        .allMatch(emp -> emp.getUsuarioEmprestimo().getUsername().equals(username)));
+  }
+
+  @Test
+  @DisplayName("byUsuarioEmprestimoUsername - Deve lançar exceção quando username é null")
+  void testByUsuarioEmprestimoUsername_QuandoUsernameNull_DeveLancarExcecao() {
+    // Given
+    String username = null;
+    Specification<Emprestimo> spec = EmprestimoSpecifications.byUsuarioEmprestimoUsername(username);
+
+    // When & Then
+    assertThrows(org.springframework.dao.InvalidDataAccessApiUsageException.class, 
+        () -> repository.findAll(spec));
+  }
+
+  @Test
+  @DisplayName("byUsuarioEmprestimoUsername - Deve lançar exceção quando username é vazio")
+  void testByUsuarioEmprestimoUsername_QuandoUsernameVazio_DeveLancarExcecao() {
+    // Given
+    String username = "";
+    Specification<Emprestimo> spec = EmprestimoSpecifications.byUsuarioEmprestimoUsername(username);
+
+    // When & Then
+    assertThrows(org.springframework.dao.InvalidDataAccessApiUsageException.class, 
+        () -> repository.findAll(spec));
+  }
+
+  @Test
+  @DisplayName("byUsuarioEmprestimoUsername - Deve retornar lista vazia quando usuário não tem empréstimos")
+  void testByUsuarioEmprestimoUsername_QuandoUsuarioNaoTemEmprestimos_DeveRetornarListaVazia() {
+    // Given
+    Permissao permissao = fixture.criarPermissao("ROLE_PROFESSOR");
+    entityManager.persist(permissao);
+    
+    Usuario usuarioSemEmprestimos = fixture.criarUsuario("outro@teste.com", "Outro Usuario", permissao);
+    entityManager.persist(usuarioSemEmprestimos);
+    entityManager.flush();
+    
+    Specification<Emprestimo> spec = 
+        EmprestimoSpecifications.byUsuarioEmprestimoUsername(usuarioSemEmprestimos.getUsername());
+
+    // When
+    List<Emprestimo> resultado = repository.findAll(spec);
+
+    // Then
+    assertNotNull(resultado);
+    assertTrue(resultado.isEmpty());
+  }
 }

@@ -295,18 +295,23 @@ public class EmprestimoSpecifications {
   }
 
   /**
-   * Cria Specification para filtrar empréstimos por username do usuário empréstimo.
+   * Cria Specification para filtrar empréstimos por username do usuário do empréstimo.
    *
    * <p>Usado para restringir visualização de empréstimos apenas ao próprio usuário (alunos e
    * professores).
    *
+   * <p><b>Segurança:</b> Lança exceção se o parâmetro {@code username} for {@code null} ou vazio
+   * para evitar retorno não autorizado de todos os registros.
+   *
    * @param username Username do usuário para filtrar
    * @return Specification que filtra por usuarioEmprestimo.username
+   * @throws IllegalArgumentException se {@code username} for {@code null} ou vazio
    */
   public static Specification<Emprestimo> byUsuarioEmprestimoUsername(String username) {
     return (root, query, cb) -> {
       if (username == null || username.isEmpty()) {
-        return cb.conjunction();
+        throw new IllegalArgumentException(
+            "Username cannot be null or empty for user-specific filtering");
       }
       Join<Emprestimo, Usuario> usuarioJoin = root.join(USUARIO_EMPRESTIMO, JoinType.LEFT);
       return cb.equal(usuarioJoin.get(USERNAME), username);
