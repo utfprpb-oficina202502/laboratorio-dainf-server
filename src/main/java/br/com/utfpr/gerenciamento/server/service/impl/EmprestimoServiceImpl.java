@@ -148,7 +148,8 @@ public class EmprestimoServiceImpl extends CrudServiceImpl<Emprestimo, Long, Emp
     Specification<Emprestimo> spec;
 
     // Adiciona filtro por username do usuário empréstimo
-    Specification<Emprestimo> userSpec = EmprestimoSpecifications.byUsuarioEmprestimoUsername(username);
+    Specification<Emprestimo> userSpec =
+        EmprestimoSpecifications.byUsuarioEmprestimoUsername(username);
 
     if (textFilter != null && !textFilter.isEmpty()) {
       // Combina filtro textual + filtro por usuário + JOIN FETCH
