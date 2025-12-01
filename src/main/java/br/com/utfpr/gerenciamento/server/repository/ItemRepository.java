@@ -203,7 +203,7 @@ public interface ItemRepository extends JpaRepository<Item, Long>, JpaSpecificat
              i.saldo as saldo,
              g.id as grupoId,
              g.descricao as grupoDescricao,
-             (SELECT ii.nameImage FROM ItemImage ii WHERE ii.item.id = i.id ORDER BY ii.id ASC LIMIT 1) as imagemUrl
+             (SELECT ii.nameImage FROM ItemImage ii WHERE ii.item.id = i.id ORDER BY ii.isCover DESC, ii.id ASC LIMIT 1) as imagemUrl
       FROM Item i
       LEFT JOIN i.grupo g
       """)
@@ -224,7 +224,7 @@ public interface ItemRepository extends JpaRepository<Item, Long>, JpaSpecificat
              i.saldo as saldo,
              g.id as grupoId,
              g.descricao as grupoDescricao,
-             (SELECT ii.nameImage FROM ItemImage ii WHERE ii.item.id = i.id ORDER BY ii.id ASC LIMIT 1) as imagemUrl
+             (SELECT ii.nameImage FROM ItemImage ii WHERE ii.item.id = i.id ORDER BY ii.isCover DESC, ii.id ASC LIMIT 1) as imagemUrl
       FROM Item i
       LEFT JOIN i.grupo g
       WHERE CAST(i.id AS string) LIKE CONCAT('%', :filter, '%')

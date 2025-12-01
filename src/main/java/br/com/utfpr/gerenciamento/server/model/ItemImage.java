@@ -35,6 +35,9 @@ public class ItemImage {
   @JoinColumn(name = "item_id", referencedColumnName = "id")
   private Item item;
 
+  @Column(name = "is_cover", nullable = false, columnDefinition = "BOOLEAN DEFAULT false")
+  private boolean isCover = false;
+
   @Transient private String base64;
 
   @Override
