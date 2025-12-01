@@ -56,4 +56,15 @@ public interface ItemService extends CrudService<Item, Long, ItemResponseDto> {
   void copyImagesItem(List<ItemImage> itemImages, Long id);
 
   Item findOneWithDisponibilidade(Long id);
+
+  /**
+   * Define uma imagem como capa do item.
+   *
+   * <p>Remove o status de capa de todas as outras imagens do item e define a imagem especificada
+   * como capa.
+   *
+   * @param itemId ID do item
+   * @param imageId ID da imagem a ser definida como capa
+   */
+  void setCoverImage(Long itemId, Long imageId);
 }

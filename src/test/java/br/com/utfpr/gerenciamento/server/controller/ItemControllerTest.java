@@ -250,4 +250,13 @@ class ItemControllerTest {
     // Then
     assertThat(result).isEqualTo(5L);
   }
+
+  @Test
+  void testSetCoverImage_DeveDelegarParaService() {
+    // When
+    itemController.setCoverImage(1L, 2L);
+
+    // Then
+    Mockito.verify(itemService).setCoverImage(1L, 2L);
+  }
 }

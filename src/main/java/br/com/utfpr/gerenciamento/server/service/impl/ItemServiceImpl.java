@@ -381,4 +381,24 @@ public class ItemServiceImpl extends CrudServiceImpl<Item, Long, ItemResponseDto
     item.setDisponivelEmprestimoCalculado(disponivel);
     return item;
   }
+
+  @Override
+  @Transactional
+  public void setCoverImage(Long itemId, Long imageId) {
+    Item item =
+        itemRepository
+            .findById(itemId)
+            .orElseThrow(() -> new EntityNotFoundException(ITEM_NAO_ENCONTRADO));
+
+    // Remove isCover de todas as imagens do item
+    item.getImageItem().forEach(img -> img.setIsCover(false));
+
+    // Define a imagem especificada como capa
+    item.getImageItem().stream()
+        .filter(img -> img.getId().equals(imageId))
+        .findFirst()
+        .ifPresent(img -> img.setIsCover(true));
+
+    itemRepository.save(item);
+  }
 }

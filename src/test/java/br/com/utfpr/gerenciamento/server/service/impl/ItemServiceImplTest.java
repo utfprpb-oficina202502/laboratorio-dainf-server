@@ -4,10 +4,12 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import br.com.utfpr.gerenciamento.server.enumeration.TipoItem;
+import br.com.utfpr.gerenciamento.server.exception.EntityNotFoundException;
 import br.com.utfpr.gerenciamento.server.minio.config.MinioConfig;
 import br.com.utfpr.gerenciamento.server.minio.service.MinioService;
 import br.com.utfpr.gerenciamento.server.model.Grupo;
 import br.com.utfpr.gerenciamento.server.model.Item;
+import br.com.utfpr.gerenciamento.server.model.ItemImage;
 import br.com.utfpr.gerenciamento.server.repository.EmprestimoItemRepository;
 import br.com.utfpr.gerenciamento.server.repository.ItemImageRepository;
 import br.com.utfpr.gerenciamento.server.repository.ItemRepository;
@@ -16,6 +18,7 @@ import br.com.utfpr.gerenciamento.server.repository.projection.ItemWithQtdeEmpre
 import br.com.utfpr.gerenciamento.server.service.EmailService;
 import br.com.utfpr.gerenciamento.server.service.RelatorioService;
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -431,5 +434,73 @@ class ItemServiceImplTest {
 
   private Grupo createGrupo() {
     return new Grupo(1L, "Grupo Teste");
+  }
+
+  // ==================== Testes para setCoverImage ====================
+
+  @Test
+  @DisplayName("setCoverImage - Deve definir imagem como capa e remover das outras")
+  void testSetCoverImage_DeveDefinirImagemComoCapa() {
+    // Arrange
+    ItemImage img1 = new ItemImage();
+    img1.setId(1L);
+    img1.setIsCover(false);
+
+    ItemImage img2 = new ItemImage();
+    img2.setId(2L);
+    img2.setIsCover(true); // Capa atual
+
+    item.setImageItem(new ArrayList<>(List.of(img1, img2)));
+    when(itemRepository.findById(1L)).thenReturn(Optional.of(item));
+
+    // Act
+    service.setCoverImage(1L, 1L);
+
+    // Assert
+    assertTrue(img1.getIsCover(), "Imagem 1 deve ser a nova capa");
+    assertFalse(img2.getIsCover(), "Imagem 2 não deve mais ser capa");
+    verify(itemRepository).save(item);
+  }
+
+  @Test
+  @DisplayName("setCoverImage - Item não encontrado deve lançar EntityNotFoundException")
+  void testSetCoverImage_ItemNaoEncontrado_DeveLancarException() {
+    // Arrange
+    when(itemRepository.findById(999L)).thenReturn(Optional.empty());
+
+    // Act & Assert
+    assertThrows(EntityNotFoundException.class, () -> service.setCoverImage(999L, 1L));
+    verify(itemRepository, never()).save(any());
+  }
+
+  @Test
+  @DisplayName("setCoverImage - Imagem não encontrada no item não deve lançar erro")
+  void testSetCoverImage_ImagemNaoEncontrada_NaoDeveLancarErro() {
+    // Arrange
+    ItemImage img1 = new ItemImage();
+    img1.setId(1L);
+    img1.setIsCover(true);
+
+    item.setImageItem(new ArrayList<>(List.of(img1)));
+    when(itemRepository.findById(1L)).thenReturn(Optional.of(item));
+
+    // Act - tenta definir imagem inexistente como capa
+    service.setCoverImage(1L, 999L);
+
+    // Assert - nenhuma imagem deve ser capa
+    assertFalse(img1.getIsCover(), "Imagem 1 não deve mais ser capa");
+    verify(itemRepository).save(item);
+  }
+
+  @Test
+  @DisplayName("setCoverImage - Item sem imagens não deve lançar erro")
+  void testSetCoverImage_ItemSemImagens_NaoDeveLancarErro() {
+    // Arrange
+    item.setImageItem(new ArrayList<>());
+    when(itemRepository.findById(1L)).thenReturn(Optional.of(item));
+
+    // Act & Assert - não deve lançar exceção
+    assertDoesNotThrow(() -> service.setCoverImage(1L, 1L));
+    verify(itemRepository).save(item);
   }
 }
