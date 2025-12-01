@@ -117,95 +117,95 @@ src/
 
 ---
 
-## Matriz de Permissoes por Perfil de Usuario
+## Matriz de Permissões por Perfil de Usuário
 
-O sistema possui 4 perfis de usuario com diferentes niveis de acesso:
+O sistema possui 4 perfis de usuário com diferentes níveis de acesso:
 
-| Perfil | Descricao |
+| Perfil | Descrição |
 |--------|-----------|
 | ADMINISTRADOR | Acesso total ao sistema |
-| LABORATORISTA | Tecnico de laboratorio com acesso total as operacoes CRUD |
-| PROFESSOR | Professor com acesso restrito (leitura + exportacao + criar reserva) |
-| ALUNO | Aluno com acesso restrito (leitura + exportacao + criar reserva) |
+| LABORATORISTA | Técnico de laboratório com acesso total às operações CRUD |
+| PROFESSOR | Professor com acesso restrito (leitura + exportação + criar reserva) |
+| ALUNO | Aluno com acesso restrito (leitura + exportação + criar reserva) |
 
-### Permissoes por Modulo
+### Permissões por Módulo
 
 #### Reserva
 
-| Operacao | ADMINISTRADOR | LABORATORISTA | PROFESSOR | ALUNO |
+| Operação | ADMINISTRADOR | LABORATORISTA | PROFESSOR | ALUNO |
 |----------|---------------|---------------|-----------|-------|
 | Visualizar (GET) | Sim | Sim | Sim | Sim |
 | Criar (POST) | Sim | Sim | Sim | Sim |
-| Editar (PUT) | Sim | Sim | Nao | Nao |
-| Excluir (DELETE) | Sim | Sim | Nao | Nao |
+| Editar (PUT) | Sim | Sim | Não | Não |
+| Excluir (DELETE) | Sim | Sim | Não | Não |
 
-#### Solicitacao de Compra
+#### Solicitação de Compra
 
-| Operacao | ADMINISTRADOR | LABORATORISTA | PROFESSOR | ALUNO |
+| Operação | ADMINISTRADOR | LABORATORISTA | PROFESSOR | ALUNO |
 |----------|---------------|---------------|-----------|-------|
 | Visualizar (GET) | Sim | Sim | Sim | Sim |
-| Criar (POST) | Sim | Sim | Nao | Nao |
-| Editar (PUT) | Sim | Sim | Nao | Nao |
-| Excluir (DELETE) | Sim | Sim | Nao | Nao |
+| Criar (POST) | Sim | Sim | Não | Não |
+| Editar (PUT) | Sim | Sim | Não | Não |
+| Excluir (DELETE) | Sim | Sim | Não | Não |
 
-#### Saida, Compra, Entrada, Fornecedor, Grupo
+#### Saída, Compra, Entrada, Fornecedor, Grupo
 
-| Operacao | ADMINISTRADOR | LABORATORISTA | PROFESSOR | ALUNO |
+| Operação | ADMINISTRADOR | LABORATORISTA | PROFESSOR | ALUNO |
 |----------|---------------|---------------|-----------|-------|
-| Visualizar (GET) | Sim | Sim | Nao | Nao |
-| Criar (POST) | Sim | Sim | Nao | Nao |
-| Editar (PUT) | Sim | Sim | Nao | Nao |
-| Excluir (DELETE) | Sim | Sim | Nao | Nao |
+| Visualizar (GET) | Sim | Sim | Não | Não |
+| Criar (POST) | Sim | Sim | Não | Não |
+| Editar (PUT) | Sim | Sim | Não | Não |
+| Excluir (DELETE) | Sim | Sim | Não | Não |
 
-#### Emprestimo
+#### Empréstimo
 
-| Operacao | ADMINISTRADOR | LABORATORISTA | PROFESSOR | ALUNO |
+| Operação | ADMINISTRADOR | LABORATORISTA | PROFESSOR | ALUNO |
 |----------|---------------|---------------|-----------|-------|
-| Visualizar (GET) | Sim | Sim | Sim (proprio) | Sim (proprio) |
-| Criar (POST) | Sim | Sim | Nao | Nao |
-| Editar (PUT) | Sim | Sim | Nao | Nao |
-| Excluir (DELETE) | Sim | Sim | Nao | Nao |
+| Visualizar (GET) | Sim | Sim | Sim (próprio) | Sim (próprio) |
+| Criar (POST) | Sim | Sim | Não | Não |
+| Editar (PUT) | Sim | Sim | Não | Não |
+| Excluir (DELETE) | Sim | Sim | Não | Não |
 
 #### Item
 
-| Operacao | ADMINISTRADOR | LABORATORISTA | PROFESSOR | ALUNO |
+| Operação | ADMINISTRADOR | LABORATORISTA | PROFESSOR | ALUNO |
 |----------|---------------|---------------|-----------|-------|
 | Visualizar (GET) | Sim | Sim | Sim | Sim |
-| Criar (POST) | Sim | Sim | Nao | Nao |
+| Criar (POST) | Sim | Sim | Não | Não |
 | Editar (PUT) | Sim | Sim | Sim | Sim |
-| Excluir (DELETE) | Sim | Sim | Nao | Nao |
+| Excluir (DELETE) | Sim | Sim | Não | Não |
 
 #### Usuário
 
-| Operacao | ADMINISTRADOR | LABORATORISTA | PROFESSOR | ALUNO |
+| Operação | ADMINISTRADOR | LABORATORISTA | PROFESSOR | ALUNO |
 |----------|---------------|---------------|-----------|-------|
-| Visualizar (GET) | Sim | Nao | Nao | Nao |
-| Criar (POST) | Sim | Nao | Nao | Nao |
-| Editar (PUT) | Sim | Nao | Nao | Nao |
-| Excluir (DELETE) | Sim | Nao | Nao | Nao |
+| Visualizar (GET) | Sim | Não | Não | Não |
+| Criar (POST) | Sim | Não | Não | Não |
+| Editar (PUT) | Sim | Não | Não | Não |
+| Excluir (DELETE) | Sim | Não | Não | Não |
 
 #### Nada Consta
 
-| Operacao | ADMINISTRADOR | LABORATORISTA | PROFESSOR | ALUNO |
+| Operação | ADMINISTRADOR | LABORATORISTA | PROFESSOR | ALUNO |
 |----------|---------------|---------------|-----------|-------|
-| Visualizar (GET) | Sim | Sim | Nao | Nao |
-| Solicitar (POST) | Sim | Sim | Nao | Nao |
-| Verificar Pendencias (PUT) | Sim | Sim | Nao | Nao |
-| Invalidar (PUT) | Sim | Sim | Nao | Nao |
-| Reenviar (POST) | Sim | Sim | Nao | Nao |
-| Gerar PDF (GET) | Sim | Sim | Nao | Nao |
+| Visualizar (GET) | Sim | Sim | Não | Não |
+| Solicitar (POST) | Sim | Sim | Não | Não |
+| Verificar Pendências (PUT) | Sim | Sim | Não | Não |
+| Invalidar (PUT) | Sim | Sim | Não | Não |
+| Reenviar (POST) | Sim | Sim | Não | Não |
+| Gerar PDF (GET) | Sim | Sim | Não | Não |
 
 ### Observações
 
-- Professores e alunos podem visualizar apenas suas proprias reservas e emprestimos
-- A exportacao de dados (Excel/CSV) esta disponivel para todos os perfis autenticados
-- Tentativas de acesso nao autorizado retornam HTTP 403 (Forbidden)
+- Professores e alunos podem visualizar apenas suas próprias reservas e empréstimos
+- A exportação de dados (Excel/CSV) está disponível para todos os perfis autenticados
+- Tentativas de acesso não autorizado retornam HTTP 403 (Forbidden)
 
 ---
 
 ### Licença
-Projeto desenvolvido com fins academicos no ambito da UTFPR - Campus Pato Branco.
-Licenciado sob os termos da licenca MIT.
+Projeto desenvolvido com fins acadêmicos no âmbito da UTFPR - Campus Pato Branco.
+Licenciado sob os termos da licença MIT.
 
 ---
 

@@ -431,79 +431,130 @@ class RoleBasedAccessControlTest {
   // TESTES PARAMETRIZADOS - Acesso Bloqueado (deve retornar 403)
   // ========================================================================
 
+  // Payloads JSON válidos para cada tipo de entidade (evita erros 400/422 de validação)
+  private static final String RESERVA_PAYLOAD =
+      """
+      {
+        "descricao": "Reserva de teste",
+        "dataReserva": "01/12/2025",
+        "dataRetirada": "02/12/2025",
+        "reservaItem": [{"item": {"id": 1}, "quantidade": 1}]
+      }
+      """;
+
+  private static final String SOLICITACAO_PAYLOAD =
+      """
+      {
+        "descricao": "Solicitacao de teste",
+        "dataSolicitacao": "01/12/2025",
+        "solicitacaoItem": [{"descricao": "Item teste", "quantidade": 1}]
+      }
+      """;
+
+  private static final String NADACONSTA_PAYLOAD =
+      """
+      {
+        "usuarioId": 1
+      }
+      """;
+
   /**
    * Fornece argumentos para testes de acesso bloqueado. Formato: role, metodo HTTP, endpoint,
-   * descricao
+   * descricao, payload JSON
    */
   static Stream<Arguments> acessoBloqueadoProvider() {
     return Stream.of(
         // RESERVA - PUT/DELETE bloqueado para ALUNO e PROFESSOR
-        Arguments.of("ALUNO", "PUT", "/reserva/1", "Aluno nao deve editar reservas"),
-        Arguments.of("PROFESSOR", "PUT", "/reserva/1", "Professor nao deve editar reservas"),
-        Arguments.of("ALUNO", "DELETE", "/reserva/1", "Aluno nao deve excluir reservas"),
-        Arguments.of("PROFESSOR", "DELETE", "/reserva/1", "Professor nao deve excluir reservas"),
+        Arguments.of(
+            "ALUNO", "PUT", "/reserva/1", "Aluno nao deve editar reservas", RESERVA_PAYLOAD),
+        Arguments.of(
+            "PROFESSOR",
+            "PUT",
+            "/reserva/1",
+            "Professor nao deve editar reservas",
+            RESERVA_PAYLOAD),
+        Arguments.of("ALUNO", "DELETE", "/reserva/1", "Aluno nao deve excluir reservas", ""),
+        Arguments.of(
+            "PROFESSOR", "DELETE", "/reserva/1", "Professor nao deve excluir reservas", ""),
 
         // SOLICITACAO DE COMPRA - POST/PUT/DELETE bloqueado para ALUNO e PROFESSOR
         Arguments.of(
-            "ALUNO", "POST", "/solicitacao-compra", "Aluno nao deve criar solicitacoes de compra"),
+            "ALUNO",
+            "POST",
+            "/solicitacao-compra",
+            "Aluno nao deve criar solicitacoes de compra",
+            SOLICITACAO_PAYLOAD),
         Arguments.of(
             "PROFESSOR",
             "POST",
             "/solicitacao-compra",
-            "Professor nao deve criar solicitacoes de compra"),
+            "Professor nao deve criar solicitacoes de compra",
+            SOLICITACAO_PAYLOAD),
         Arguments.of(
             "ALUNO",
             "PUT",
             "/solicitacao-compra/1",
-            "Aluno nao deve editar solicitacoes de compra"),
+            "Aluno nao deve editar solicitacoes de compra",
+            SOLICITACAO_PAYLOAD),
         Arguments.of(
             "PROFESSOR",
             "PUT",
             "/solicitacao-compra/1",
-            "Professor nao deve editar solicitacoes de compra"),
+            "Professor nao deve editar solicitacoes de compra",
+            SOLICITACAO_PAYLOAD),
         Arguments.of(
             "ALUNO",
             "DELETE",
             "/solicitacao-compra/1",
-            "Aluno nao deve excluir solicitacoes de compra"),
+            "Aluno nao deve excluir solicitacoes de compra",
+            ""),
         Arguments.of(
             "PROFESSOR",
             "DELETE",
             "/solicitacao-compra/1",
-            "Professor nao deve excluir solicitacoes de compra"),
+            "Professor nao deve excluir solicitacoes de compra",
+            ""),
 
         // NADA CONSTA - Todos os endpoints bloqueados para ALUNO e PROFESSOR
-        Arguments.of("ALUNO", "GET", "/nadaconsta", "Aluno nao deve acessar nada consta"),
-        Arguments.of("PROFESSOR", "GET", "/nadaconsta", "Professor nao deve acessar nada consta"),
+        Arguments.of("ALUNO", "GET", "/nadaconsta", "Aluno nao deve acessar nada consta", ""),
         Arguments.of(
-            "ALUNO", "POST", "/nadaconsta/solicitar", "Aluno nao deve solicitar nada consta"),
+            "PROFESSOR", "GET", "/nadaconsta", "Professor nao deve acessar nada consta", ""),
+        Arguments.of(
+            "ALUNO",
+            "POST",
+            "/nadaconsta/solicitar",
+            "Aluno nao deve solicitar nada consta",
+            NADACONSTA_PAYLOAD),
         Arguments.of(
             "PROFESSOR",
             "POST",
             "/nadaconsta/solicitar",
-            "Professor nao deve solicitar nada consta"),
+            "Professor nao deve solicitar nada consta",
+            NADACONSTA_PAYLOAD),
         Arguments.of(
             "ALUNO",
             "PUT",
             "/nadaconsta/verificar-pendencias/1",
-            "Aluno nao deve verificar pendencias"),
+            "Aluno nao deve verificar pendencias",
+            ""),
         Arguments.of(
             "PROFESSOR",
             "PUT",
             "/nadaconsta/invalidar/1",
-            "Professor nao deve invalidar nada consta"));
+            "Professor nao deve invalidar nada consta",
+            ""));
   }
 
   @ParameterizedTest(name = "{3}")
   @MethodSource("acessoBloqueadoProvider")
   @DisplayName("Acesso bloqueado")
-  void deveBloquearAcesso(String role, String metodo, String endpoint, String descricao) {
+  void deveBloquearAcesso(
+      String role, String metodo, String endpoint, String descricao, String payload) {
     String token = getTokenForRole(role);
     assertNotNull(token, "Token de " + role + " deve existir");
 
     HttpHeaders headers = createAuthHeaders(token);
-    String body = metodo.equals("GET") || metodo.equals("DELETE") ? "" : "{}";
-    HttpEntity<String> request = new HttpEntity<>(body, headers);
+    HttpEntity<String> request = new HttpEntity<>(payload, headers);
 
     ResponseEntity<String> response =
         restTemplate.exchange(
@@ -516,48 +567,67 @@ class RoleBasedAccessControlTest {
   // TESTES PARAMETRIZADOS - Acesso Permitido (nao deve retornar 403)
   // ========================================================================
 
-  /** Fornece argumentos para testes de acesso permitido. */
+  /**
+   * Fornece argumentos para testes de acesso permitido. Formato: role, metodo, endpoint, descricao,
+   * payload
+   */
   static Stream<Arguments> acessoPermitidoProvider() {
     return Stream.of(
         // RESERVA - POST permitido para todos, PUT/DELETE para ADMIN/LAB
-        Arguments.of("ALUNO", "POST", "/reserva", "Aluno deve poder criar reservas"),
-        Arguments.of("PROFESSOR", "POST", "/reserva", "Professor deve poder criar reservas"),
         Arguments.of(
-            "LABORATORISTA", "PUT", "/reserva/1", "Laboratorista deve poder editar reservas"),
+            "ALUNO", "POST", "/reserva", "Aluno deve poder criar reservas", RESERVA_PAYLOAD),
         Arguments.of(
-            "ADMINISTRADOR", "PUT", "/reserva/1", "Administrador deve poder editar reservas"),
+            "PROFESSOR",
+            "POST",
+            "/reserva",
+            "Professor deve poder criar reservas",
+            RESERVA_PAYLOAD),
+        Arguments.of(
+            "LABORATORISTA",
+            "PUT",
+            "/reserva/1",
+            "Laboratorista deve poder editar reservas",
+            RESERVA_PAYLOAD),
+        Arguments.of(
+            "ADMINISTRADOR",
+            "PUT",
+            "/reserva/1",
+            "Administrador deve poder editar reservas",
+            RESERVA_PAYLOAD),
 
         // SOLICITACAO DE COMPRA - GET para todos, POST/PUT/DELETE para ADMIN/LAB
         Arguments.of(
-            "ALUNO", "GET", "/solicitacao-compra", "Aluno deve poder visualizar solicitacoes"),
+            "ALUNO", "GET", "/solicitacao-compra", "Aluno deve poder visualizar solicitacoes", ""),
         Arguments.of(
             "LABORATORISTA",
             "POST",
             "/solicitacao-compra",
-            "Laboratorista deve poder criar solicitacoes"),
+            "Laboratorista deve poder criar solicitacoes",
+            SOLICITACAO_PAYLOAD),
         Arguments.of(
             "ADMINISTRADOR",
             "POST",
             "/solicitacao-compra",
-            "Administrador deve poder criar solicitacoes"),
+            "Administrador deve poder criar solicitacoes",
+            SOLICITACAO_PAYLOAD),
 
         // NADA CONSTA - Todos endpoints para ADMIN/LAB
         Arguments.of(
-            "LABORATORISTA", "GET", "/nadaconsta", "Laboratorista deve acessar nada consta"),
+            "LABORATORISTA", "GET", "/nadaconsta", "Laboratorista deve acessar nada consta", ""),
         Arguments.of(
-            "ADMINISTRADOR", "GET", "/nadaconsta", "Administrador deve acessar nada consta"));
+            "ADMINISTRADOR", "GET", "/nadaconsta", "Administrador deve acessar nada consta", ""));
   }
 
   @ParameterizedTest(name = "{3}")
   @MethodSource("acessoPermitidoProvider")
   @DisplayName("Acesso permitido")
-  void devePermitirAcesso(String role, String metodo, String endpoint, String descricao) {
+  void devePermitirAcesso(
+      String role, String metodo, String endpoint, String descricao, String payload) {
     String token = getTokenForRole(role);
     assertNotNull(token, "Token de " + role + " deve existir");
 
     HttpHeaders headers = createAuthHeaders(token);
-    String body = metodo.equals("GET") || metodo.equals("DELETE") ? "" : "{}";
-    HttpEntity<String> request = new HttpEntity<>(body, headers);
+    HttpEntity<String> request = new HttpEntity<>(payload, headers);
 
     ResponseEntity<String> response =
         restTemplate.exchange(
