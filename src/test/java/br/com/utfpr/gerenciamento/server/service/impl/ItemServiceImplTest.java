@@ -3,6 +3,7 @@ package br.com.utfpr.gerenciamento.server.service.impl;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+import br.com.utfpr.gerenciamento.server.dto.ItemResponseDto;
 import br.com.utfpr.gerenciamento.server.enumeration.TipoItem;
 import br.com.utfpr.gerenciamento.server.exception.EntityNotFoundException;
 import br.com.utfpr.gerenciamento.server.minio.config.MinioConfig;
@@ -32,6 +33,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.modelmapper.ModelMapper;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 @ExtendWith(MockitoExtension.class)
 class ItemServiceImplTest {
@@ -502,5 +507,131 @@ class ItemServiceImplTest {
     // Act & Assert - não deve lançar exceção
     assertDoesNotThrow(() -> service.setCoverImage(1L, 1L));
     verify(itemRepository).save(item);
+  }
+
+  // ==================== Testes para findByGrupoPaged ====================
+
+  @Test
+  @DisplayName("findByGrupoPaged - Deve retornar página de itens do grupo")
+  void testFindByGrupoPaged_DeveRetornarPaginaDeItens() {
+    // Arrange
+    Long grupoId = 1L;
+    String filter = null;
+    Pageable pageable = PageRequest.of(0, 25);
+
+    Item item1 = createItemPadrao();
+    Item item2 = new Item();
+    item2.setId(2L);
+    item2.setNome("Monitor LG");
+    item2.setTipoItem(TipoItem.P);
+    item2.setSaldo(new BigDecimal("5.00"));
+
+    List<Item> itens = List.of(item1, item2);
+    Page<Item> pageResult = new PageImpl<>(itens, pageable, 2);
+
+    ItemResponseDto dto1 = new ItemResponseDto();
+    dto1.setId(1L);
+    dto1.setNome("Notebook Dell");
+
+    ItemResponseDto dto2 = new ItemResponseDto();
+    dto2.setId(2L);
+    dto2.setNome("Monitor LG");
+
+    when(itemRepository.findByGrupoIdPaged(grupoId, filter, pageable)).thenReturn(pageResult);
+    when(modelMapper.map(item1, ItemResponseDto.class)).thenReturn(dto1);
+    when(modelMapper.map(item2, ItemResponseDto.class)).thenReturn(dto2);
+
+    // Act
+    Page<ItemResponseDto> result = service.findByGrupoPaged(grupoId, filter, pageable);
+
+    // Assert
+    assertNotNull(result);
+    assertEquals(2, result.getContent().size());
+    assertEquals(2, result.getTotalElements());
+    assertEquals("Notebook Dell", result.getContent().get(0).getNome());
+    assertEquals("Monitor LG", result.getContent().get(1).getNome());
+    verify(itemRepository).findByGrupoIdPaged(grupoId, filter, pageable);
+  }
+
+  @Test
+  @DisplayName("findByGrupoPaged - Deve filtrar itens por nome")
+  void testFindByGrupoPaged_DeveFiltrarPorNome() {
+    // Arrange
+    Long grupoId = 1L;
+    String filter = "Notebook";
+    Pageable pageable = PageRequest.of(0, 25);
+
+    Item item1 = createItemPadrao();
+    List<Item> itens = List.of(item1);
+    Page<Item> pageResult = new PageImpl<>(itens, pageable, 1);
+
+    ItemResponseDto dto1 = new ItemResponseDto();
+    dto1.setId(1L);
+    dto1.setNome("Notebook Dell");
+
+    when(itemRepository.findByGrupoIdPaged(grupoId, filter, pageable)).thenReturn(pageResult);
+    when(modelMapper.map(item1, ItemResponseDto.class)).thenReturn(dto1);
+
+    // Act
+    Page<ItemResponseDto> result = service.findByGrupoPaged(grupoId, filter, pageable);
+
+    // Assert
+    assertNotNull(result);
+    assertEquals(1, result.getContent().size());
+    assertEquals("Notebook Dell", result.getContent().get(0).getNome());
+    verify(itemRepository).findByGrupoIdPaged(grupoId, filter, pageable);
+  }
+
+  @Test
+  @DisplayName("findByGrupoPaged - Deve retornar página vazia quando grupo não tem itens")
+  void testFindByGrupoPaged_DeveRetornarPaginaVazia() {
+    // Arrange
+    Long grupoId = 999L;
+    String filter = null;
+    Pageable pageable = PageRequest.of(0, 25);
+
+    Page<Item> pageResult = new PageImpl<>(List.of(), pageable, 0);
+    when(itemRepository.findByGrupoIdPaged(grupoId, filter, pageable)).thenReturn(pageResult);
+
+    // Act
+    Page<ItemResponseDto> result = service.findByGrupoPaged(grupoId, filter, pageable);
+
+    // Assert
+    assertNotNull(result);
+    assertTrue(result.getContent().isEmpty());
+    assertEquals(0, result.getTotalElements());
+    verify(itemRepository).findByGrupoIdPaged(grupoId, filter, pageable);
+  }
+
+  @Test
+  @DisplayName("findByGrupoPaged - Deve respeitar paginação")
+  void testFindByGrupoPaged_DeveRespeitarPaginacao() {
+    // Arrange
+    Long grupoId = 1L;
+    String filter = null;
+    Pageable pageable = PageRequest.of(1, 10); // Segunda página
+
+    Item item1 = createItemPadrao();
+    List<Item> itens = List.of(item1);
+    // PageImpl com total explícito de 25 elementos
+    Page<Item> pageResult = new PageImpl<>(itens, pageable, 25);
+
+    ItemResponseDto dto1 = new ItemResponseDto();
+    dto1.setId(1L);
+    dto1.setNome("Notebook Dell");
+
+    when(itemRepository.findByGrupoIdPaged(grupoId, filter, pageable)).thenReturn(pageResult);
+    when(modelMapper.map(item1, ItemResponseDto.class)).thenReturn(dto1);
+
+    // Act
+    Page<ItemResponseDto> result = service.findByGrupoPaged(grupoId, filter, pageable);
+
+    // Assert
+    assertNotNull(result);
+    assertEquals(1, result.getContent().size());
+    assertEquals(25, result.getTotalElements());
+    assertEquals(1, result.getNumber()); // Página 1 (0-indexed)
+    assertEquals(3, result.getTotalPages()); // 25 itens / 10 por página = 3 páginas
+    verify(itemRepository).findByGrupoIdPaged(grupoId, filter, pageable);
   }
 }

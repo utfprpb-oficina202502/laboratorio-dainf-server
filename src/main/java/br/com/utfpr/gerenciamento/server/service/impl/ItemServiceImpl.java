@@ -198,6 +198,12 @@ public class ItemServiceImpl extends CrudServiceImpl<Item, Long, ItemResponseDto
   }
 
   @Override
+  @Transactional(readOnly = true)
+  public Page<ItemResponseDto> findByGrupoPaged(Long grupoId, String filter, Pageable pageable) {
+    return itemRepository.findByGrupoIdPaged(grupoId, filter, pageable).map(this::toDto);
+  }
+
+  @Override
   @Transactional
   public void diminuiSaldoItem(Long idItem, BigDecimal qtde, boolean needValidationSaldo) {
     Item itemToSave =

@@ -28,10 +28,12 @@ import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.SAIDA;
 import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.SOLICITACAO_COMPRA;
 import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.TEST;
 import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.USUARIO;
+import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.USUARIO_BY_ID;
 import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.USUARIO_CONFIRM_EMAIL;
 import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.USUARIO_FIND_BY_USERNAME;
 import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.USUARIO_INFO;
 import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.USUARIO_NEW_USER;
+import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.USUARIO_PERMISSAO;
 import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.USUARIO_REQUEST_CODE_RESET;
 import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.USUARIO_RESEND_CONFIRM;
 import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.USUARIO_RESET_PASSWORD;
@@ -134,6 +136,13 @@ public class WebSecurity {
                     .authenticated()
                     .requestMatchers(HttpMethod.POST, USUARIO_UPDATE)
                     .authenticated()
+                    // Permissões - qualquer autenticado pode listar (usado no formulário de perfil)
+                    .requestMatchers(HttpMethod.GET, USUARIO_PERMISSAO)
+                    .authenticated()
+                    // Busca por ID - controlado por @PreAuthorize no controller
+                    // (permite usuário ver seu próprio perfil OU admin ver qualquer)
+                    .requestMatchers(HttpMethod.GET, USUARIO_BY_ID)
+                    .authenticated()
 
                     // Usuário - endpoints públicos de registro/recuperação
                     .requestMatchers(
@@ -163,8 +172,11 @@ public class WebSecurity {
                     .hasAnyRole(ROLE_LABORATORISTA_NAME, ROLE_ADMINISTRADOR_NAME)
                     .requestMatchers(HttpMethod.DELETE, EMPRESTIMO)
                     .hasAnyRole(ROLE_LABORATORISTA_NAME, ROLE_ADMINISTRADOR_NAME)
+                    // find-all-by-username é controlado por @PreAuthorize no controller
+                    // (permite usuário ver seus próprios empréstimos OU admin/laboratorista ver
+                    // todos)
                     .requestMatchers(HttpMethod.GET, EMPRESTIMO_FIND_ALL_BY_USERNAME)
-                    .hasAnyRole(ROLE_LABORATORISTA_NAME, ROLE_ADMINISTRADOR_NAME)
+                    .authenticated()
 
                     // Nada Consta - todos os endpoints requerem LABORATORISTA ou ADMINISTRADOR
                     .requestMatchers(NADACONSTA)

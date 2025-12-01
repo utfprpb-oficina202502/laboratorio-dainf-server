@@ -25,6 +25,26 @@ public interface ItemRepository extends JpaRepository<Item, Long>, JpaSpecificat
 
   List<Item> findByGrupoIdOrderByNome(Long idGrupo);
 
+  /**
+   * Busca paginada de itens por grupo com filtro opcional.
+   *
+   * @param grupoId ID do grupo
+   * @param filter Texto para filtrar por id ou nome (case insensitive)
+   * @param pageable Configuracao de paginacao
+   * @return Pagina de itens do grupo
+   */
+  @Query(
+      """
+      SELECT i FROM Item i
+      WHERE i.grupo.id = :grupoId
+      AND (:filter IS NULL OR :filter = ''
+           OR LOWER(i.nome) LIKE LOWER(CONCAT('%', :filter, '%'))
+           OR CAST(i.id AS string) LIKE CONCAT('%', :filter, '%'))
+      ORDER BY i.nome
+      """)
+  Page<Item> findByGrupoIdPaged(
+      @Param("grupoId") Long grupoId, @Param("filter") String filter, Pageable pageable);
+
   @Query("SELECT COUNT(i.id) FROM Item i WHERE i.saldo <= i.qtdeMinima")
   long countAllByQtdeMinimaIsLessThanSaldo();
 

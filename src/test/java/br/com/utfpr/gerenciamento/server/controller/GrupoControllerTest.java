@@ -147,31 +147,62 @@ class GrupoControllerTest {
   void testFindItensVinculados() {
     // Given
     Long idGrupo = 1L;
-    when(itemService.findByGrupo(idGrupo)).thenReturn(itensDto);
+    int page = 0;
+    int size = 25;
+    String filter = null;
+    PageRequest pageRequest = PageRequest.of(page, size);
+    Page<ItemResponseDto> pageResult = new PageImpl<>(itensDto, pageRequest, 2);
+    when(itemService.findByGrupoPaged(idGrupo, filter, pageRequest)).thenReturn(pageResult);
 
     // When
-    List<ItemResponseDto> result = grupoController.findItensVinculado(idGrupo);
+    Page<ItemResponseDto> result = grupoController.findItensVinculado(idGrupo, page, size, filter);
 
     // Then
     assertNotNull(result);
-    assertEquals(2, result.size());
-    assertEquals(itensDto, result);
-    verify(itemService).findByGrupo(idGrupo);
+    assertEquals(2, result.getContent().size());
+    assertEquals(2, result.getTotalElements());
+    verify(itemService).findByGrupoPaged(idGrupo, filter, pageRequest);
+  }
+
+  @Test
+  void testFindItensVinculados_WithFilter() {
+    // Given
+    Long idGrupo = 1L;
+    int page = 0;
+    int size = 25;
+    String filter = "Item";
+    PageRequest pageRequest = PageRequest.of(page, size);
+    Page<ItemResponseDto> pageResult = new PageImpl<>(itensDto, pageRequest, 2);
+    when(itemService.findByGrupoPaged(idGrupo, filter, pageRequest)).thenReturn(pageResult);
+
+    // When
+    Page<ItemResponseDto> result = grupoController.findItensVinculado(idGrupo, page, size, filter);
+
+    // Then
+    assertNotNull(result);
+    assertEquals(2, result.getContent().size());
+    verify(itemService).findByGrupoPaged(idGrupo, filter, pageRequest);
   }
 
   @Test
   void testFindItensVinculados_WithInvalidId() {
     // Given
     Long idGrupo = 999L;
-    when(itemService.findByGrupo(idGrupo)).thenReturn(Arrays.asList());
+    int page = 0;
+    int size = 25;
+    String filter = null;
+    PageRequest pageRequest = PageRequest.of(page, size);
+    Page<ItemResponseDto> pageResult = new PageImpl<>(Arrays.asList(), pageRequest, 0);
+    when(itemService.findByGrupoPaged(idGrupo, filter, pageRequest)).thenReturn(pageResult);
 
     // When
-    List<ItemResponseDto> result = grupoController.findItensVinculado(idGrupo);
+    Page<ItemResponseDto> result = grupoController.findItensVinculado(idGrupo, page, size, filter);
 
     // Then
     assertNotNull(result);
-    assertTrue(result.isEmpty());
-    verify(itemService).findByGrupo(idGrupo);
+    assertTrue(result.getContent().isEmpty());
+    assertEquals(0, result.getTotalElements());
+    verify(itemService).findByGrupoPaged(idGrupo, filter, pageRequest);
   }
 
   @Test

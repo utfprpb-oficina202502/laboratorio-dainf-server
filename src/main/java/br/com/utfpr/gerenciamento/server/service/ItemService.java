@@ -37,6 +37,16 @@ public interface ItemService extends CrudService<Item, Long, ItemResponseDto> {
 
   List<ItemResponseDto> findByGrupo(Long id);
 
+  /**
+   * Busca paginada de itens por grupo com filtro opcional.
+   *
+   * @param grupoId ID do grupo
+   * @param filter Texto para filtro por nome ou id
+   * @param pageable Configuracao de paginacao
+   * @return Pagina de ItemResponseDto
+   */
+  Page<ItemResponseDto> findByGrupoPaged(Long grupoId, String filter, Pageable pageable);
+
   void diminuiSaldoItem(Long idItem, BigDecimal qtde, boolean needValidationSaldo);
 
   void aumentaSaldoItem(Long idItem, BigDecimal qtde);
