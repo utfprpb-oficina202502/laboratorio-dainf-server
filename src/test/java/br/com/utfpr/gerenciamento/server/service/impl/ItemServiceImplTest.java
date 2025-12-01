@@ -444,11 +444,11 @@ class ItemServiceImplTest {
     // Arrange
     ItemImage img1 = new ItemImage();
     img1.setId(1L);
-    img1.setIsCover(false);
+    img1.setCover(false);
 
     ItemImage img2 = new ItemImage();
     img2.setId(2L);
-    img2.setIsCover(true); // Capa atual
+    img2.setCover(true); // Capa atual
 
     item.setImageItem(new ArrayList<>(List.of(img1, img2)));
     when(itemRepository.findById(1L)).thenReturn(Optional.of(item));
@@ -457,8 +457,8 @@ class ItemServiceImplTest {
     service.setCoverImage(1L, 1L);
 
     // Assert
-    assertTrue(img1.getIsCover(), "Imagem 1 deve ser a nova capa");
-    assertFalse(img2.getIsCover(), "Imagem 2 não deve mais ser capa");
+    assertTrue(img1.isCover(), "Imagem 1 deve ser a nova capa");
+    assertFalse(img2.isCover(), "Imagem 2 não deve mais ser capa");
     verify(itemRepository).save(item);
   }
 
@@ -479,7 +479,7 @@ class ItemServiceImplTest {
     // Arrange
     ItemImage img1 = new ItemImage();
     img1.setId(1L);
-    img1.setIsCover(true);
+    img1.setCover(true);
 
     item.setImageItem(new ArrayList<>(List.of(img1)));
     when(itemRepository.findById(1L)).thenReturn(Optional.of(item));
@@ -488,7 +488,7 @@ class ItemServiceImplTest {
     service.setCoverImage(1L, 999L);
 
     // Assert - nenhuma imagem deve ser capa
-    assertFalse(img1.getIsCover(), "Imagem 1 não deve mais ser capa");
+    assertFalse(img1.isCover(), "Imagem 1 não deve mais ser capa");
     verify(itemRepository).save(item);
   }
 

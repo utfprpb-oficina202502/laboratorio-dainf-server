@@ -391,13 +391,13 @@ public class ItemServiceImpl extends CrudServiceImpl<Item, Long, ItemResponseDto
             .orElseThrow(() -> new EntityNotFoundException(ITEM_NAO_ENCONTRADO));
 
     // Remove isCover de todas as imagens do item
-    item.getImageItem().forEach(img -> img.setIsCover(false));
+    item.getImageItem().forEach(img -> img.setCover(false));
 
     // Define a imagem especificada como capa
     item.getImageItem().stream()
         .filter(img -> img.getId().equals(imageId))
         .findFirst()
-        .ifPresent(img -> img.setIsCover(true));
+        .ifPresent(img -> img.setCover(true));
 
     itemRepository.save(item);
   }
