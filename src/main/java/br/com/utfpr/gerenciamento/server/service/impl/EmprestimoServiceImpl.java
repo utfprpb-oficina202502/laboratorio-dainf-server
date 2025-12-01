@@ -179,6 +179,12 @@ public class EmprestimoServiceImpl extends CrudServiceImpl<Emprestimo, Long, Emp
    * @return Página de empréstimos do usuário com filtro textual aplicado
    */
   @Override
+  @PreAuthorize(
+      "authentication.name == #username || hasAnyRole('"
+          + ROLE_LABORATORISTA_NAME
+          + "', '"
+          + ROLE_ADMINISTRADOR_NAME
+          + "')")
   @Cacheable(
       value = "emprestimos-page-user",
       key = "T(java.util.Objects).hash(#textFilter, #pageable.toString(), #username)",
