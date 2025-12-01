@@ -24,6 +24,17 @@ public interface ItemService extends CrudService<Item, Long, ItemResponseDto> {
 
   List<ItemResponseDto> itemComplete(String query, boolean disponivelParaEmprestimo);
 
+  /**
+   * Busca paginada de itens para autocomplete com dados de disponibilidade.
+   *
+   * @param query Texto para filtro por nome
+   * @param disponivelParaEmprestimo Se true, filtra apenas itens disponiveis
+   * @param pageable Configuracao de paginacao
+   * @return Pagina de ItemResponseDto com disponibilidade calculada
+   */
+  Page<ItemResponseDto> itemCompletePaged(
+      String query, boolean disponivelParaEmprestimo, Pageable pageable);
+
   List<ItemResponseDto> findByGrupo(Long id);
 
   void diminuiSaldoItem(Long idItem, BigDecimal qtde, boolean needValidationSaldo);

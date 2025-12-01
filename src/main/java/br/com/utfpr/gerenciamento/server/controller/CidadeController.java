@@ -5,7 +5,6 @@ import br.com.utfpr.gerenciamento.server.model.Cidade;
 import br.com.utfpr.gerenciamento.server.model.Estado;
 import br.com.utfpr.gerenciamento.server.service.CidadeService;
 import br.com.utfpr.gerenciamento.server.service.CrudService;
-import java.util.List;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -23,13 +22,12 @@ public class CidadeController extends CrudController<Cidade, Long, CidadeRespons
     return cidadeService;
   }
 
-  @GetMapping("/complete")
-  public List<CidadeResponseDto> complete(@RequestParam("query") String query) {
-    return cidadeService.cidadeComplete(query);
-  }
-
+  /**
+   * Busca cidades filtradas por estado especifico. Mantido separado pois requer filtro por
+   * relacionamento.
+   */
   @PostMapping("/complete-by-estado")
-  public List<CidadeResponseDto> complete(
+  public java.util.List<CidadeResponseDto> completeByEstado(
       @RequestParam("query") String query, @RequestBody Estado estado) {
     return cidadeService.completeByEstado(query, estado);
   }

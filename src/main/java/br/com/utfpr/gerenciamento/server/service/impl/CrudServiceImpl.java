@@ -5,6 +5,8 @@ import br.com.utfpr.gerenciamento.server.service.CrudService;
 import jakarta.persistence.criteria.Predicate;
 import java.io.Serializable;
 import java.util.List;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -16,7 +18,22 @@ import org.springframework.transaction.annotation.Transactional;
 public abstract class CrudServiceImpl<T, ID extends Serializable, DTO>
     implements CrudService<T, ID, DTO> {
 
+  /**
+   * Self-reference para chamadas que precisam passar pelo proxy Spring. Necessario para que
+   * anotacoes como @Transactional funcionem em chamadas internas.
+   */
+  @Autowired @Lazy private CrudService<T, ID, DTO> self;
+
   protected abstract JpaRepository<T, ID> getRepository();
+
+  /**
+   * Retorna a referencia self para uso em subclasses que precisam de chamadas via proxy. Retorna
+   * 'this' como fallback para testes unitarios onde o contexto Spring nao esta disponivel.
+   */
+  @SuppressWarnings("unchecked")
+  protected CrudService<T, ID, DTO> self() {
+    return self != null ? self : (CrudService<T, ID, DTO>) this;
+  }
 
   @Override
   @Transactional(readOnly = true)
@@ -117,7 +134,7 @@ public abstract class CrudServiceImpl<T, ID extends Serializable, DTO>
   }
 
   @Override
-  @Transactional
+  @Transactional(readOnly = true)
   public Specification<T> filterByAllFields(String filter) {
     return (root, query, cb) -> {
       if (filter == null || filter.trim().isEmpty()) {
@@ -155,5 +172,15 @@ public abstract class CrudServiceImpl<T, ID extends Serializable, DTO>
     Page<T> page = repo.findAll(specification, pageable);
     List<DTO> dtoList = page.getContent().stream().map(this::toDto).toList();
     return new PageImpl<>(dtoList, pageable, page.getTotalElements());
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public Page<DTO> complete(String query, Pageable pageable) {
+    if (query == null || query.isBlank()) {
+      return self().findAll(pageable);
+    }
+    Specification<T> spec = self().filterByAllFields(query);
+    return self().findAllSpecification(spec, pageable);
   }
 }

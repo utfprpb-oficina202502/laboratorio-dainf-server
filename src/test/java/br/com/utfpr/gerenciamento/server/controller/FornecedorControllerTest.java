@@ -76,32 +76,31 @@ class FornecedorControllerTest {
   @Test
   void testComplete() {
     String query = "teste";
-    when(fornecedorService.completeFornecedor(query)).thenReturn(fornecedores);
-    when(fornecedorService.toDto(any(Fornecedor.class)))
-        .thenReturn(fornecedorResponseDto)
-        .thenReturn(createFornecedorResponseDtoAlternativo());
+    int page = 0;
+    int size = 10;
+    Page<FornecedorResponseDto> pageResult = new PageImpl<>(fornecedoresDto);
+    when(fornecedorService.complete(eq(query), any(PageRequest.class))).thenReturn(pageResult);
 
-    List<FornecedorResponseDto> result = fornecedorController.complete(query);
+    Page<FornecedorResponseDto> result = fornecedorController.complete(query, page, size);
 
     assertNotNull(result);
-    assertEquals(2, result.size());
-    verify(fornecedorService).completeFornecedor(query);
-    verify(fornecedorService, times(2)).toDto(any(Fornecedor.class));
+    assertEquals(2, result.getContent().size());
+    verify(fornecedorService).complete(eq(query), any(PageRequest.class));
   }
 
   @Test
   void testCompleteWithEmptyQuery() {
     String query = "";
-    when(fornecedorService.completeFornecedor(query)).thenReturn(fornecedores);
-    when(fornecedorService.toDto(any(Fornecedor.class)))
-        .thenReturn(fornecedorResponseDto)
-        .thenReturn(createFornecedorResponseDtoAlternativo());
+    int page = 0;
+    int size = 10;
+    Page<FornecedorResponseDto> pageResult = new PageImpl<>(fornecedoresDto);
+    when(fornecedorService.complete(eq(query), any(PageRequest.class))).thenReturn(pageResult);
 
-    List<FornecedorResponseDto> result = fornecedorController.complete(query);
+    Page<FornecedorResponseDto> result = fornecedorController.complete(query, page, size);
 
     assertNotNull(result);
-    assertEquals(2, result.size());
-    verify(fornecedorService).completeFornecedor(query);
+    assertEquals(2, result.getContent().size());
+    verify(fornecedorService).complete(eq(query), any(PageRequest.class));
   }
 
   @Test

@@ -89,46 +89,58 @@ class GrupoControllerTest {
   void testComplete() {
     // Given
     String query = "teste";
-    when(grupoService.completeGrupo(query)).thenReturn(gruposDto);
+    int page = 0;
+    int size = 10;
+    PageRequest pageRequest = PageRequest.of(page, size);
+    Page<GrupoResponseDto> pageResult = new PageImpl<>(gruposDto, pageRequest, 2);
+    when(grupoService.complete(query, pageRequest)).thenReturn(pageResult);
 
     // When
-    List<GrupoResponseDto> result = grupoController.complete(query);
+    Page<GrupoResponseDto> result = grupoController.complete(query, page, size);
 
     // Then
     assertNotNull(result);
-    assertEquals(2, result.size());
-    assertEquals(gruposDto, result);
-    verify(grupoService).completeGrupo(query);
+    assertEquals(2, result.getContent().size());
+    assertEquals(2, result.getTotalElements());
+    verify(grupoService).complete(query, pageRequest);
   }
 
   @Test
   void testComplete_WithEmptyQuery() {
     // Given
     String query = "";
-    when(grupoService.completeGrupo(query)).thenReturn(gruposDto);
+    int page = 0;
+    int size = 10;
+    PageRequest pageRequest = PageRequest.of(page, size);
+    Page<GrupoResponseDto> pageResult = new PageImpl<>(gruposDto, pageRequest, 2);
+    when(grupoService.complete(query, pageRequest)).thenReturn(pageResult);
 
     // When
-    List<GrupoResponseDto> result = grupoController.complete(query);
+    Page<GrupoResponseDto> result = grupoController.complete(query, page, size);
 
     // Then
     assertNotNull(result);
-    assertEquals(2, result.size());
-    verify(grupoService).completeGrupo(query);
+    assertEquals(2, result.getContent().size());
+    verify(grupoService).complete(query, pageRequest);
   }
 
   @Test
   void testComplete_WithNullQuery() {
     // Given
     String query = null;
-    when(grupoService.completeGrupo(query)).thenReturn(gruposDto);
+    int page = 0;
+    int size = 10;
+    PageRequest pageRequest = PageRequest.of(page, size);
+    Page<GrupoResponseDto> pageResult = new PageImpl<>(gruposDto, pageRequest, 2);
+    when(grupoService.complete(query, pageRequest)).thenReturn(pageResult);
 
     // When
-    List<GrupoResponseDto> result = grupoController.complete(query);
+    Page<GrupoResponseDto> result = grupoController.complete(query, page, size);
 
     // Then
     assertNotNull(result);
-    assertEquals(2, result.size());
-    verify(grupoService).completeGrupo(query);
+    assertEquals(2, result.getContent().size());
+    verify(grupoService).complete(query, pageRequest);
   }
 
   @Test
@@ -261,7 +273,6 @@ class GrupoControllerTest {
     String order = "nome";
     Boolean asc = true;
 
-    PageRequest pageRequest = PageRequest.of(page, size);
     Page<GrupoResponseDto> pageResult = new PageImpl<>(gruposDto);
 
     // Use a mock Specification<Grupo>

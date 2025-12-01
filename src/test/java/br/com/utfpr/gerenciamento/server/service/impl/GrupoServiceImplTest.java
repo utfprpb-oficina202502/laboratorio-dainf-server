@@ -97,73 +97,60 @@ class GrupoServiceImplTest {
   }
 
   @Test
-  void testCompleteGrupo_NullQuery() {
-    // Given
-    when(grupoRepository.findAll()).thenReturn(grupos);
+  void testComplete_NullQuery() {
+    // Given - complete() usa findAll(pageable) quando query é null/blank
+    Pageable pageable = PageRequest.of(0, 10);
+    Page<Grupo> page = new PageImpl<>(grupos, pageable, grupos.size());
+    when(grupoRepository.findAll(pageable)).thenReturn(page);
     when(modelMapper.map(grupo, GrupoResponseDto.class)).thenReturn(grupoDto);
     when(modelMapper.map(grupos.get(1), GrupoResponseDto.class)).thenReturn(gruposDto.get(1));
 
     // When
-    List<GrupoResponseDto> result = service.completeGrupo(null);
+    Page<GrupoResponseDto> result = service.complete(null, pageable);
 
     // Then
     assertNotNull(result);
-    assertEquals(2, result.size());
-    verify(grupoRepository).findAll();
+    assertEquals(2, result.getContent().size());
+    verify(grupoRepository).findAll(pageable);
     verify(modelMapper, times(2)).map(any(Grupo.class), eq(GrupoResponseDto.class));
   }
 
   @Test
-  void testCompleteGrupo_BlankQuery() {
+  void testComplete_BlankQuery() {
     // Given
-    when(grupoRepository.findAll()).thenReturn(grupos);
+    Pageable pageable = PageRequest.of(0, 10);
+    Page<Grupo> page = new PageImpl<>(grupos, pageable, grupos.size());
+    when(grupoRepository.findAll(pageable)).thenReturn(page);
     when(modelMapper.map(grupo, GrupoResponseDto.class)).thenReturn(grupoDto);
     when(modelMapper.map(grupos.get(1), GrupoResponseDto.class)).thenReturn(gruposDto.get(1));
 
     // When
-    List<GrupoResponseDto> result = service.completeGrupo("");
+    Page<GrupoResponseDto> result = service.complete("", pageable);
 
     // Then
     assertNotNull(result);
-    assertEquals(2, result.size());
-    verify(grupoRepository).findAll();
+    assertEquals(2, result.getContent().size());
+    verify(grupoRepository).findAll(pageable);
     verify(modelMapper, times(2)).map(any(Grupo.class), eq(GrupoResponseDto.class));
   }
 
   @Test
-  void testCompleteGrupo_ValidQuery() {
-    // Given
+  void testComplete_ValidQuery() {
+    // Given - complete() usa filterByAllFields quando query tem valor
     String query = "teste";
-    when(grupoRepository.findByDescricaoLikeIgnoreCase("%teste%"))
-        .thenReturn(Collections.singletonList(grupo));
+    Pageable pageable = PageRequest.of(0, 10);
+    Page<Grupo> page = new PageImpl<>(Collections.singletonList(grupo), pageable, 1);
+    when(grupoRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(page);
     when(modelMapper.map(grupo, GrupoResponseDto.class)).thenReturn(grupoDto);
 
     // When
-    List<GrupoResponseDto> result = service.completeGrupo(query);
+    Page<GrupoResponseDto> result = service.complete(query, pageable);
 
     // Then
     assertNotNull(result);
-    assertEquals(1, result.size());
-    assertEquals(grupoDto, result.get(0));
-    verify(grupoRepository).findByDescricaoLikeIgnoreCase("%teste%");
-    verify(modelMapper).map(grupo, GrupoResponseDto.class);
-  }
-
-  @Test
-  void testCompleteGrupo_QueryWithSpaces() {
-    // Given
-    String query = "  teste  ";
-    when(grupoRepository.findByDescricaoLikeIgnoreCase("%teste%"))
-        .thenReturn(Collections.singletonList(grupo));
-    when(modelMapper.map(grupo, GrupoResponseDto.class)).thenReturn(grupoDto);
-
-    // When
-    List<GrupoResponseDto> result = service.completeGrupo(query);
-
-    // Then
-    assertNotNull(result);
-    assertEquals(1, result.size());
-    verify(grupoRepository).findByDescricaoLikeIgnoreCase("%teste%");
+    assertEquals(1, result.getContent().size());
+    assertEquals(grupoDto, result.getContent().get(0));
+    verify(grupoRepository).findAll(any(Specification.class), eq(pageable));
     verify(modelMapper).map(grupo, GrupoResponseDto.class);
   }
 
