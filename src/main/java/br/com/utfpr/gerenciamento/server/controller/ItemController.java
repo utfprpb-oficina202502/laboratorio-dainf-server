@@ -90,10 +90,13 @@ public class ItemController extends CrudController<Item, Long, ItemResponseDto> 
   @Override
   public void postSave(Item object) {
     List<ItemImage> images = this.imagesToCopy.get();
-    if (images != null) {
-      itemService.copyImagesItem(images, object.getId());
+    try {
+      if (images != null) {
+        itemService.copyImagesItem(images, object.getId());
+      }
+    } finally {
+      this.imagesToCopy.remove();
     }
-    this.imagesToCopy.remove(); // Limpa ThreadLocal para evitar memory leak
   }
 
   /**
