@@ -163,7 +163,7 @@ public class ItemController extends CrudController<Item, Long, ItemResponseDto> 
   }
 
   @PostMapping("set-cover-image/{idItem}/{idImage}")
-  public void setCoverImage(@PathVariable Long idItem, @PathVariable Long idImage) {
+  public void setCoverImage(@PathVariable("idItem") Long idItem, @PathVariable("idImage") Long idImage) {
     itemService.setCoverImage(idItem, idImage);
   }
 }

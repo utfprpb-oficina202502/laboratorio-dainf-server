@@ -36,7 +36,7 @@ public class ItemImage {
   private Item item;
 
   @Column(name = "is_cover", nullable = false, columnDefinition = "BOOLEAN DEFAULT false")
-  private Boolean isCover = false;
+  private boolean isCover = false;
 
   @Transient private String base64;
 
