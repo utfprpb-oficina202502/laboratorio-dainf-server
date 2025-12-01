@@ -3,6 +3,7 @@ package br.com.utfpr.gerenciamento.server.service.impl;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+import br.com.utfpr.gerenciamento.server.dto.ItemResponseDto;
 import br.com.utfpr.gerenciamento.server.enumeration.TipoItem;
 import br.com.utfpr.gerenciamento.server.exception.EntityNotFoundException;
 import br.com.utfpr.gerenciamento.server.minio.config.MinioConfig;
@@ -17,7 +18,6 @@ import br.com.utfpr.gerenciamento.server.repository.projection.ItemCompleteWithD
 import br.com.utfpr.gerenciamento.server.repository.projection.ItemWithQtdeEmprestada;
 import br.com.utfpr.gerenciamento.server.service.EmailService;
 import br.com.utfpr.gerenciamento.server.service.RelatorioService;
-import br.com.utfpr.gerenciamento.server.dto.ItemResponseDto;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
