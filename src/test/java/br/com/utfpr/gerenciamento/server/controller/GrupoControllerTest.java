@@ -5,7 +5,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import br.com.utfpr.gerenciamento.server.dto.GrupoResponseDto;
-import br.com.utfpr.gerenciamento.server.dto.ItemResponseDto;
+import br.com.utfpr.gerenciamento.server.dto.ItemSimpleDto;
 import br.com.utfpr.gerenciamento.server.model.Grupo;
 import br.com.utfpr.gerenciamento.server.service.GrupoService;
 import br.com.utfpr.gerenciamento.server.service.ItemService;
@@ -32,9 +32,9 @@ class GrupoControllerTest {
 
   private Grupo grupo;
   private GrupoResponseDto grupoResponseDto;
-  private ItemResponseDto itemResponseDto;
+  private ItemSimpleDto itemSimpleDto;
   private List<GrupoResponseDto> gruposDto;
-  private List<ItemResponseDto> itensDto;
+  private List<ItemSimpleDto> itensDto;
 
   @BeforeEach
   void setUp() {
@@ -48,16 +48,15 @@ class GrupoControllerTest {
     grupoResponseDto.setId(1L);
     grupoResponseDto.setDescricao("Descrição do grupo teste");
 
-    // Configurar ItemResponseDto
-    itemResponseDto = new ItemResponseDto();
-    itemResponseDto.setId(1L);
-    itemResponseDto.setNome("Item Teste");
-    itemResponseDto.setDescricao("Descrição do item teste");
+    // Configurar ItemSimpleDto
+    itemSimpleDto = new ItemSimpleDto();
+    itemSimpleDto.setId(1L);
+    itemSimpleDto.setNome("Item Teste");
 
     // Configurar listas
     gruposDto = Arrays.asList(grupoResponseDto, createGrupoResponseDto(2L, "Outro Grupo"));
 
-    itensDto = Arrays.asList(itemResponseDto, createItemResponseDto(2L, "Outro Item"));
+    itensDto = Arrays.asList(itemSimpleDto, createItemSimpleDto(2L, "Outro Item"));
   }
 
   // Métodos helper para criação de objetos
@@ -68,10 +67,10 @@ class GrupoControllerTest {
     return dto;
   }
 
-  private ItemResponseDto createItemResponseDto(Long id, String nome) {
-    ItemResponseDto dto = new ItemResponseDto();
+  private ItemSimpleDto createItemSimpleDto(Long id, String nome) {
+    ItemSimpleDto dto = new ItemSimpleDto();
     dto.setId(id);
-    dto.setDescricao("Descrição " + nome);
+    dto.setNome(nome);
     return dto;
   }
 
@@ -151,17 +150,17 @@ class GrupoControllerTest {
     int size = 25;
     String filter = null;
     PageRequest pageRequest = PageRequest.of(page, size);
-    Page<ItemResponseDto> pageResult = new PageImpl<>(itensDto, pageRequest, 2);
-    when(itemService.findByGrupoPaged(idGrupo, filter, pageRequest)).thenReturn(pageResult);
+    Page<ItemSimpleDto> pageResult = new PageImpl<>(itensDto, pageRequest, 2);
+    when(itemService.findByGrupoPagedSimple(idGrupo, filter, pageRequest)).thenReturn(pageResult);
 
     // When
-    Page<ItemResponseDto> result = grupoController.findItensVinculado(idGrupo, page, size, filter);
+    Page<ItemSimpleDto> result = grupoController.findItensVinculado(idGrupo, page, size, filter);
 
     // Then
     assertNotNull(result);
     assertEquals(2, result.getContent().size());
     assertEquals(2, result.getTotalElements());
-    verify(itemService).findByGrupoPaged(idGrupo, filter, pageRequest);
+    verify(itemService).findByGrupoPagedSimple(idGrupo, filter, pageRequest);
   }
 
   @Test
@@ -172,16 +171,16 @@ class GrupoControllerTest {
     int size = 25;
     String filter = "Item";
     PageRequest pageRequest = PageRequest.of(page, size);
-    Page<ItemResponseDto> pageResult = new PageImpl<>(itensDto, pageRequest, 2);
-    when(itemService.findByGrupoPaged(idGrupo, filter, pageRequest)).thenReturn(pageResult);
+    Page<ItemSimpleDto> pageResult = new PageImpl<>(itensDto, pageRequest, 2);
+    when(itemService.findByGrupoPagedSimple(idGrupo, filter, pageRequest)).thenReturn(pageResult);
 
     // When
-    Page<ItemResponseDto> result = grupoController.findItensVinculado(idGrupo, page, size, filter);
+    Page<ItemSimpleDto> result = grupoController.findItensVinculado(idGrupo, page, size, filter);
 
     // Then
     assertNotNull(result);
     assertEquals(2, result.getContent().size());
-    verify(itemService).findByGrupoPaged(idGrupo, filter, pageRequest);
+    verify(itemService).findByGrupoPagedSimple(idGrupo, filter, pageRequest);
   }
 
   @Test
@@ -192,17 +191,17 @@ class GrupoControllerTest {
     int size = 25;
     String filter = null;
     PageRequest pageRequest = PageRequest.of(page, size);
-    Page<ItemResponseDto> pageResult = new PageImpl<>(Arrays.asList(), pageRequest, 0);
-    when(itemService.findByGrupoPaged(idGrupo, filter, pageRequest)).thenReturn(pageResult);
+    Page<ItemSimpleDto> pageResult = new PageImpl<>(Arrays.asList(), pageRequest, 0);
+    when(itemService.findByGrupoPagedSimple(idGrupo, filter, pageRequest)).thenReturn(pageResult);
 
     // When
-    Page<ItemResponseDto> result = grupoController.findItensVinculado(idGrupo, page, size, filter);
+    Page<ItemSimpleDto> result = grupoController.findItensVinculado(idGrupo, page, size, filter);
 
     // Then
     assertNotNull(result);
     assertTrue(result.getContent().isEmpty());
     assertEquals(0, result.getTotalElements());
-    verify(itemService).findByGrupoPaged(idGrupo, filter, pageRequest);
+    verify(itemService).findByGrupoPagedSimple(idGrupo, filter, pageRequest);
   }
 
   @Test

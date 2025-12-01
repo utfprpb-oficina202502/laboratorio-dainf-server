@@ -2,6 +2,7 @@ package br.com.utfpr.gerenciamento.server.service;
 
 import br.com.utfpr.gerenciamento.server.dto.ItemListDto;
 import br.com.utfpr.gerenciamento.server.dto.ItemResponseDto;
+import br.com.utfpr.gerenciamento.server.dto.ItemSimpleDto;
 import br.com.utfpr.gerenciamento.server.model.Item;
 import br.com.utfpr.gerenciamento.server.model.ItemImage;
 import jakarta.servlet.http.HttpServletRequest;
@@ -46,6 +47,18 @@ public interface ItemService extends CrudService<Item, Long, ItemResponseDto> {
    * @return Pagina de ItemResponseDto
    */
   Page<ItemResponseDto> findByGrupoPaged(Long grupoId, String filter, Pageable pageable);
+
+  /**
+   * Busca paginada simplificada de itens por grupo (apenas id e nome).
+   *
+   * <p>Otimizada para listagens que não precisam de todos os campos do Item.
+   *
+   * @param grupoId ID do grupo
+   * @param filter Texto para filtro por nome ou id
+   * @param pageable Configuracao de paginacao
+   * @return Pagina de ItemSimpleDto
+   */
+  Page<ItemSimpleDto> findByGrupoPagedSimple(Long grupoId, String filter, Pageable pageable);
 
   void diminuiSaldoItem(Long idItem, BigDecimal qtde, boolean needValidationSaldo);
 
