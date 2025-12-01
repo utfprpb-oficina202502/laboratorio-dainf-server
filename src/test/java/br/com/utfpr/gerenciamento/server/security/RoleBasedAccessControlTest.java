@@ -478,14 +478,20 @@ class RoleBasedAccessControlTest {
         Arguments.of(
             "ALUNO", "POST", "/nadaconsta/solicitar", "Aluno nao deve solicitar nada consta"),
         Arguments.of(
-            "PROFESSOR", "POST", "/nadaconsta/solicitar", "Professor nao deve solicitar nada consta"),
+            "PROFESSOR",
+            "POST",
+            "/nadaconsta/solicitar",
+            "Professor nao deve solicitar nada consta"),
         Arguments.of(
             "ALUNO",
             "PUT",
             "/nadaconsta/verificar-pendencias/1",
             "Aluno nao deve verificar pendencias"),
         Arguments.of(
-            "PROFESSOR", "PUT", "/nadaconsta/invalidar/1", "Professor nao deve invalidar nada consta"));
+            "PROFESSOR",
+            "PUT",
+            "/nadaconsta/invalidar/1",
+            "Professor nao deve invalidar nada consta"));
   }
 
   @ParameterizedTest(name = "{3}")
@@ -516,8 +522,10 @@ class RoleBasedAccessControlTest {
         // RESERVA - POST permitido para todos, PUT/DELETE para ADMIN/LAB
         Arguments.of("ALUNO", "POST", "/reserva", "Aluno deve poder criar reservas"),
         Arguments.of("PROFESSOR", "POST", "/reserva", "Professor deve poder criar reservas"),
-        Arguments.of("LABORATORISTA", "PUT", "/reserva/1", "Laboratorista deve poder editar reservas"),
-        Arguments.of("ADMINISTRADOR", "PUT", "/reserva/1", "Administrador deve poder editar reservas"),
+        Arguments.of(
+            "LABORATORISTA", "PUT", "/reserva/1", "Laboratorista deve poder editar reservas"),
+        Arguments.of(
+            "ADMINISTRADOR", "PUT", "/reserva/1", "Administrador deve poder editar reservas"),
 
         // SOLICITACAO DE COMPRA - GET para todos, POST/PUT/DELETE para ADMIN/LAB
         Arguments.of(
@@ -534,8 +542,10 @@ class RoleBasedAccessControlTest {
             "Administrador deve poder criar solicitacoes"),
 
         // NADA CONSTA - Todos endpoints para ADMIN/LAB
-        Arguments.of("LABORATORISTA", "GET", "/nadaconsta", "Laboratorista deve acessar nada consta"),
-        Arguments.of("ADMINISTRADOR", "GET", "/nadaconsta", "Administrador deve acessar nada consta"));
+        Arguments.of(
+            "LABORATORISTA", "GET", "/nadaconsta", "Laboratorista deve acessar nada consta"),
+        Arguments.of(
+            "ADMINISTRADOR", "GET", "/nadaconsta", "Administrador deve acessar nada consta"));
   }
 
   @ParameterizedTest(name = "{3}")
