@@ -43,14 +43,19 @@ ALTER TABLE solicitacao_item_aud ADD COLUMN IF NOT EXISTS solicitacao_mod BOOLEA
 ALTER TABLE item_image_aud ADD COLUMN IF NOT EXISTS item_mod BOOLEAN;
 
 -- SAIDA_AUD - Adicionar colunas faltantes
-ALTER TABLE saida_aud ADD COLUMN IF NOT EXISTS usuario_mod BOOLEAN;
-ALTER TABLE saida_aud ADD COLUMN IF NOT EXISTS emprestimo_mod BOOLEAN;
+ALTER TABLE saida_aud ADD COLUMN IF NOT EXISTS usuario_responsavel_mod BOOLEAN;
+ALTER TABLE saida_aud ADD COLUMN IF NOT EXISTS id_emprestimo_mod BOOLEAN;
+ALTER TABLE saida_aud ADD COLUMN IF NOT EXISTS saida_item_mod BOOLEAN;
 
 -- RESERVA_AUD - Adicionar colunas faltantes
 ALTER TABLE reserva_aud ADD COLUMN IF NOT EXISTS usuario_mod BOOLEAN;
+ALTER TABLE reserva_aud ADD COLUMN IF NOT EXISTS reserva_item_mod BOOLEAN;
 
 -- COMPRA_AUD - Adicionar colunas faltantes
 ALTER TABLE compra_aud ADD COLUMN IF NOT EXISTS fornecedor_mod BOOLEAN;
+ALTER TABLE compra_aud ADD COLUMN IF NOT EXISTS usuario_mod BOOLEAN;
+ALTER TABLE compra_aud ADD COLUMN IF NOT EXISTS compra_item_mod BOOLEAN;
 
 -- SOLICITACAO_AUD - Adicionar colunas faltantes
 ALTER TABLE solicitacao_aud ADD COLUMN IF NOT EXISTS usuario_mod BOOLEAN;
+ALTER TABLE solicitacao_aud ADD COLUMN IF NOT EXISTS solicitacao_item_mod BOOLEAN;
