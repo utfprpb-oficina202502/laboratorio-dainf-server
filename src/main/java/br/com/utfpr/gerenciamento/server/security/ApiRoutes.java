@@ -41,6 +41,12 @@ public final class ApiRoutes {
   /** Controle de saída de itens */
   public static final String SAIDA = "/saida/**";
 
+  /** Gerenciamento de reservas */
+  public static final String RESERVA = "/reserva/**";
+
+  /** Solicitações de compra */
+  public static final String SOLICITACAO_COMPRA = "/solicitacao-compra/**";
+
   // ============ Item Endpoints ============
   /** Gerenciamento de itens (equipamentos) */
   public static final String ITEM = "/item/**";
@@ -104,9 +110,6 @@ public final class ApiRoutes {
   // ============ Nada Consta Endpoints ============
   /** Base para todos os endpoints de nada consta */
   public static final String NADACONSTA = "/nadaconsta/**";
-
-  /** Endpoint de solicitação de nada consta */
-  public static final String NADACONSTA_SOLICITAR = "/nadaconsta/solicitar";
 
   // ============ Auditoria Endpoints ============
   /** Histórico de auditoria por entidade */

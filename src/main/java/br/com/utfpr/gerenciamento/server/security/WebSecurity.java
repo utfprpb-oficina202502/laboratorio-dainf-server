@@ -20,10 +20,12 @@ import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.ESTADO;
 import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.FORNECEDOR;
 import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.GRUPO;
 import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.ITEM;
-import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.NADACONSTA_SOLICITAR;
+import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.NADACONSTA;
 import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.PAIS;
 import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.RELATORIO;
+import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.RESERVA;
 import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.SAIDA;
+import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.SOLICITACAO_COMPRA;
 import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.TEST;
 import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.USUARIO;
 import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.USUARIO_CONFIRM_EMAIL;
@@ -111,6 +113,22 @@ public class WebSecurity {
                     .requestMatchers(HttpMethod.DELETE, ITEM)
                     .hasAnyRole(ROLE_LABORATORISTA_NAME, ROLE_ADMINISTRADOR_NAME)
 
+                    // Reserva - PUT/DELETE requerem LABORATORISTA ou ADMINISTRADOR
+                    // POST permitido para todos autenticados (alunos/professores podem criar)
+                    .requestMatchers(HttpMethod.PUT, RESERVA)
+                    .hasAnyRole(ROLE_LABORATORISTA_NAME, ROLE_ADMINISTRADOR_NAME)
+                    .requestMatchers(HttpMethod.DELETE, RESERVA)
+                    .hasAnyRole(ROLE_LABORATORISTA_NAME, ROLE_ADMINISTRADOR_NAME)
+
+                    // Solicitação de Compra - POST/PUT/DELETE requerem LABORATORISTA ou
+                    // ADMINISTRADOR
+                    .requestMatchers(HttpMethod.POST, SOLICITACAO_COMPRA)
+                    .hasAnyRole(ROLE_LABORATORISTA_NAME, ROLE_ADMINISTRADOR_NAME)
+                    .requestMatchers(HttpMethod.PUT, SOLICITACAO_COMPRA)
+                    .hasAnyRole(ROLE_LABORATORISTA_NAME, ROLE_ADMINISTRADOR_NAME)
+                    .requestMatchers(HttpMethod.DELETE, SOLICITACAO_COMPRA)
+                    .hasAnyRole(ROLE_LABORATORISTA_NAME, ROLE_ADMINISTRADOR_NAME)
+
                     // Usuário - endpoints específicos devem vir PRIMEIRO (mais específicos)
                     .requestMatchers(HttpMethod.GET, USUARIO_INFO, USUARIO_FIND_BY_USERNAME)
                     .authenticated()
@@ -148,8 +166,8 @@ public class WebSecurity {
                     .requestMatchers(HttpMethod.GET, EMPRESTIMO_FIND_ALL_BY_USERNAME)
                     .hasAnyRole(ROLE_LABORATORISTA_NAME, ROLE_ADMINISTRADOR_NAME)
 
-                    // Nada Consta - solicitar requer LABORATORISTA ou ADMINISTRADOR
-                    .requestMatchers(HttpMethod.POST, NADACONSTA_SOLICITAR)
+                    // Nada Consta - todos os endpoints requerem LABORATORISTA ou ADMINISTRADOR
+                    .requestMatchers(NADACONSTA)
                     .hasAnyRole(ROLE_LABORATORISTA_NAME, ROLE_ADMINISTRADOR_NAME)
 
                     // Endpoints públicos
