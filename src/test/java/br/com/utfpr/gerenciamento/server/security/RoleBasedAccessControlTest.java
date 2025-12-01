@@ -3,11 +3,15 @@ package br.com.utfpr.gerenciamento.server.security;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.Map;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
@@ -91,6 +95,22 @@ class RoleBasedAccessControlTest {
       headers.set("Authorization", "Bearer " + token);
     }
     return headers;
+  }
+
+  /**
+   * Retorna o token para o role especificado.
+   *
+   * @param role Nome do role (ALUNO, PROFESSOR, LABORATORISTA, ADMINISTRADOR)
+   * @return Token JWT para o role
+   */
+  private String getTokenForRole(String role) {
+    return switch (role) {
+      case "ALUNO" -> alunoToken;
+      case "PROFESSOR" -> professorToken;
+      case "LABORATORISTA" -> laboratoristaToken;
+      case "ADMINISTRADOR" -> adminToken;
+      default -> throw new IllegalArgumentException("Role desconhecido: " + role);
+    };
   }
 
   // ========================================================================
@@ -408,7 +428,137 @@ class RoleBasedAccessControlTest {
   }
 
   // ========================================================================
-  // VALIDAÇÃO DE ISOLAMENTE DE TESTE
+  // TESTES PARAMETRIZADOS - Acesso Bloqueado (deve retornar 403)
+  // ========================================================================
+
+  /**
+   * Fornece argumentos para testes de acesso bloqueado. Formato: role, metodo HTTP, endpoint,
+   * descricao
+   */
+  static Stream<Arguments> acessoBloqueadoProvider() {
+    return Stream.of(
+        // RESERVA - PUT/DELETE bloqueado para ALUNO e PROFESSOR
+        Arguments.of("ALUNO", "PUT", "/reserva/1", "Aluno nao deve editar reservas"),
+        Arguments.of("PROFESSOR", "PUT", "/reserva/1", "Professor nao deve editar reservas"),
+        Arguments.of("ALUNO", "DELETE", "/reserva/1", "Aluno nao deve excluir reservas"),
+        Arguments.of("PROFESSOR", "DELETE", "/reserva/1", "Professor nao deve excluir reservas"),
+
+        // SOLICITACAO DE COMPRA - POST/PUT/DELETE bloqueado para ALUNO e PROFESSOR
+        Arguments.of(
+            "ALUNO", "POST", "/solicitacao-compra", "Aluno nao deve criar solicitacoes de compra"),
+        Arguments.of(
+            "PROFESSOR",
+            "POST",
+            "/solicitacao-compra",
+            "Professor nao deve criar solicitacoes de compra"),
+        Arguments.of(
+            "ALUNO",
+            "PUT",
+            "/solicitacao-compra/1",
+            "Aluno nao deve editar solicitacoes de compra"),
+        Arguments.of(
+            "PROFESSOR",
+            "PUT",
+            "/solicitacao-compra/1",
+            "Professor nao deve editar solicitacoes de compra"),
+        Arguments.of(
+            "ALUNO",
+            "DELETE",
+            "/solicitacao-compra/1",
+            "Aluno nao deve excluir solicitacoes de compra"),
+        Arguments.of(
+            "PROFESSOR",
+            "DELETE",
+            "/solicitacao-compra/1",
+            "Professor nao deve excluir solicitacoes de compra"),
+
+        // NADA CONSTA - Todos os endpoints bloqueados para ALUNO e PROFESSOR
+        Arguments.of("ALUNO", "GET", "/nadaconsta", "Aluno nao deve acessar nada consta"),
+        Arguments.of("PROFESSOR", "GET", "/nadaconsta", "Professor nao deve acessar nada consta"),
+        Arguments.of(
+            "ALUNO", "POST", "/nadaconsta/solicitar", "Aluno nao deve solicitar nada consta"),
+        Arguments.of(
+            "PROFESSOR", "POST", "/nadaconsta/solicitar", "Professor nao deve solicitar nada consta"),
+        Arguments.of(
+            "ALUNO",
+            "PUT",
+            "/nadaconsta/verificar-pendencias/1",
+            "Aluno nao deve verificar pendencias"),
+        Arguments.of(
+            "PROFESSOR", "PUT", "/nadaconsta/invalidar/1", "Professor nao deve invalidar nada consta"));
+  }
+
+  @ParameterizedTest(name = "{3}")
+  @MethodSource("acessoBloqueadoProvider")
+  @DisplayName("Acesso bloqueado")
+  void deveBloquearAcesso(String role, String metodo, String endpoint, String descricao) {
+    String token = getTokenForRole(role);
+    assertNotNull(token, "Token de " + role + " deve existir");
+
+    HttpHeaders headers = createAuthHeaders(token);
+    String body = metodo.equals("GET") || metodo.equals("DELETE") ? "" : "{}";
+    HttpEntity<String> request = new HttpEntity<>(body, headers);
+
+    ResponseEntity<String> response =
+        restTemplate.exchange(
+            baseUrl + endpoint, HttpMethod.valueOf(metodo), request, String.class);
+
+    assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode(), descricao);
+  }
+
+  // ========================================================================
+  // TESTES PARAMETRIZADOS - Acesso Permitido (nao deve retornar 403)
+  // ========================================================================
+
+  /** Fornece argumentos para testes de acesso permitido. */
+  static Stream<Arguments> acessoPermitidoProvider() {
+    return Stream.of(
+        // RESERVA - POST permitido para todos, PUT/DELETE para ADMIN/LAB
+        Arguments.of("ALUNO", "POST", "/reserva", "Aluno deve poder criar reservas"),
+        Arguments.of("PROFESSOR", "POST", "/reserva", "Professor deve poder criar reservas"),
+        Arguments.of("LABORATORISTA", "PUT", "/reserva/1", "Laboratorista deve poder editar reservas"),
+        Arguments.of("ADMINISTRADOR", "PUT", "/reserva/1", "Administrador deve poder editar reservas"),
+
+        // SOLICITACAO DE COMPRA - GET para todos, POST/PUT/DELETE para ADMIN/LAB
+        Arguments.of(
+            "ALUNO", "GET", "/solicitacao-compra", "Aluno deve poder visualizar solicitacoes"),
+        Arguments.of(
+            "LABORATORISTA",
+            "POST",
+            "/solicitacao-compra",
+            "Laboratorista deve poder criar solicitacoes"),
+        Arguments.of(
+            "ADMINISTRADOR",
+            "POST",
+            "/solicitacao-compra",
+            "Administrador deve poder criar solicitacoes"),
+
+        // NADA CONSTA - Todos endpoints para ADMIN/LAB
+        Arguments.of("LABORATORISTA", "GET", "/nadaconsta", "Laboratorista deve acessar nada consta"),
+        Arguments.of("ADMINISTRADOR", "GET", "/nadaconsta", "Administrador deve acessar nada consta"));
+  }
+
+  @ParameterizedTest(name = "{3}")
+  @MethodSource("acessoPermitidoProvider")
+  @DisplayName("Acesso permitido")
+  void devePermitirAcesso(String role, String metodo, String endpoint, String descricao) {
+    String token = getTokenForRole(role);
+    assertNotNull(token, "Token de " + role + " deve existir");
+
+    HttpHeaders headers = createAuthHeaders(token);
+    String body = metodo.equals("GET") || metodo.equals("DELETE") ? "" : "{}";
+    HttpEntity<String> request = new HttpEntity<>(body, headers);
+
+    ResponseEntity<String> response =
+        restTemplate.exchange(
+            baseUrl + endpoint, HttpMethod.valueOf(metodo), request, String.class);
+
+    // Nao deve retornar 403 (pode retornar 400/404/422 por dados invalidos, mas nao 403)
+    assertNotEquals(HttpStatus.FORBIDDEN, response.getStatusCode(), descricao);
+  }
+
+  // ========================================================================
+  // VALIDACAO DE ISOLAMENTO DE TESTE
   // ========================================================================
 
 }
