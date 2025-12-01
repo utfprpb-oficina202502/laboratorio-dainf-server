@@ -1,9 +1,8 @@
--- Migration V3.15 - Fix Audit Table Column Names (Test)
+-- Migration V3.16 - Add Missing Audit Mod Columns
 --
 -- OBJETIVO: Adicionar colunas _mod faltantes nas tabelas de auditoria
 -- para corresponder aos nomes das propriedades das entidades
--- 
--- NOTA: H2 requer um ALTER TABLE separado para cada coluna
+-- (Nova versão após correção de sintaxe SQL)
 
 -- EMPRESTIMO_DEVOLUCAO_ITEM_AUD - Adicionar colunas faltantes
 ALTER TABLE emprestimo_devolucao_item_aud ADD COLUMN IF NOT EXISTS status_devolucao_mod BOOLEAN;
