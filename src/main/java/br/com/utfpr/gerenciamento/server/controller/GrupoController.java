@@ -6,7 +6,8 @@ import br.com.utfpr.gerenciamento.server.model.Grupo;
 import br.com.utfpr.gerenciamento.server.service.CrudService;
 import br.com.utfpr.gerenciamento.server.service.GrupoService;
 import br.com.utfpr.gerenciamento.server.service.ItemService;
-import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -29,7 +30,12 @@ public class GrupoController extends CrudController<Grupo, Long, GrupoResponseDt
   // Endpoint /complete herdado de CrudController com paginacao
 
   @GetMapping("/itens-vinculados/{idGrupo}")
-  public List<ItemResponseDto> findItensVinculado(@PathVariable("idGrupo") Long idGrupo) {
-    return itemService.findByGrupo(idGrupo);
+  public Page<ItemResponseDto> findItensVinculado(
+      @PathVariable("idGrupo") Long idGrupo,
+      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(defaultValue = "25") int size,
+      @RequestParam(required = false) String filter) {
+    PageRequest pageRequest = PageRequest.of(page, size);
+    return itemService.findByGrupoPaged(idGrupo, filter, pageRequest);
   }
 }

@@ -1,5 +1,7 @@
 package br.com.utfpr.gerenciamento.server.controller;
 
+import static br.com.utfpr.gerenciamento.server.enumeration.UserRole.ROLE_ADMINISTRADOR_NAME;
+
 import br.com.utfpr.gerenciamento.server.dto.ConfirmEmailRequestDto;
 import br.com.utfpr.gerenciamento.server.dto.GenericResponse;
 import br.com.utfpr.gerenciamento.server.dto.PermissaoResponseDTO;
@@ -18,6 +20,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PostAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -38,7 +41,17 @@ public class UsuarioController {
     return usuarioService.findAll();
   }
 
+  /**
+   * Busca usuário por ID.
+   *
+   * <p>Usuário pode ver seu próprio perfil. Administradores podem ver qualquer perfil.
+   *
+   * @param id ID do usuário
+   * @return DTO do usuário
+   */
   @GetMapping("{id}")
+  @PostAuthorize(
+      "returnObject.username == authentication.name || hasRole('" + ROLE_ADMINISTRADOR_NAME + "')")
   public UsuarioResponseDto findOne(@PathVariable("id") Long id) {
     return usuarioService.findOne(id);
   }

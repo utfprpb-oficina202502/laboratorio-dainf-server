@@ -73,6 +73,12 @@ public final class ApiRoutes {
   /** Busca de usuário por username */
   public static final String USUARIO_FIND_BY_USERNAME = "/usuario/find-by-username/**";
 
+  /** Busca de usuário por ID (controlado por @PreAuthorize no controller) */
+  public static final String USUARIO_BY_ID = "/usuario/{id}";
+
+  /** Lista de permissões disponíveis */
+  public static final String USUARIO_PERMISSAO = "/usuario/permissao";
+
   // ============ Empréstimo Endpoints ============
   /** Base para todos os endpoints de empréstimo */
   public static final String EMPRESTIMO = "/emprestimo/**";
