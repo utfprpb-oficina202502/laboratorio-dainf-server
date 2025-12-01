@@ -128,6 +128,66 @@ public interface ItemRepository extends JpaRepository<Item, Long>, JpaSpecificat
   List<ItemCompleteWithDisponibilidade> findCompleteAvailableForLoan(@Param("query") String query);
 
   /**
+   * Busca paginada de itens para autocomplete com dados de disponibilidade.
+   *
+   * @param query Texto para busca por nome (case insensitive)
+   * @param pageable Configuracao de paginacao
+   * @return Pagina de projecoes com dados essenciais para autocomplete
+   */
+  @Query(
+      """
+      SELECT i.id as id,
+             i.nome as nome,
+             i.saldo as saldo,
+             i.valor as valor,
+             i.tipoItem as tipoItem,
+             i.grupo as grupo,
+             COALESCE(SUM(ei.qtde), 0) as qtdeEmprestada
+      FROM Item i
+      LEFT JOIN EmprestimoItem ei ON ei.item.id = i.id AND ei.emprestimo.dataDevolucao IS NULL
+      WHERE (:query IS NULL OR :query = '' OR LOWER(i.nome) LIKE LOWER(CONCAT('%', :query, '%')))
+      GROUP BY i.id, i.nome, i.saldo, i.valor, i.tipoItem, i.grupo
+      ORDER BY i.nome
+      """)
+  Page<ItemCompleteWithDisponibilidade> findCompleteWithDisponibilidadePaged(
+      @Param("query") String query, Pageable pageable);
+
+  /**
+   * Busca paginada de itens disponiveis para emprestimo.
+   *
+   * @param query Texto para busca por nome (case insensitive)
+   * @param pageable Configuracao de paginacao
+   * @return Pagina de projecoes com apenas itens disponiveis para emprestimo
+   */
+  @Query(
+      """
+      SELECT i.id as id,
+             i.nome as nome,
+             i.saldo as saldo,
+             i.valor as valor,
+             i.tipoItem as tipoItem,
+             i.grupo as grupo,
+             COALESCE(SUM(ei.qtde), 0) as qtdeEmprestada
+      FROM Item i
+      LEFT JOIN EmprestimoItem ei ON ei.item.id = i.id AND ei.emprestimo.dataDevolucao IS NULL
+      WHERE (:query IS NULL OR :query = '' OR LOWER(i.nome) LIKE LOWER(CONCAT('%', :query, '%')))
+      AND (
+        (i.tipoItem = 'C' AND i.saldo > 0)
+        OR
+        i.tipoItem = 'P'
+      )
+      GROUP BY i.id, i.nome, i.saldo, i.valor, i.tipoItem, i.grupo
+      HAVING (
+        (i.tipoItem = 'C' AND i.saldo > 0)
+        OR
+        (i.tipoItem = 'P' AND (i.saldo - COALESCE(SUM(ei.qtde), 0)) > 0)
+      )
+      ORDER BY i.nome
+      """)
+  Page<ItemCompleteWithDisponibilidade> findCompleteAvailableForLoanPaged(
+      @Param("query") String query, Pageable pageable);
+
+  /**
    * Busca paginada de itens para listagem com campos otimizados.
    *
    * <p>Inclui primeira imagem via subquery para exibição na tabela.

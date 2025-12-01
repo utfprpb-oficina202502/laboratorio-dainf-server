@@ -177,6 +177,22 @@ public class ItemServiceImpl extends CrudServiceImpl<Item, Long, ItemResponseDto
 
   @Override
   @Transactional(readOnly = true)
+  public Page<ItemResponseDto> itemCompletePaged(
+      String query, boolean disponivelParaEmprestimo, Pageable pageable) {
+    String normalizedQuery = (query != null) ? query.trim() : null;
+
+    Page<ItemCompleteWithDisponibilidade> projections;
+    if (disponivelParaEmprestimo) {
+      projections = itemRepository.findCompleteAvailableForLoanPaged(normalizedQuery, pageable);
+    } else {
+      projections = itemRepository.findCompleteWithDisponibilidadePaged(normalizedQuery, pageable);
+    }
+
+    return projections.map(this::toDtoFromProjection);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
   public List<ItemResponseDto> findByGrupo(Long id) {
     return itemRepository.findByGrupoIdOrderByNome(id).stream().map(this::toDto).toList();
   }

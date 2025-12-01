@@ -4,7 +4,6 @@ import br.com.utfpr.gerenciamento.server.dto.FornecedorResponseDto;
 import br.com.utfpr.gerenciamento.server.model.Fornecedor;
 import br.com.utfpr.gerenciamento.server.service.CrudService;
 import br.com.utfpr.gerenciamento.server.service.FornecedorService;
-import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -53,12 +52,5 @@ public class FornecedorController extends CrudController<Fornecedor, Long, Forne
     }
     return (Page<FornecedorResponseDto>)
         (Page<?>) fornecedorService.findAllPagedList(filter, pageRequest);
-  }
-
-  @GetMapping("/complete")
-  public List<FornecedorResponseDto> complete(@RequestParam("query") String query) {
-    return fornecedorService.completeFornecedor(query).stream()
-        .map(fornecedorService::toDto)
-        .toList();
   }
 }

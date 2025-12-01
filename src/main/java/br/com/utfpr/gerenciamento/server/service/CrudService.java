@@ -41,6 +41,18 @@ public interface CrudService<T, ID extends Serializable, DTO> {
 
   Specification<T> filterByAllFields(String filter);
 
+  /**
+   * Busca paginada para autocomplete com filtro textual.
+   *
+   * <p>Implementacao padrao utiliza filterByAllFields() para busca generica. Services especificos
+   * podem sobrescrever para filtros customizados.
+   *
+   * @param query Texto para filtro (busca em todos os campos String/Number)
+   * @param pageable Configuracao de paginacao
+   * @return Pagina de DTOs com resultados filtrados
+   */
+  Page<DTO> complete(String query, Pageable pageable);
+
   void deleteAll();
 
   DTO toDto(T entity);

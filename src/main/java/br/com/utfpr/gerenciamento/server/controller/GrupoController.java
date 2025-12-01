@@ -26,10 +26,7 @@ public class GrupoController extends CrudController<Grupo, Long, GrupoResponseDt
     return grupoService;
   }
 
-  @GetMapping("/complete")
-  public List<GrupoResponseDto> complete(@RequestParam("query") String query) {
-    return grupoService.completeGrupo(query);
-  }
+  // Endpoint /complete herdado de CrudController com paginacao
 
   @GetMapping("/itens-vinculados/{idGrupo}")
   public List<ItemResponseDto> findItensVinculado(@PathVariable("idGrupo") Long idGrupo) {

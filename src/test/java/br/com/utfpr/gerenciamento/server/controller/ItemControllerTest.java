@@ -133,7 +133,7 @@ class ItemControllerTest {
   }
 
   @Test
-  void testComplete_DeveRetornarListaCompleta() {
+  void testComplete_DeveRetornarPaginaCompleta() {
     // Given
     ItemResponseDto itemDto1 = new ItemResponseDto();
     itemDto1.setId(1L);
@@ -144,16 +144,42 @@ class ItemControllerTest {
     itemDto2.setTipoItem(TipoItem.C);
 
     List<ItemResponseDto> dtos = Arrays.asList(itemDto1, itemDto2);
+    PageRequest pageRequest = PageRequest.of(0, 10);
+    Page<ItemResponseDto> pageResult = new PageImpl<>(dtos, pageRequest, 2);
 
-    when(itemService.itemComplete("query", true)).thenReturn(dtos);
+    // complete() agora usa hasEstoque=false por padrao
+    when(itemService.itemCompletePaged("query", false, pageRequest)).thenReturn(pageResult);
 
-    // When
-    List<ItemResponseDto> result = itemController.complete("query", true);
+    // When - complete() herdado (sem hasEstoque)
+    Page<ItemResponseDto> result = itemController.complete("query", 0, 10);
 
     // Then
-    assertThat(result).hasSize(2);
-    assertThat(result.get(0).getId()).isEqualTo(1L);
-    assertThat(result.get(1).getId()).isEqualTo(2L);
+    assertThat(result.getContent()).hasSize(2);
+    assertThat(result.getContent().get(0).getId()).isEqualTo(1L);
+    assertThat(result.getContent().get(1).getId()).isEqualTo(2L);
+    assertThat(result.getTotalElements()).isEqualTo(2);
+  }
+
+  @Test
+  void testCompleteDisponivel_DeveRetornarPaginaComFiltroEstoque() {
+    // Given
+    ItemResponseDto itemDto1 = new ItemResponseDto();
+    itemDto1.setId(1L);
+    itemDto1.setTipoItem(TipoItem.P);
+
+    List<ItemResponseDto> dtos = Arrays.asList(itemDto1);
+    PageRequest pageRequest = PageRequest.of(0, 10);
+    Page<ItemResponseDto> pageResult = new PageImpl<>(dtos, pageRequest, 1);
+
+    when(itemService.itemCompletePaged("query", true, pageRequest)).thenReturn(pageResult);
+
+    // When - completeDisponivel() com hasEstoque=true
+    Page<ItemResponseDto> result = itemController.completeDisponivel("query", true, 0, 10);
+
+    // Then
+    assertThat(result.getContent()).hasSize(1);
+    assertThat(result.getContent().get(0).getId()).isEqualTo(1L);
+    assertThat(result.getTotalElements()).isEqualTo(1);
   }
 
   @Test
