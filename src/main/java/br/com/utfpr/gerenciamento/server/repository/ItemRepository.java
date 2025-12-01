@@ -3,6 +3,7 @@ package br.com.utfpr.gerenciamento.server.repository;
 import br.com.utfpr.gerenciamento.server.model.Item;
 import br.com.utfpr.gerenciamento.server.repository.projection.ItemCompleteWithDisponibilidade;
 import br.com.utfpr.gerenciamento.server.repository.projection.ItemListProjection;
+import br.com.utfpr.gerenciamento.server.repository.projection.ItemSimpleProjection;
 import br.com.utfpr.gerenciamento.server.repository.projection.ItemWithQtdeEmprestada;
 import java.math.BigDecimal;
 import java.util.List;
@@ -43,6 +44,29 @@ public interface ItemRepository extends JpaRepository<Item, Long>, JpaSpecificat
       ORDER BY i.nome
       """)
   Page<Item> findByGrupoIdPaged(
+      @Param("grupoId") Long grupoId, @Param("filter") String filter, Pageable pageable);
+
+  /**
+   * Busca paginada simplificada de itens por grupo (apenas id e nome).
+   *
+   * <p>Otimizada para listagens que não precisam de todos os campos do Item.
+   *
+   * @param grupoId ID do grupo
+   * @param filter Texto para filtrar por id ou nome (case insensitive)
+   * @param pageable Configuracao de paginacao
+   * @return Pagina de projeções simplificadas
+   */
+  @Query(
+      """
+      SELECT i.id as id, i.nome as nome
+      FROM Item i
+      WHERE i.grupo.id = :grupoId
+      AND (:filter IS NULL OR :filter = ''
+           OR LOWER(i.nome) LIKE LOWER(CONCAT('%', :filter, '%'))
+           OR CAST(i.id AS string) LIKE CONCAT('%', :filter, '%'))
+      ORDER BY i.nome
+      """)
+  Page<ItemSimpleProjection> findByGrupoIdPagedSimple(
       @Param("grupoId") Long grupoId, @Param("filter") String filter, Pageable pageable);
 
   @Query("SELECT COUNT(i.id) FROM Item i WHERE i.saldo <= i.qtdeMinima")

@@ -2,6 +2,7 @@ package br.com.utfpr.gerenciamento.server.service.impl;
 
 import br.com.utfpr.gerenciamento.server.dto.ItemListDto;
 import br.com.utfpr.gerenciamento.server.dto.ItemResponseDto;
+import br.com.utfpr.gerenciamento.server.dto.ItemSimpleDto;
 import br.com.utfpr.gerenciamento.server.enumeration.TipoItem;
 import br.com.utfpr.gerenciamento.server.event.item.EstoqueMinNotificacaoEvent;
 import br.com.utfpr.gerenciamento.server.exception.EntityNotFoundException;
@@ -201,6 +202,15 @@ public class ItemServiceImpl extends CrudServiceImpl<Item, Long, ItemResponseDto
   @Transactional(readOnly = true)
   public Page<ItemResponseDto> findByGrupoPaged(Long grupoId, String filter, Pageable pageable) {
     return itemRepository.findByGrupoIdPaged(grupoId, filter, pageable).map(this::toDto);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public Page<ItemSimpleDto> findByGrupoPagedSimple(
+      Long grupoId, String filter, Pageable pageable) {
+    return itemRepository
+        .findByGrupoIdPagedSimple(grupoId, filter, pageable)
+        .map(ItemSimpleDto::fromProjection);
   }
 
   @Override
