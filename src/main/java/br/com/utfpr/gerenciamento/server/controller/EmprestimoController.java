@@ -28,7 +28,8 @@ import org.springframework.web.bind.annotation.*;
  *   <li>POST /emprestimo/save-devolucao - Salva devolução
  *   <li>POST /emprestimo/filter - Filtra empréstimos
  *   <li>GET /emprestimo/find-all-by-username/{username} - Busca empréstimos por usuário
- *   <li>GET /emprestimo/find-by-item/{itemId}?page=0&size=10&order=id&asc=true - Busca empréstimos por item (paginado)
+ *   <li>GET /emprestimo/find-by-item/{itemId}?page=0&size=10&order=id&asc=true - Busca empréstimos
+ *       por item (paginado)
  *   <li>GET /emprestimo/change-prazo-devolucao - Altera prazo de devolução
  *   <li>GET /emprestimo/page - Paginação de empréstimos
  * </ul>

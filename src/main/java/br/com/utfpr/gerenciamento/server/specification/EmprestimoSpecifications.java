@@ -123,8 +123,8 @@ public class EmprestimoSpecifications {
   /**
    * Cria Specification para filtrar empréstimos por itemId com JOIN FETCH.
    *
-   * <p>Utiliza JOIN FETCH para carregar usuarioEmprestimo, usuarioResponsavel e emprestimoItem
-   * em uma única query, eliminando N+1.
+   * <p>Utiliza JOIN FETCH para carregar usuarioEmprestimo, usuarioResponsavel e emprestimoItem em
+   * uma única query, eliminando N+1.
    *
    * @param itemId ID do item para filtrar empréstimos
    * @return Specification configurada com filtro por itemId e fetches

@@ -47,7 +47,8 @@ class EmprestimoControllerTest {
     emprestimoDto.setId(1L);
 
     PageRequest pageRequest = PageRequest.of(0, 10);
-    Page<EmprestimoResponseDto> page = new PageImpl<>(Collections.singletonList(emprestimoDto), pageRequest, 1);
+    Page<EmprestimoResponseDto> page =
+        new PageImpl<>(Collections.singletonList(emprestimoDto), pageRequest, 1);
     when(emprestimoService.findAllByItemIdPaged(eq(itemId), any(Pageable.class))).thenReturn(page);
 
     // When & Then
@@ -70,7 +71,8 @@ class EmprestimoControllerTest {
 
     PageRequest pageRequest = PageRequest.of(0, 10);
     Page<EmprestimoResponseDto> emptyPage = new PageImpl<>(Collections.emptyList(), pageRequest, 0);
-    when(emprestimoService.findAllByItemIdPaged(eq(itemId), any(Pageable.class))).thenReturn(emptyPage);
+    when(emprestimoService.findAllByItemIdPaged(eq(itemId), any(Pageable.class)))
+        .thenReturn(emptyPage);
 
     // When & Then
     mockMvc

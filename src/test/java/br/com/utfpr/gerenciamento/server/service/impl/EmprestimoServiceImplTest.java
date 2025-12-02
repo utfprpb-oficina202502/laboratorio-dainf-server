@@ -749,7 +749,8 @@ class EmprestimoServiceImplTest {
     List<Emprestimo> emprestimos = Collections.singletonList(emprestimo);
     Page<Emprestimo> emprestimoPage = new PageImpl<>(emprestimos, pageable, 1);
 
-    when(emprestimoRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(emprestimoPage);
+    when(emprestimoRepository.findAll(any(Specification.class), eq(pageable)))
+        .thenReturn(emprestimoPage);
     doReturn(emprestimoDto).when(service).toDto(emprestimo);
 
     // When
