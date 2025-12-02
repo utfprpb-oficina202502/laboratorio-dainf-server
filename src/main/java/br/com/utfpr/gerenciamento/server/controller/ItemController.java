@@ -1,6 +1,7 @@
 package br.com.utfpr.gerenciamento.server.controller;
 
 import br.com.utfpr.gerenciamento.server.dto.BaseListDto;
+import br.com.utfpr.gerenciamento.server.dto.ItemListDto;
 import br.com.utfpr.gerenciamento.server.dto.ItemResponseDto;
 import br.com.utfpr.gerenciamento.server.model.Item;
 import br.com.utfpr.gerenciamento.server.model.ItemImage;
@@ -10,7 +11,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import java.util.List;
-import java.util.Set;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -39,9 +39,8 @@ public class ItemController extends CrudController<Item, Long, ItemResponseDto> 
   }
 
   @Override
-  protected Set<String> getAllowedSortProperties() {
-    return Set.of(
-        "id", "nome", "descricao", "localizacao", "patrimonio", "saldo", "tipoItem", "valor");
+  protected Class<? extends BaseListDto> getListDtoClass() {
+    return ItemListDto.class;
   }
 
   @Override

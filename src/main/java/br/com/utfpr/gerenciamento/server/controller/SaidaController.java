@@ -1,12 +1,12 @@
 package br.com.utfpr.gerenciamento.server.controller;
 
 import br.com.utfpr.gerenciamento.server.dto.BaseListDto;
+import br.com.utfpr.gerenciamento.server.dto.SaidaListDto;
 import br.com.utfpr.gerenciamento.server.dto.SaidaResponseDTO;
 import br.com.utfpr.gerenciamento.server.model.Saida;
 import br.com.utfpr.gerenciamento.server.service.CrudService;
 import br.com.utfpr.gerenciamento.server.service.ItemService;
 import br.com.utfpr.gerenciamento.server.service.SaidaService;
-import java.util.Set;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -33,8 +33,8 @@ public class SaidaController extends CrudController<Saida, Long, SaidaResponseDT
   }
 
   @Override
-  protected Set<String> getAllowedSortProperties() {
-    return Set.of("id", "dataSaida");
+  protected Class<? extends BaseListDto> getListDtoClass() {
+    return SaidaListDto.class;
   }
 
   /**

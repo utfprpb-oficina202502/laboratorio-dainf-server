@@ -1,11 +1,11 @@
 package br.com.utfpr.gerenciamento.server.controller;
 
 import br.com.utfpr.gerenciamento.server.dto.BaseListDto;
+import br.com.utfpr.gerenciamento.server.dto.FornecedorListDto;
 import br.com.utfpr.gerenciamento.server.dto.FornecedorResponseDto;
 import br.com.utfpr.gerenciamento.server.model.Fornecedor;
 import br.com.utfpr.gerenciamento.server.service.CrudService;
 import br.com.utfpr.gerenciamento.server.service.FornecedorService;
-import java.util.Set;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -27,8 +27,8 @@ public class FornecedorController extends CrudController<Fornecedor, Long, Forne
   }
 
   @Override
-  protected Set<String> getAllowedSortProperties() {
-    return Set.of("id", "razaoSocial", "nomeFantasia", "cnpj");
+  protected Class<? extends BaseListDto> getListDtoClass() {
+    return FornecedorListDto.class;
   }
 
   /**

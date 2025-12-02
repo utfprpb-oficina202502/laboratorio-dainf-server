@@ -22,13 +22,15 @@ import lombok.NoArgsConstructor;
 @Builder
 public class SolicitacaoListDto implements BaseListDto {
 
-  private Long id;
-  private String descricao;
+  @SortableField private Long id;
+  @SortableField private String descricao;
 
+  @SortableField
   @JsonSerialize(using = LocalDateSerializer.class)
   @JsonDeserialize(using = LocalDateDeserializer.class)
   private LocalDate dataSolicitacao;
 
+  @SortableField(entityPath = "usuario.nome")
   private String usuarioNome;
 
   /**

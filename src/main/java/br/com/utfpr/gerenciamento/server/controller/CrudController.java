@@ -2,11 +2,13 @@ package br.com.utfpr.gerenciamento.server.controller;
 
 import br.com.utfpr.gerenciamento.server.dto.BaseListDto;
 import br.com.utfpr.gerenciamento.server.service.CrudService;
+import br.com.utfpr.gerenciamento.server.util.SortableFieldExtractor;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import java.io.Serializable;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -92,15 +94,58 @@ public abstract class CrudController<T, ID extends Serializable, DTO extends Bas
   }
 
   /**
+   * Retorna a classe do ListDto usado para listagem paginada.
+   *
+   * <p>Sobrescreva em subclasses que usam ListDto separado do DTO principal. Se retornar null, usa
+   * o metodo getAllowedSortProperties() para definir campos permitidos manualmente.
+   *
+   * <p>Quando especificado, os campos ordenáveis são extraídos automaticamente dos campos anotados
+   * com {@link br.com.utfpr.gerenciamento.server.dto.SortableField}.
+   *
+   * @return classe do ListDto, ou null para usar whitelist manual
+   */
+  protected Class<? extends BaseListDto> getListDtoClass() {
+    return null;
+  }
+
+  /**
    * Retorna o conjunto de propriedades permitidas para ordenacao.
    *
-   * <p>Sobrescreva em subclasses para definir propriedades especificas. Por padrao, apenas "id" e
-   * permitido. Propriedades nao listadas serao ignoradas e a ordenacao padrao sera usada.
+   * <p>Se getListDtoClass() retornar uma classe, extrai automaticamente os campos anotados com
+   * {@link br.com.utfpr.gerenciamento.server.dto.SortableField}. Caso contrário, retorna apenas
+   * "id" como padrão.
    *
-   * @return Set de nomes de propriedades validas para ordenacao
+   * <p>Sobrescreva em subclasses para definir propriedades específicas manualmente quando não usar
+   * annotations.
+   *
+   * @return Set de nomes de propriedades válidas para ordenação
    */
   protected Set<String> getAllowedSortProperties() {
+    Class<? extends BaseListDto> listDtoClass = getListDtoClass();
+    if (listDtoClass != null) {
+      Set<String> sortableFields = SortableFieldExtractor.getAllowedSortProperties(listDtoClass);
+      if (!sortableFields.isEmpty()) {
+        return sortableFields;
+      }
+    }
     return Set.of(DEFAULT_SORT_PROPERTY);
+  }
+
+  /**
+   * Retorna o mapeamento de campos DTO para paths da entidade.
+   *
+   * <p>Usado para traduzir nomes de campos do frontend (DTO) para paths JPA (entidade). Extraído
+   * automaticamente dos campos anotados com {@link
+   * br.com.utfpr.gerenciamento.server.dto.SortableField}.
+   *
+   * @return mapa de campo DTO → path da entidade
+   */
+  protected Map<String, String> getSortFieldMappings() {
+    Class<? extends BaseListDto> listDtoClass = getListDtoClass();
+    if (listDtoClass != null) {
+      return SortableFieldExtractor.extractSortableFields(listDtoClass);
+    }
+    return Map.of();
   }
 
   /**
@@ -108,6 +153,9 @@ public abstract class CrudController<T, ID extends Serializable, DTO extends Bas
    *
    * <p>Valida a propriedade contra a whitelist retornada por getAllowedSortProperties(). Se a
    * propriedade nao for permitida, usa a ordenacao padrao por seguranca.
+   *
+   * <p>Traduz automaticamente nomes de campos do DTO para paths da entidade quando há mapeamento
+   * definido via {@link br.com.utfpr.gerenciamento.server.dto.SortableField}.
    *
    * @param sort String no formato "campo,direcao" (ex: "nome,desc")
    * @return Sort configurado, default: ordenacao por id ascendente
@@ -117,18 +165,22 @@ public abstract class CrudController<T, ID extends Serializable, DTO extends Bas
       return Sort.by(DEFAULT_SORT_PROPERTY);
     }
     String[] parts = sort.split(",");
-    String property = parts[0].trim();
+    String dtoProperty = parts[0].trim();
 
     // Valida propriedade contra whitelist
-    if (!getAllowedSortProperties().contains(property)) {
+    if (!getAllowedSortProperties().contains(dtoProperty)) {
       return Sort.by(DEFAULT_SORT_PROPERTY);
     }
+
+    // Traduz nome do DTO para path da entidade (se houver mapeamento)
+    Map<String, String> mappings = getSortFieldMappings();
+    String entityPath = mappings.getOrDefault(dtoProperty, dtoProperty);
 
     Sort.Direction direction =
         (parts.length > 1 && "desc".equalsIgnoreCase(parts[1].trim()))
             ? Sort.Direction.DESC
             : Sort.Direction.ASC;
-    return Sort.by(direction, property);
+    return Sort.by(direction, entityPath);
   }
 
   /**

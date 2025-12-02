@@ -23,20 +23,24 @@ import lombok.NoArgsConstructor;
 @Builder
 public class EmprestimoListDto implements BaseListDto {
 
-  private Long id;
+  @SortableField private Long id;
 
+  @SortableField
   @JsonSerialize(using = LocalDateSerializer.class)
   @JsonDeserialize(using = LocalDateDeserializer.class)
   private LocalDate dataEmprestimo;
 
+  @SortableField
   @JsonSerialize(using = LocalDateSerializer.class)
   @JsonDeserialize(using = LocalDateDeserializer.class)
   private LocalDate prazoDevolucao;
 
+  @SortableField
   @JsonSerialize(using = LocalDateSerializer.class)
   @JsonDeserialize(using = LocalDateDeserializer.class)
   private LocalDate dataDevolucao;
 
+  @SortableField(entityPath = "usuarioEmprestimo.nome")
   private String usuarioEmprestimoNome;
 
   /**

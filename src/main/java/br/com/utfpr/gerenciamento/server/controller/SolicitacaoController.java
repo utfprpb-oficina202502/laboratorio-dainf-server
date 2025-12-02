@@ -1,12 +1,12 @@
 package br.com.utfpr.gerenciamento.server.controller;
 
 import br.com.utfpr.gerenciamento.server.dto.BaseListDto;
+import br.com.utfpr.gerenciamento.server.dto.SolicitacaoListDto;
 import br.com.utfpr.gerenciamento.server.dto.SolicitacaoResponseDto;
 import br.com.utfpr.gerenciamento.server.model.Solicitacao;
 import br.com.utfpr.gerenciamento.server.service.CrudService;
 import br.com.utfpr.gerenciamento.server.service.SolicitacaoService;
 import java.util.List;
-import java.util.Set;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -33,8 +33,8 @@ public class SolicitacaoController
   }
 
   @Override
-  protected Set<String> getAllowedSortProperties() {
-    return Set.of("id", "dataSolicitacao");
+  protected Class<? extends BaseListDto> getListDtoClass() {
+    return SolicitacaoListDto.class;
   }
 
   /**

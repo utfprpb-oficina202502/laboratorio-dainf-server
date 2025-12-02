@@ -6,6 +6,7 @@ import static br.com.utfpr.gerenciamento.server.enumeration.UserRole.ROLE_LABORA
 import static br.com.utfpr.gerenciamento.server.enumeration.UserRole.ROLE_PROFESSOR_NAME;
 
 import br.com.utfpr.gerenciamento.server.dto.BaseListDto;
+import br.com.utfpr.gerenciamento.server.dto.EmprestimoListDto;
 import br.com.utfpr.gerenciamento.server.dto.EmprestimoResponseDto;
 import br.com.utfpr.gerenciamento.server.model.Emprestimo;
 import br.com.utfpr.gerenciamento.server.model.Usuario;
@@ -17,7 +18,6 @@ import br.com.utfpr.gerenciamento.server.util.DateUtil;
 import br.com.utfpr.gerenciamento.server.util.SecurityUtils;
 import jakarta.validation.Valid;
 import java.util.List;
-import java.util.Set;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -60,8 +60,8 @@ public class EmprestimoController extends CrudController<Emprestimo, Long, Empre
   }
 
   @Override
-  protected Set<String> getAllowedSortProperties() {
-    return Set.of("id", "dataEmprestimo", "prazoDevolucao", "dataDevolucao");
+  protected Class<? extends BaseListDto> getListDtoClass() {
+    return EmprestimoListDto.class;
   }
 
   /**

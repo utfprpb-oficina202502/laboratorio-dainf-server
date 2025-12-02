@@ -19,9 +19,11 @@ import lombok.NoArgsConstructor;
 @Builder
 public class UsuarioListDto implements BaseListDto {
 
-  private Long id;
-  private String nome;
-  private String username;
+  @SortableField private Long id;
+  @SortableField private String nome;
+  @SortableField private String username;
+
+  // Permissões é uma coleção - não pode ser ordenado diretamente
   private List<PermissaoListDto> permissoes;
 
   /** DTO aninhado para permissões. */

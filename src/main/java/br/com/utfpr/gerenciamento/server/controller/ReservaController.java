@@ -4,13 +4,13 @@ import static br.com.utfpr.gerenciamento.server.enumeration.UserRole.ROLE_ALUNO_
 import static br.com.utfpr.gerenciamento.server.enumeration.UserRole.ROLE_PROFESSOR_NAME;
 
 import br.com.utfpr.gerenciamento.server.dto.BaseListDto;
+import br.com.utfpr.gerenciamento.server.dto.ReservaListDto;
 import br.com.utfpr.gerenciamento.server.dto.ReservaResponseDto;
 import br.com.utfpr.gerenciamento.server.model.Reserva;
 import br.com.utfpr.gerenciamento.server.service.CrudService;
 import br.com.utfpr.gerenciamento.server.service.ReservaService;
 import br.com.utfpr.gerenciamento.server.util.SecurityUtils;
 import java.util.List;
-import java.util.Set;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -37,8 +37,8 @@ public class ReservaController extends CrudController<Reserva, Long, ReservaResp
   }
 
   @Override
-  protected Set<String> getAllowedSortProperties() {
-    return Set.of("id", "dataReserva");
+  protected Class<? extends BaseListDto> getListDtoClass() {
+    return ReservaListDto.class;
   }
 
   /**

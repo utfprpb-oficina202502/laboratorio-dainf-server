@@ -22,14 +22,18 @@ import lombok.NoArgsConstructor;
 @Builder
 public class SaidaListDto implements BaseListDto {
 
-  private Long id;
+  @SortableField private Long id;
 
+  @SortableField
   @JsonSerialize(using = LocalDateSerializer.class)
   @JsonDeserialize(using = LocalDateDeserializer.class)
   private LocalDate dataSaida;
 
-  private String observacao;
+  @SortableField private String observacao;
+
+  @SortableField(entityPath = "usuarioResponsavel.nome")
   private String usuarioResponsavelNome;
+
   private java.math.BigDecimal qtdeTotal;
 
   /**

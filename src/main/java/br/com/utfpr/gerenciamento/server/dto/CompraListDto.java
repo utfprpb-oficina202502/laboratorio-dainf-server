@@ -22,13 +22,17 @@ import lombok.NoArgsConstructor;
 @Builder
 public class CompraListDto implements BaseListDto {
 
-  private Long id;
+  @SortableField private Long id;
 
+  @SortableField
   @JsonSerialize(using = LocalDateSerializer.class)
   @JsonDeserialize(using = LocalDateDeserializer.class)
   private LocalDate dataCompra;
 
+  @SortableField(entityPath = "fornecedor.razaoSocial")
   private String fornecedorRazaoSocial;
+
+  @SortableField(entityPath = "fornecedor.nomeFantasia")
   private String fornecedorNomeFantasia;
 
   /**

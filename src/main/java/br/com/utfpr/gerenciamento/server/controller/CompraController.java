@@ -1,12 +1,12 @@
 package br.com.utfpr.gerenciamento.server.controller;
 
 import br.com.utfpr.gerenciamento.server.dto.BaseListDto;
+import br.com.utfpr.gerenciamento.server.dto.CompraListDto;
 import br.com.utfpr.gerenciamento.server.dto.CompraResponseDTO;
 import br.com.utfpr.gerenciamento.server.model.Compra;
 import br.com.utfpr.gerenciamento.server.service.CompraService;
 import br.com.utfpr.gerenciamento.server.service.CrudService;
 import br.com.utfpr.gerenciamento.server.service.ItemService;
-import java.util.Set;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -33,8 +33,8 @@ public class CompraController extends CrudController<Compra, Long, CompraRespons
   }
 
   @Override
-  protected Set<String> getAllowedSortProperties() {
-    return Set.of("id", "dataCompra");
+  protected Class<? extends BaseListDto> getListDtoClass() {
+    return CompraListDto.class;
   }
 
   /**
