@@ -312,6 +312,12 @@ public class EmprestimoServiceImpl extends CrudServiceImpl<Emprestimo, Long, Emp
 
   @Override
   @Transactional(readOnly = true)
+  public Page<EmprestimoResponseDto> findAllByItemIdPaged(Long itemId, Pageable pageable) {
+    return findAllSpecification(EmprestimoSpecifications.byItemId(itemId), pageable);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
   public List<EmprestimoResponseDto> findAllEmprestimosAbertos() {
     return emprestimoRepository.findAllByDataDevolucaoIsNullOrderById().stream()
         .map(emprestimo -> toDto(emprestimo))

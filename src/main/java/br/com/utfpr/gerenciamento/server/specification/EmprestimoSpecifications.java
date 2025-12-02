@@ -121,6 +121,50 @@ public class EmprestimoSpecifications {
   }
 
   /**
+   * Cria Specification para filtrar empréstimos por itemId com JOIN FETCH.
+   *
+   * <p>Utiliza JOIN FETCH para carregar usuarioEmprestimo, usuarioResponsavel e emprestimoItem
+   * em uma única query, eliminando N+1.
+   *
+   * @param itemId ID do item para filtrar empréstimos
+   * @return Specification configurada com filtro por itemId e fetches
+   */
+  public static Specification<Emprestimo> byItemId(Long itemId) {
+    return (root, query, cb) -> {
+      // Previne duplicação de resultados em queries de count
+      if (Objects.requireNonNull(query).getResultType() != Long.class
+          && query.getResultType() != long.class) {
+        // Define distinct antes de realizar fetches para evitar duplicação de resultados
+        query.distinct(true);
+
+        // JOIN FETCH para usuarioEmprestimo (elimina N+1)
+        Fetch<Emprestimo, Usuario> usuarioEmprestimoFetch =
+            root.fetch(USUARIO_EMPRESTIMO, JoinType.LEFT);
+
+        // JOIN FETCH para permissoes do usuario (elimina segundo N+1)
+        usuarioEmprestimoFetch.fetch("permissoes", JoinType.LEFT);
+
+        // JOIN FETCH para usuarioResponsavel (se necessário)
+        Fetch<Emprestimo, Usuario> usuarioResponsavelFetch =
+            root.fetch(USUARIO_RESPONSAVEL, JoinType.LEFT);
+        usuarioResponsavelFetch.fetch("permissoes", JoinType.LEFT);
+
+        // JOIN FETCH para emprestimoItem (elimina N+1)
+        Fetch<?, ?> emprestimoItemFetch = root.fetch("emprestimoItem", JoinType.LEFT);
+
+        // Fetch nested item to prevent N+1
+        Fetch<?, ?> itemFetch = emprestimoItemFetch.fetch("item", JoinType.LEFT);
+
+        // Fetch item.grupo to prevent additional N+1
+        itemFetch.fetch("grupo", JoinType.LEFT);
+      }
+
+      // Filtro por itemId através da tabela emprestimoItem
+      return cb.equal(root.join("emprestimoItem", JoinType.LEFT).get("item").get("id"), itemId);
+    };
+  }
+
+  /**
    * Constrói o predicado WHERE baseado nos filtros fornecidos.
    *
    * @param filter Filtro com critérios (pode ser null)
