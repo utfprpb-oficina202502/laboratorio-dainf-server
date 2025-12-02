@@ -395,32 +395,8 @@ class EmprestimoControllerTest {
     Long itemId = 999L;
 
     PageRequest pageRequest = PageRequest.of(0, 10);
-    Page<EmprestimoResponseDto> page =
-        new PageImpl<>(Collections.emptyList(), pageRequest, 1);
-    when(emprestimoService.findAllByItemIdPaged(eq(itemId), any(Pageable.class))).thenReturn(page);
-
-    // When & Then
-    mockMvc
-        .perform(
-            get("/emprestimo/find-by-item/{itemId}", itemId)
-                .param("page", "0")
-                .param("size", "10")
-                .accept(MediaType.APPLICATION_JSON))
-        .andExpect(status().isOk())
-        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-        .andExpect(jsonPath("$.content[0].id").value(1L))
-        .andExpect(jsonPath("$.totalElements").value(1));
-  }
-
-  @Test
-  void testFindByItemId_DeveRetornarListaDeEmprestimos() throws Exception {
-    // Given
-    Long itemId = 1L;
-    EmprestimoResponseDto emprestimoDto = new EmprestimoResponseDto();
-    emprestimoDto.setId(1L);
-
-    PageRequest pageRequest = PageRequest.of(0, 10);
-    Page<EmprestimoResponseDto> emptyPage = new PageImpl<>(Collections.emptyList(), pageRequest, 0);
+    Page<EmprestimoResponseDto> emptyPage =
+        new PageImpl<>(Collections.emptyList(), pageRequest, 0);
     when(emprestimoService.findAllByItemIdPaged(eq(itemId), any(Pageable.class)))
         .thenReturn(emptyPage);
 
@@ -436,5 +412,30 @@ class EmprestimoControllerTest {
         .andExpect(jsonPath("$.content").isArray())
         .andExpect(jsonPath("$.content").isEmpty())
         .andExpect(jsonPath("$.totalElements").value(0));
+  }
+
+  @Test
+  void testFindByItemId_DeveRetornarListaDeEmprestimos() throws Exception {
+    // Given
+    Long itemId = 1L;
+    EmprestimoResponseDto emprestimoDto = new EmprestimoResponseDto();
+    emprestimoDto.setId(1L);
+
+    PageRequest pageRequest = PageRequest.of(0, 10);
+    Page<EmprestimoResponseDto> page =
+        new PageImpl<>(Collections.singletonList(emprestimoDto), pageRequest, 1);
+    when(emprestimoService.findAllByItemIdPaged(eq(itemId), any(Pageable.class))).thenReturn(page);
+
+    // When & Then
+    mockMvc
+        .perform(
+            get("/emprestimo/find-by-item/{itemId}", itemId)
+                .param("page", "0")
+                .param("size", "10")
+                .accept(MediaType.APPLICATION_JSON))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(jsonPath("$.content[0].id").value(1L))
+        .andExpect(jsonPath("$.totalElements").value(1));
   }
 }
