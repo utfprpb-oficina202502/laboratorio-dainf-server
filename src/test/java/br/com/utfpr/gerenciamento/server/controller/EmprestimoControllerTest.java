@@ -2,9 +2,9 @@ package br.com.utfpr.gerenciamento.server.controller;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -395,8 +395,7 @@ class EmprestimoControllerTest {
     Long itemId = 999L;
 
     PageRequest pageRequest = PageRequest.of(0, 10);
-    Page<EmprestimoResponseDto> emptyPage =
-        new PageImpl<>(Collections.emptyList(), pageRequest, 0);
+    Page<EmprestimoResponseDto> emptyPage = new PageImpl<>(Collections.emptyList(), pageRequest, 0);
     when(emprestimoService.findAllByItemIdPaged(eq(itemId), any(Pageable.class)))
         .thenReturn(emptyPage);
 
