@@ -14,8 +14,8 @@ import lombok.Setter;
 public class NadaConstaResponseDto implements BaseListDto {
   @SortableField private Long id;
 
-  @SortableField(entityPath = "usuario.username")
-  private String usuarioUsername;
+  @SortableField(entityPath = "usuario.email")
+  private String usuarioEmail;
 
   @SortableField private NadaConstaStatus status;
   @SortableField private LocalDateTime sendAt;
