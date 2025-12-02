@@ -202,7 +202,7 @@ class SortableFieldExtractorTest {
           SortableFieldExtractor.extractSortableFields(EmprestimoListDto.class);
 
       // Then - diferentes instancias, diferentes tamanhos
-      assertThat(itemFields).isNotSameAs(emprestimoFields).hasSize(5).hasSize(5);
+      assertThat(itemFields).isNotSameAs(emprestimoFields).hasSize(5);
     }
   }
 
