@@ -60,7 +60,6 @@ class FornecedorControllerTest {
 
     FornecedorResponseDto fornecedorResponseDto2 = createFornecedorResponseDtoAlternativo();
 
-    fornecedores = List.of(fornecedor, fornecedor2);
     fornecedoresDto = List.of(fornecedorResponseDto, fornecedorResponseDto2);
   }
 
