@@ -99,6 +99,9 @@ public final class ApiRoutes {
   public static final String EMPRESTIMO_FIND_ALL_BY_USERNAME =
       "/emprestimo/find-all-by-username/**";
 
+  /** Buscar empréstimos por item (paginado) */
+  public static final String EMPRESTIMO_FIND_BY_ITEM = "/emprestimo/find-by-item/**";
+
   // ============ Endpoints Públicos ============
   /** Autenticação (login) */
   public static final String AUTH = "/auth";
