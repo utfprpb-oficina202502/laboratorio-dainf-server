@@ -21,6 +21,8 @@ import br.com.utfpr.gerenciamento.server.service.EmprestimoService;
 import br.com.utfpr.gerenciamento.server.service.UsuarioService;
 import br.com.utfpr.gerenciamento.server.util.SecurityUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import java.time.LocalDate;
 import java.util.Collections;
 import java.util.HashSet;
@@ -79,6 +81,8 @@ class EmprestimoControllerTest {
     // Setup lista de empréstimos mock
     emprestimosLista = List.of(new EmprestimoResponseDto());
     objectMapper = new ObjectMapper();
+    objectMapper.registerModule(new JavaTimeModule());
+    objectMapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
   }
 
   @Test
@@ -581,19 +585,17 @@ class EmprestimoControllerTest {
   }
 
   @Test
-  void testFindByItemId_comItemIdInvalido_deveLancarExcecao() {
+  void testFindByItemId_comItemIdInvalido_deveLancarExcecao() throws Exception {
     // Given
     Long itemId = 0L;
 
     // When & Then
-    assertThrows(
-        Exception.class,
-        () ->
-            mockMvc.perform(
-                get("/emprestimo/find-by-item/{itemId}", itemId)
-                    .param("page", "0")
-                    .param("size", "10")
-                    .accept(MediaType.APPLICATION_JSON)));
+    mockMvc.perform(
+        get("/emprestimo/find-by-item/{itemId}", itemId)
+            .param("page", "0")
+            .param("size", "10")
+            .accept(MediaType.APPLICATION_JSON))
+        .andExpect(status().isBadRequest());
 
     verify(emprestimoService, never()).findAllByItemIdPaged(anyLong(), any());
   }
@@ -650,18 +652,18 @@ class EmprestimoControllerTest {
   }
 
   @Test
-  void testChangePrazoDevolucao_comDataInvalida_deveLancarExcecao() {
+  void testChangePrazoDevolucao_comDataInvalida_deveLancarExcecao() throws Exception {
     // Given
     long id = 1L;
     String novaData = "data-invalida";
 
-    // When & Then - DateUtil.parseStringToLocalDate will throw exception
-    assertThrows(
-        Exception.class,
-        () ->
-            mockMvc.perform(
-                get("/emprestimo/change-prazo-devolucao")
-                    .param("id", String.valueOf(id))
-                    .param("novaData", novaData)));
+    // When & Then
+    mockMvc.perform(
+        get("/emprestimo/change-prazo-devolucao")
+            .param("id", String.valueOf(id))
+            .param("novaData", novaData))
+        .andExpect(status().isBadRequest());
+
+    verify(emprestimoService, never()).changePrazoDevolucao(anyLong(), any());
   }
 }
