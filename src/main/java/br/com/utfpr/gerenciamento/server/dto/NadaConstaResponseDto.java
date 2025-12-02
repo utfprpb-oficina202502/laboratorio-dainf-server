@@ -12,12 +12,15 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 public class NadaConstaResponseDto implements BaseListDto {
-  private Long id;
-  private String usuarioUsername;
-  private NadaConstaStatus status;
-  private LocalDateTime sendAt;
-  private LocalDateTime createdAt;
-  private LocalDateTime updatedAt;
-  private String createdBy;
-  private String updatedBy;
+  @SortableField private Long id;
+
+  @SortableField(entityPath = "usuario.email")
+  private String usuarioEmail;
+
+  @SortableField private NadaConstaStatus status;
+  @SortableField private LocalDateTime sendAt;
+  @SortableField private LocalDateTime createdAt;
+  @SortableField private LocalDateTime updatedAt;
+  @SortableField private String createdBy;
+  @SortableField private String updatedBy;
 }

@@ -165,7 +165,7 @@ class SortableFieldExtractorTest {
       assertThat(fields)
           .containsEntry("id", "id")
           .containsEntry("nome", "nome")
-          .containsEntry("username", "username")
+          .containsEntry("email", "email")
           .doesNotContainKey("permissoes")
           .hasSize(3);
     }
