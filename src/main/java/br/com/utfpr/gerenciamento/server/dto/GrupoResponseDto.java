@@ -3,9 +3,9 @@ package br.com.utfpr.gerenciamento.server.dto;
 import lombok.Data;
 
 @Data
-public class GrupoResponseDto {
+public class GrupoResponseDto implements BaseListDto {
 
-  private Long id;
+  @SortableField private Long id;
 
-  private String descricao;
+  @SortableField private String descricao;
 }

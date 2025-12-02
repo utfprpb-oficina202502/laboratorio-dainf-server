@@ -107,7 +107,7 @@ class ItemControllerTest {
     when(itemService.findAllPagedList(isNull(), any(PageRequest.class))).thenReturn(page);
 
     // When
-    Page<?> result = itemController.findAllPaged(0, 10, null, null, null);
+    Page<?> result = itemController.findAllPaged(0, 10, null, null);
 
     // Then
     assertThat(result.getContent()).hasSize(1);
@@ -125,7 +125,7 @@ class ItemControllerTest {
     when(itemService.findAllPagedList(eq("filtro"), any(PageRequest.class))).thenReturn(page);
 
     // When
-    Page<?> result = itemController.findAllPaged(0, 10, "filtro", "nome", true);
+    Page<?> result = itemController.findAllPaged(0, 10, "filtro", "nome,asc");
 
     // Then
     assertThat(result.getContent()).hasSize(1);

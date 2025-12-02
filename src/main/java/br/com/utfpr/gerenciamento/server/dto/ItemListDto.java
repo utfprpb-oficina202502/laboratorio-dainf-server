@@ -16,13 +16,16 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ItemListDto {
+public class ItemListDto implements BaseListDto {
 
-  private Long id;
-  private String nome;
-  private String localizacao;
-  private BigDecimal saldo;
+  @SortableField private Long id;
+  @SortableField private String nome;
+  @SortableField private String localizacao;
+  @SortableField private BigDecimal saldo;
+
+  @SortableField(entityPath = "grupo.descricao")
   private GrupoListDto grupo;
+
   private String imagemUrl;
 
   /** DTO aninhado para grupo. */

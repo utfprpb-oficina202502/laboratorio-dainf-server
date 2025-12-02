@@ -14,7 +14,7 @@ import lombok.*;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class CompraResponseDTO {
+public class CompraResponseDTO implements BaseListDto {
   private Long id;
 
   @JsonSerialize(using = LocalDateSerializer.class)

@@ -24,6 +24,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Value;
@@ -82,6 +83,15 @@ public class ItemServiceImpl extends CrudServiceImpl<Item, Long, ItemResponseDto
   @Override
   protected JpaRepository<Item, Long> getRepository() {
     return itemRepository;
+  }
+
+  @Override
+  protected Map<String, String> getSearchableFieldMappings() {
+    return Map.of(
+        "id", "id",
+        "nome", "nome",
+        "localizacao", "localizacao",
+        "saldo", "saldo");
   }
 
   @Override

@@ -18,7 +18,7 @@ import lombok.Data;
  */
 @Data
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class ItemResponseDto {
+public class ItemResponseDto implements BaseListDto {
   private Long id;
   private String nome;
   private BigInteger patrimonio;
