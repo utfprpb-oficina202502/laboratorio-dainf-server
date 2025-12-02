@@ -9,6 +9,7 @@ import br.com.utfpr.gerenciamento.server.repository.projection.CompraListProject
 import br.com.utfpr.gerenciamento.server.service.CompraService;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -31,6 +32,15 @@ public class CompraServiceImpl extends CrudServiceImpl<Compra, Long, CompraRespo
   @Override
   protected JpaRepository<Compra, Long> getRepository() {
     return compraRepository;
+  }
+
+  @Override
+  protected Map<String, String> getSearchableFieldMappings() {
+    return Map.of(
+        "id", "id",
+        "dataCompra", "dataCompra",
+        "fornecedorRazaoSocial", "fornecedor.razaoSocial",
+        "fornecedorNomeFantasia", "fornecedor.nomeFantasia");
   }
 
   @Override

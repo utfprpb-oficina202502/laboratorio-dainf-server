@@ -21,7 +21,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class EmprestimoListDto {
+public class EmprestimoListDto implements BaseListDto {
 
   private Long id;
 
@@ -37,7 +37,7 @@ public class EmprestimoListDto {
   @JsonDeserialize(using = LocalDateDeserializer.class)
   private LocalDate dataDevolucao;
 
-  private String nomeUsuarioEmprestimo;
+  private String usuarioEmprestimoNome;
 
   /**
    * Converte uma projection JPA para DTO.
@@ -54,7 +54,7 @@ public class EmprestimoListDto {
         .dataEmprestimo(projection.getDataEmprestimo())
         .prazoDevolucao(projection.getPrazoDevolucao())
         .dataDevolucao(projection.getDataDevolucao())
-        .nomeUsuarioEmprestimo(projection.getUsuarioEmprestimoNome())
+        .usuarioEmprestimoNome(projection.getUsuarioEmprestimoNome())
         .build();
   }
 }

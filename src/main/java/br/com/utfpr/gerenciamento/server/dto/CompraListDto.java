@@ -20,7 +20,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class CompraListDto {
+public class CompraListDto implements BaseListDto {
 
   private Long id;
 

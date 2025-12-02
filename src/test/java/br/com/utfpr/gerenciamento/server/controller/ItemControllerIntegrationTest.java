@@ -204,12 +204,7 @@ class ItemControllerIntegrationTest {
   @Test
   void testFindAllPaged_ComOrdenacao_DeveRetornarOrdenadoPorNome() throws Exception {
     mockMvc
-        .perform(
-            get("/item/page")
-                .param("page", "0")
-                .param("size", "10")
-                .param("order", "nome")
-                .param("asc", "true"))
+        .perform(get("/item/page").param("page", "0").param("size", "10").param("sort", "nome,asc"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.content[0].nome").value("Cabo HDMI"))
         .andExpect(jsonPath("$.content[1].nome").value("Notebook Dell Latitude"));

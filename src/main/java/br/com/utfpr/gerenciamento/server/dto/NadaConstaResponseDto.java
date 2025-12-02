@@ -11,7 +11,7 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class NadaConstaResponseDto {
+public class NadaConstaResponseDto implements BaseListDto {
   private Long id;
   private String usuarioUsername;
   private NadaConstaStatus status;

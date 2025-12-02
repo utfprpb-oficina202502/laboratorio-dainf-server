@@ -12,6 +12,7 @@ import br.com.utfpr.gerenciamento.server.service.SaidaService;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -34,6 +35,16 @@ public class SaidaServiceImpl extends CrudServiceImpl<Saida, Long, SaidaResponse
   @Override
   protected JpaRepository<Saida, Long> getRepository() {
     return saidaRepository;
+  }
+
+  @Override
+  protected Map<String, String> getSearchableFieldMappings() {
+    return Map.of(
+        "id", "id",
+        "dataSaida", "dataSaida",
+        "observacao", "observacao",
+        "usuarioResponsavelNome", "usuarioResponsavel.nome",
+        "qtdeTotal", "qtdeTotal");
   }
 
   @Override

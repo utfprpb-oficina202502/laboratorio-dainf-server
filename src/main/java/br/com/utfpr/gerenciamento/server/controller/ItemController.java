@@ -1,5 +1,6 @@
 package br.com.utfpr.gerenciamento.server.controller;
 
+import br.com.utfpr.gerenciamento.server.dto.BaseListDto;
 import br.com.utfpr.gerenciamento.server.dto.ItemResponseDto;
 import br.com.utfpr.gerenciamento.server.model.Item;
 import br.com.utfpr.gerenciamento.server.model.ItemImage;
@@ -9,6 +10,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import java.util.List;
+import java.util.Set;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -34,6 +36,12 @@ public class ItemController extends CrudController<Item, Long, ItemResponseDto> 
   @Override
   protected CrudService<Item, Long, ItemResponseDto> getService() {
     return itemService;
+  }
+
+  @Override
+  protected Set<String> getAllowedSortProperties() {
+    return Set.of(
+        "id", "nome", "descricao", "localizacao", "patrimonio", "saldo", "tipoItem", "valor");
   }
 
   @Override
@@ -66,25 +74,19 @@ public class ItemController extends CrudController<Item, Long, ItemResponseDto> 
    * @param page Número da página (0-indexed)
    * @param size Tamanho da página
    * @param filter Filtro opcional (busca textual em todos os campos)
-   * @param order Campo de ordenação (padrão: "id")
-   * @param asc Direção da ordenação (true = ASC, false = DESC, padrão: ASC)
+   * @param sort Ordenacao no formato "campo,direcao" (ex: "nome,desc")
    * @return Página de itens simplificados
    */
   @Override
   @GetMapping("page")
-  @SuppressWarnings("unchecked")
-  public Page<ItemResponseDto> findAllPaged(
+  public Page<? extends BaseListDto> findAllPaged(
       @RequestParam("page") int page,
       @RequestParam("size") int size,
       @RequestParam(required = false) String filter,
-      @RequestParam(required = false) String order,
-      @RequestParam(required = false) Boolean asc) {
-    PageRequest pageRequest = PageRequest.of(page, size);
-    if (order != null && asc != null) {
-      pageRequest =
-          PageRequest.of(page, size, asc ? Sort.Direction.ASC : Sort.Direction.DESC, order);
-    }
-    return (Page<ItemResponseDto>) (Page<?>) itemService.findAllPagedList(filter, pageRequest);
+      @RequestParam(required = false) String sort) {
+    Sort sortObj = parseSortParameter(sort);
+    PageRequest pageRequest = PageRequest.of(page, size, sortObj);
+    return itemService.findAllPagedList(filter, pageRequest);
   }
 
   @Override

@@ -9,7 +9,7 @@ import java.util.List;
 import lombok.Data;
 
 @Data
-public class SolicitacaoResponseDto {
+public class SolicitacaoResponseDto implements BaseListDto {
   private Long id;
 
   private String descricao;

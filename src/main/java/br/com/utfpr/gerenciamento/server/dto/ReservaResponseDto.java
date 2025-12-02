@@ -9,7 +9,7 @@ import java.util.List;
 import lombok.Data;
 
 @Data
-public class ReservaResponseDto {
+public class ReservaResponseDto implements BaseListDto {
   private Long id;
 
   private String descricao;

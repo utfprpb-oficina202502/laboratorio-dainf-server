@@ -1,10 +1,12 @@
 package br.com.utfpr.gerenciamento.server.controller;
 
+import br.com.utfpr.gerenciamento.server.dto.BaseListDto;
 import br.com.utfpr.gerenciamento.server.dto.SolicitacaoResponseDto;
 import br.com.utfpr.gerenciamento.server.model.Solicitacao;
 import br.com.utfpr.gerenciamento.server.service.CrudService;
 import br.com.utfpr.gerenciamento.server.service.SolicitacaoService;
 import java.util.List;
+import java.util.Set;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -30,6 +32,11 @@ public class SolicitacaoController
     return solicitacaoService;
   }
 
+  @Override
+  protected Set<String> getAllowedSortProperties() {
+    return Set.of("id", "dataSolicitacao");
+  }
+
   /**
    * Lista paginada de solicitações com filtro textual usando DTO simplificado.
    *
@@ -38,26 +45,19 @@ public class SolicitacaoController
    * @param page Número da página (0-indexed)
    * @param size Tamanho da página
    * @param filter Filtro opcional (busca textual em todos os campos)
-   * @param order Campo de ordenação (padrão: "id")
-   * @param asc Direção da ordenação (true = ASC, false = DESC, padrão: ASC)
+   * @param sort Ordenacao no formato "campo,direcao" (ex: "dataSolicitacao,desc")
    * @return Página de solicitações simplificadas
    */
   @Override
   @GetMapping("page")
-  @SuppressWarnings("unchecked")
-  public Page<SolicitacaoResponseDto> findAllPaged(
+  public Page<? extends BaseListDto> findAllPaged(
       @RequestParam("page") int page,
       @RequestParam("size") int size,
       @RequestParam(required = false) String filter,
-      @RequestParam(required = false) String order,
-      @RequestParam(required = false) Boolean asc) {
-    PageRequest pageRequest = PageRequest.of(page, size);
-    if (order != null && asc != null) {
-      pageRequest =
-          PageRequest.of(page, size, asc ? Sort.Direction.ASC : Sort.Direction.DESC, order);
-    }
-    return (Page<SolicitacaoResponseDto>)
-        (Page<?>) solicitacaoService.findAllPagedList(filter, pageRequest);
+      @RequestParam(required = false) String sort) {
+    Sort sortObj = parseSortParameter(sort);
+    PageRequest pageRequest = PageRequest.of(page, size, sortObj);
+    return solicitacaoService.findAllPagedList(filter, pageRequest);
   }
 
   @GetMapping("find-all-by-username/{username}")

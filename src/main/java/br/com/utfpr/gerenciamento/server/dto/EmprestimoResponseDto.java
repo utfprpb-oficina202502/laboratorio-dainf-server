@@ -9,7 +9,7 @@ import java.util.List;
 import lombok.Data;
 
 @Data
-public class EmprestimoResponseDto {
+public class EmprestimoResponseDto implements BaseListDto {
   private Long id;
 
   @JsonSerialize(using = LocalDateSerializer.class)

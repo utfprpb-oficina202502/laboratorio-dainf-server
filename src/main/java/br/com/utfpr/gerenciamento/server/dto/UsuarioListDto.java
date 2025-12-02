@@ -17,7 +17,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class UsuarioListDto {
+public class UsuarioListDto implements BaseListDto {
 
   private Long id;
   private String nome;

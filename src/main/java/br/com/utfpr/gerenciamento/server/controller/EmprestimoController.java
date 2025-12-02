@@ -5,6 +5,7 @@ import static br.com.utfpr.gerenciamento.server.enumeration.UserRole.ROLE_ALUNO_
 import static br.com.utfpr.gerenciamento.server.enumeration.UserRole.ROLE_LABORATORISTA_NAME;
 import static br.com.utfpr.gerenciamento.server.enumeration.UserRole.ROLE_PROFESSOR_NAME;
 
+import br.com.utfpr.gerenciamento.server.dto.BaseListDto;
 import br.com.utfpr.gerenciamento.server.dto.EmprestimoResponseDto;
 import br.com.utfpr.gerenciamento.server.model.Emprestimo;
 import br.com.utfpr.gerenciamento.server.model.Usuario;
@@ -16,6 +17,7 @@ import br.com.utfpr.gerenciamento.server.util.DateUtil;
 import br.com.utfpr.gerenciamento.server.util.SecurityUtils;
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.Set;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -55,6 +57,11 @@ public class EmprestimoController extends CrudController<Emprestimo, Long, Empre
   @Override
   protected CrudService<Emprestimo, Long, EmprestimoResponseDto> getService() {
     return emprestimoService;
+  }
+
+  @Override
+  protected Set<String> getAllowedSortProperties() {
+    return Set.of("id", "dataEmprestimo", "prazoDevolucao", "dataDevolucao");
   }
 
   /**
@@ -194,35 +201,27 @@ public class EmprestimoController extends CrudController<Emprestimo, Long, Empre
    * @param page Número da página (0-indexed)
    * @param size Tamanho da página
    * @param filter Filtro opcional (busca textual em todos os campos)
-   * @param order Campo de ordenação (padrão: "id")
-   * @param asc Direção da ordenação (true = ASC, false = DESC, padrão: ASC)
+   * @param sort Ordenacao no formato "campo,direcao" (ex: "dataEmprestimo,desc")
    * @return Página de empréstimos simplificados conforme a role do usuário autenticado
    */
   @Override
   @GetMapping("page")
-  @SuppressWarnings("unchecked")
-  public Page<EmprestimoResponseDto> findAllPaged(
+  public Page<? extends BaseListDto> findAllPaged(
       @RequestParam("page") int page,
       @RequestParam("size") int size,
       @RequestParam(required = false) String filter,
-      @RequestParam(required = false) String order,
-      @RequestParam(required = false) Boolean asc) {
-    Sort sort = Sort.by("id");
-    if (order != null && asc != null) {
-      sort = Sort.by(asc ? Sort.Direction.ASC : Sort.Direction.DESC, order);
-    }
-    PageRequest pageRequest = PageRequest.of(page, size, sort);
+      @RequestParam(required = false) String sort) {
+    Sort sortObj = parseSortParameter(sort);
+    PageRequest pageRequest = PageRequest.of(page, size, sortObj);
 
     String username = SecurityUtils.getAuthenticatedUsername();
     List<String> userRoles = SecurityUtils.getAuthenticatedUserRoles();
 
     if (userRoles.contains(PREFIXO_ROLE + ROLE_ALUNO_NAME)
         || userRoles.contains(PREFIXO_ROLE + ROLE_PROFESSOR_NAME)) {
-      return (Page<EmprestimoResponseDto>)
-          (Page<?>) emprestimoService.findAllPagedListByUser(filter, pageRequest, username);
+      return emprestimoService.findAllPagedListByUser(filter, pageRequest, username);
     }
 
-    return (Page<EmprestimoResponseDto>)
-        (Page<?>) emprestimoService.findAllPagedList(filter, pageRequest);
+    return emprestimoService.findAllPagedList(filter, pageRequest);
   }
 }

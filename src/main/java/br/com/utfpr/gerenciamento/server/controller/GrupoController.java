@@ -6,6 +6,7 @@ import br.com.utfpr.gerenciamento.server.model.Grupo;
 import br.com.utfpr.gerenciamento.server.service.CrudService;
 import br.com.utfpr.gerenciamento.server.service.GrupoService;
 import br.com.utfpr.gerenciamento.server.service.ItemService;
+import java.util.Set;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.web.bind.annotation.*;
@@ -25,6 +26,11 @@ public class GrupoController extends CrudController<Grupo, Long, GrupoResponseDt
   @Override
   protected CrudService<Grupo, Long, GrupoResponseDto> getService() {
     return grupoService;
+  }
+
+  @Override
+  protected Set<String> getAllowedSortProperties() {
+    return Set.of("id", "descricao");
   }
 
   // Endpoint /complete herdado de CrudController com paginacao

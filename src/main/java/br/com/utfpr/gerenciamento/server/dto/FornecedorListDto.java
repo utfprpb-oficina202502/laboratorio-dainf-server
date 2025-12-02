@@ -15,7 +15,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class FornecedorListDto {
+public class FornecedorListDto implements BaseListDto {
 
   private Long id;
   private String razaoSocial;

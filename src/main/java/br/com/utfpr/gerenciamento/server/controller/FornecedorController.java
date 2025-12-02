@@ -1,9 +1,11 @@
 package br.com.utfpr.gerenciamento.server.controller;
 
+import br.com.utfpr.gerenciamento.server.dto.BaseListDto;
 import br.com.utfpr.gerenciamento.server.dto.FornecedorResponseDto;
 import br.com.utfpr.gerenciamento.server.model.Fornecedor;
 import br.com.utfpr.gerenciamento.server.service.CrudService;
 import br.com.utfpr.gerenciamento.server.service.FornecedorService;
+import java.util.Set;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -24,6 +26,11 @@ public class FornecedorController extends CrudController<Fornecedor, Long, Forne
     return fornecedorService;
   }
 
+  @Override
+  protected Set<String> getAllowedSortProperties() {
+    return Set.of("id", "razaoSocial", "nomeFantasia", "cnpj");
+  }
+
   /**
    * Lista paginada de fornecedores com filtro textual usando DTO simplificado.
    *
@@ -32,25 +39,18 @@ public class FornecedorController extends CrudController<Fornecedor, Long, Forne
    * @param page Número da página (0-indexed)
    * @param size Tamanho da página
    * @param filter Filtro opcional (busca textual em todos os campos)
-   * @param order Campo de ordenação (padrão: "id")
-   * @param asc Direção da ordenação (true = ASC, false = DESC, padrão: ASC)
+   * @param sort Ordenacao no formato "campo,direcao" (ex: "razaoSocial,desc")
    * @return Página de fornecedores simplificados
    */
   @Override
   @GetMapping("page")
-  @SuppressWarnings("unchecked")
-  public Page<FornecedorResponseDto> findAllPaged(
+  public Page<? extends BaseListDto> findAllPaged(
       @RequestParam("page") int page,
       @RequestParam("size") int size,
       @RequestParam(required = false) String filter,
-      @RequestParam(required = false) String order,
-      @RequestParam(required = false) Boolean asc) {
-    PageRequest pageRequest = PageRequest.of(page, size);
-    if (order != null && asc != null) {
-      pageRequest =
-          PageRequest.of(page, size, asc ? Sort.Direction.ASC : Sort.Direction.DESC, order);
-    }
-    return (Page<FornecedorResponseDto>)
-        (Page<?>) fornecedorService.findAllPagedList(filter, pageRequest);
+      @RequestParam(required = false) String sort) {
+    Sort sortObj = parseSortParameter(sort);
+    PageRequest pageRequest = PageRequest.of(page, size, sortObj);
+    return fornecedorService.findAllPagedList(filter, pageRequest);
   }
 }

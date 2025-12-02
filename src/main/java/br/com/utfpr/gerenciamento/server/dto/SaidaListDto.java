@@ -20,7 +20,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class SaidaListDto {
+public class SaidaListDto implements BaseListDto {
 
   private Long id;
 
@@ -29,7 +29,7 @@ public class SaidaListDto {
   private LocalDate dataSaida;
 
   private String observacao;
-  private String nomeUsuarioResponsavel;
+  private String usuarioResponsavelNome;
   private java.math.BigDecimal qtdeTotal;
 
   /**
@@ -46,7 +46,7 @@ public class SaidaListDto {
         .id(projection.getId())
         .dataSaida(projection.getDataSaida())
         .observacao(projection.getObservacao())
-        .nomeUsuarioResponsavel(projection.getUsuarioResponsavelNome())
+        .usuarioResponsavelNome(projection.getUsuarioResponsavelNome())
         .qtdeTotal(projection.getQtdeTotal())
         .build();
   }

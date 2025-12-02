@@ -16,7 +16,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ItemListDto {
+public class ItemListDto implements BaseListDto {
 
   private Long id;
   private String nome;

@@ -29,7 +29,6 @@ class FornecedorControllerTest {
 
   private Fornecedor fornecedor;
   private FornecedorResponseDto fornecedorResponseDto;
-  private List<Fornecedor> fornecedores;
   private List<FornecedorResponseDto> fornecedoresDto;
 
   @BeforeEach
@@ -177,8 +176,7 @@ class FornecedorControllerTest {
     int page = 0;
     int size = 10;
     String filter = "teste";
-    String order = "nome";
-    Boolean asc = true;
+    String sort = "nome,asc";
 
     FornecedorListDto listDto =
         FornecedorListDto.builder()
@@ -190,7 +188,7 @@ class FornecedorControllerTest {
     when(fornecedorService.findAllPagedList(eq(filter), any(PageRequest.class)))
         .thenReturn(pageResult);
 
-    Page<?> result = fornecedorController.findAllPaged(page, size, filter, order, asc);
+    Page<?> result = fornecedorController.findAllPaged(page, size, filter, sort);
 
     assertNotNull(result);
     assertEquals(1, result.getContent().size());
@@ -212,7 +210,7 @@ class FornecedorControllerTest {
     when(fornecedorService.findAllPagedList(isNull(), any(PageRequest.class)))
         .thenReturn(pageResult);
 
-    Page<?> result = fornecedorController.findAllPaged(page, size, null, null, null);
+    Page<?> result = fornecedorController.findAllPaged(page, size, null, null);
 
     assertNotNull(result);
     assertEquals(1, result.getContent().size());
@@ -235,7 +233,7 @@ class FornecedorControllerTest {
     when(fornecedorService.findAllPagedList(eq(filter), any(PageRequest.class)))
         .thenReturn(pageResult);
 
-    Page<?> result = fornecedorController.findAllPaged(page, size, filter, null, null);
+    Page<?> result = fornecedorController.findAllPaged(page, size, filter, null);
 
     assertNotNull(result);
     assertEquals(1, result.getContent().size());
@@ -246,8 +244,7 @@ class FornecedorControllerTest {
   void testFindAllPagedWithOrderButNoFilter() {
     int page = 0;
     int size = 10;
-    String order = "nome";
-    Boolean asc = false;
+    String sort = "nome,desc";
 
     FornecedorListDto listDto =
         FornecedorListDto.builder()
@@ -259,7 +256,7 @@ class FornecedorControllerTest {
     when(fornecedorService.findAllPagedList(isNull(), any(PageRequest.class)))
         .thenReturn(pageResult);
 
-    Page<?> result = fornecedorController.findAllPaged(page, size, null, order, asc);
+    Page<?> result = fornecedorController.findAllPaged(page, size, null, sort);
 
     assertNotNull(result);
     assertEquals(1, result.getContent().size());

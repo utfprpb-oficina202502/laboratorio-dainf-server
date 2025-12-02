@@ -14,6 +14,7 @@ import br.com.utfpr.gerenciamento.server.service.UsuarioService;
 import br.com.utfpr.gerenciamento.server.util.DateUtil;
 import br.com.utfpr.gerenciamento.server.util.SecurityUtils;
 import java.util.List;
+import java.util.Map;
 import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -44,6 +45,16 @@ public class ReservaServiceImpl extends CrudServiceImpl<Reserva, Long, ReservaRe
   @Override
   protected JpaRepository<Reserva, Long> getRepository() {
     return reservaRepository;
+  }
+
+  @Override
+  protected Map<String, String> getSearchableFieldMappings() {
+    return Map.of(
+        "id", "id",
+        "descricao", "descricao",
+        "dataReserva", "dataReserva",
+        "dataRetirada", "dataRetirada",
+        "usuarioNome", "usuario.nome");
   }
 
   @Override
