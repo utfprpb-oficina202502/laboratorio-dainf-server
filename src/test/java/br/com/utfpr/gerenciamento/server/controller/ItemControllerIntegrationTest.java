@@ -123,18 +123,6 @@ class ItemControllerIntegrationTest {
         .andExpect(jsonPath("$.disponivelEmprestimoCalculado").doesNotExist());
   }
 
-  // Nota: Este teste foi removido porque não há @RestControllerAdvice configurado
-  // no projeto para capturar EntityNotFoundException. O endpoint lança exceção não tratada.
-  // Em produção, deveria retornar 404, mas atualmente propaga como 500.
-  // TODO: Adicionar exception handler para EntityNotFoundException → 404
-
-  // @Test
-  // void testFindOne_ItemNaoExistente_DeveRetornar404() throws Exception {
-  //   mockMvc
-  //       .perform(get("/item/{id}", 999L))
-  //       .andExpect(status().isNotFound());
-  // }
-
   @Test
   void testFindAll_DeveRetornarListaOrdenadaPorId() throws Exception {
     mockMvc
@@ -216,12 +204,7 @@ class ItemControllerIntegrationTest {
   @Test
   void testFindAllPaged_ComOrdenacao_DeveRetornarOrdenadoPorNome() throws Exception {
     mockMvc
-        .perform(
-            get("/item/page")
-                .param("page", "0")
-                .param("size", "10")
-                .param("order", "nome")
-                .param("asc", "true"))
+        .perform(get("/item/page").param("page", "0").param("size", "10").param("sort", "nome,asc"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.content[0].nome").value("Cabo HDMI"))
         .andExpect(jsonPath("$.content[1].nome").value("Notebook Dell Latitude"));
@@ -251,31 +234,35 @@ class ItemControllerIntegrationTest {
   @Test
   void testComplete_ComQueryEComEstoque_DeveRetornarDTOComDisponibilidade() throws Exception {
     mockMvc
-        .perform(get("/item/complete").param("query", "Notebook").param("hasEstoque", "true"))
+        .perform(
+            get("/item/complete-disponivel").param("query", "Notebook").param("hasEstoque", "true"))
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-        .andExpect(jsonPath("$", hasSize(1)))
-        .andExpect(jsonPath("$[0].nome").value("Notebook Dell Latitude"))
-        .andExpect(jsonPath("$[0].saldo").value(10.00))
-        .andExpect(jsonPath("$[0].tipoItem").value("P"))
-        .andExpect(jsonPath("$[0].quantidadeEmprestada").value(0.00))
-        .andExpect(jsonPath("$[0].disponivelEmprestimoCalculado").value(10.00));
+        .andExpect(jsonPath("$.content", hasSize(1)))
+        .andExpect(jsonPath("$.content[0].nome").value("Notebook Dell Latitude"))
+        .andExpect(jsonPath("$.content[0].saldo").value(10.00))
+        .andExpect(jsonPath("$.content[0].tipoItem").value("P"))
+        .andExpect(jsonPath("$.content[0].quantidadeEmprestada").value(0.00))
+        .andExpect(jsonPath("$.content[0].disponivelEmprestimoCalculado").value(10.00));
   }
 
   @Test
   void testComplete_QueryVaziaComEstoque_DeveRetornarTodosComDisponibilidadeCalculada()
       throws Exception {
     mockMvc
-        .perform(get("/item/complete").param("query", "").param("hasEstoque", "true"))
+        .perform(get("/item/complete-disponivel").param("query", "").param("hasEstoque", "true"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$", hasSize(2)))
-        .andExpect(jsonPath("$[*].saldo", everyItem(greaterThan(0.0))))
+        .andExpect(jsonPath("$.content", hasSize(2)))
+        .andExpect(jsonPath("$.content[*].saldo", everyItem(greaterThan(0.0))))
         // Item permanente deve ter disponibilidade calculada
-        .andExpect(jsonPath("$[?(@.tipoItem == 'P')].disponivelEmprestimoCalculado").exists())
-        .andExpect(jsonPath("$[?(@.tipoItem == 'P')].quantidadeEmprestada").exists())
+        .andExpect(
+            jsonPath("$.content[?(@.tipoItem == 'P')].disponivelEmprestimoCalculado").exists())
+        .andExpect(jsonPath("$.content[?(@.tipoItem == 'P')].quantidadeEmprestada").exists())
         // Item de consumo NÃO deve ter disponibilidade calculada (RN-002)
-        .andExpect(jsonPath("$[?(@.tipoItem == 'C')].disponivelEmprestimoCalculado").doesNotExist())
-        .andExpect(jsonPath("$[?(@.tipoItem == 'C')].quantidadeEmprestada").exists());
+        .andExpect(
+            jsonPath("$.content[?(@.tipoItem == 'C')].disponivelEmprestimoCalculado")
+                .doesNotExist())
+        .andExpect(jsonPath("$.content[?(@.tipoItem == 'C')].quantidadeEmprestada").exists());
   }
 
   @Test
@@ -301,22 +288,25 @@ class ItemControllerIntegrationTest {
     emprestimoRepository.save(emprestimo);
 
     mockMvc
-        .perform(get("/item/complete").param("query", "").param("hasEstoque", "true"))
+        .perform(get("/item/complete-disponivel").param("query", "").param("hasEstoque", "true"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$", hasSize(2)))
+        .andExpect(jsonPath("$.content", hasSize(2)))
         // Valida cálculo de disponibilidade para item permanente: saldo(10) - emprestado(3) = 7
         .andExpect(
-            jsonPath("$[?(@.id == %d)].quantidadeEmprestada".formatted(itemPermanente.getId()))
+            jsonPath(
+                    "$.content[?(@.id == %d)].quantidadeEmprestada"
+                        .formatted(itemPermanente.getId()))
                 .value(3.00))
         .andExpect(
             jsonPath(
-                    "$[?(@.id == %d)].disponivelEmprestimoCalculado"
+                    "$.content[?(@.id == %d)].disponivelEmprestimoCalculado"
                         .formatted(itemPermanente.getId()))
                 .value(7.00))
         // Item de consumo continua sem disponibilidade calculada
         .andExpect(
             jsonPath(
-                    "$[?(@.id == %d)].disponivelEmprestimoCalculado".formatted(itemConsumo.getId()))
+                    "$.content[?(@.id == %d)].disponivelEmprestimoCalculado"
+                        .formatted(itemConsumo.getId()))
                 .doesNotExist());
   }
 
@@ -327,19 +317,20 @@ class ItemControllerIntegrationTest {
     itemRepository.save(itemPermanente);
 
     mockMvc
-        .perform(get("/item/complete").param("query", "").param("hasEstoque", "false"))
+        .perform(get("/item/complete-disponivel").param("query", "").param("hasEstoque", "false"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$", hasSize(2)))
+        .andExpect(jsonPath("$.content", hasSize(2)))
         // Item permanente com saldo zero deve ter disponibilidade zero (RN-003)
         .andExpect(
             jsonPath(
-                    "$[?(@.id == %d)].disponivelEmprestimoCalculado"
+                    "$.content[?(@.id == %d)].disponivelEmprestimoCalculado"
                         .formatted(itemPermanente.getId()))
                 .value(0.00))
         // Item de consumo continua sem disponibilidade calculada
         .andExpect(
             jsonPath(
-                    "$[?(@.id == %d)].disponivelEmprestimoCalculado".formatted(itemConsumo.getId()))
+                    "$.content[?(@.id == %d)].disponivelEmprestimoCalculado"
+                        .formatted(itemConsumo.getId()))
                 .doesNotExist());
   }
 
@@ -350,12 +341,12 @@ class ItemControllerIntegrationTest {
     itemRepository.save(itemConsumo);
 
     mockMvc
-        .perform(get("/item/complete").param("query", "").param("hasEstoque", "false"))
+        .perform(get("/item/complete-disponivel").param("query", "").param("hasEstoque", "false"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$", hasSize(2)))
+        .andExpect(jsonPath("$.content", hasSize(2)))
         // Deve retornar ambos os itens, mesmo com saldo zero
-        .andExpect(jsonPath("$[?(@.id == %d)]".formatted(itemPermanente.getId())).exists())
-        .andExpect(jsonPath("$[?(@.id == %d)]".formatted(itemConsumo.getId())).exists());
+        .andExpect(jsonPath("$.content[?(@.id == %d)]".formatted(itemPermanente.getId())).exists())
+        .andExpect(jsonPath("$.content[?(@.id == %d)]".formatted(itemConsumo.getId())).exists());
   }
 
   @Test
@@ -365,12 +356,12 @@ class ItemControllerIntegrationTest {
     itemRepository.save(itemConsumo);
 
     mockMvc
-        .perform(get("/item/complete").param("query", "").param("hasEstoque", "true"))
+        .perform(get("/item/complete-disponivel").param("query", "").param("hasEstoque", "true"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$", hasSize(1)))
+        .andExpect(jsonPath("$.content", hasSize(1)))
         // Deve retornar apenas o item permanente com saldo > 0
-        .andExpect(jsonPath("$[0].id").value(itemPermanente.getId()))
-        .andExpect(jsonPath("$[0].saldo").value(10.00));
+        .andExpect(jsonPath("$.content[0].id").value(itemPermanente.getId()))
+        .andExpect(jsonPath("$.content[0].saldo").value(10.00));
   }
 
   @Test
@@ -392,16 +383,18 @@ class ItemControllerIntegrationTest {
     emprestimoRepository.save(emprestimo);
 
     mockMvc
-        .perform(get("/item/complete").param("query", "").param("hasEstoque", "false"))
+        .perform(get("/item/complete-disponivel").param("query", "").param("hasEstoque", "false"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$", hasSize(2)))
+        .andExpect(jsonPath("$.content", hasSize(2)))
         // Disponibilidade nunca deve ser negativa (RN-003): 10 - 15 = -5 → 0
         .andExpect(
-            jsonPath("$[?(@.id == %d)].quantidadeEmprestada".formatted(itemPermanente.getId()))
+            jsonPath(
+                    "$.content[?(@.id == %d)].quantidadeEmprestada"
+                        .formatted(itemPermanente.getId()))
                 .value(15.00))
         .andExpect(
             jsonPath(
-                    "$[?(@.id == %d)].disponivelEmprestimoCalculado"
+                    "$.content[?(@.id == %d)].disponivelEmprestimoCalculado"
                         .formatted(itemPermanente.getId()))
                 .value(0));
   }
@@ -409,12 +402,13 @@ class ItemControllerIntegrationTest {
   @Test
   void testComplete_QueryEspecifica_DeveFiltrarCorretamente() throws Exception {
     mockMvc
-        .perform(get("/item/complete").param("query", "Cabo").param("hasEstoque", "true"))
+        .perform(
+            get("/item/complete-disponivel").param("query", "Cabo").param("hasEstoque", "true"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$", hasSize(1)))
-        .andExpect(jsonPath("$[0].nome").value("Cabo HDMI"))
-        .andExpect(jsonPath("$[0].tipoItem").value("C"))
-        .andExpect(jsonPath("$[0].disponivelEmprestimoCalculado").doesNotExist());
+        .andExpect(jsonPath("$.content", hasSize(1)))
+        .andExpect(jsonPath("$.content[0].nome").value("Cabo HDMI"))
+        .andExpect(jsonPath("$.content[0].tipoItem").value("C"))
+        .andExpect(jsonPath("$.content[0].disponivelEmprestimoCalculado").doesNotExist());
   }
 
   @Test
@@ -486,28 +480,30 @@ class ItemControllerIntegrationTest {
   @Test
   void testDtoSerialization_Complete_RetornaItemResponseDtoComDisponibilidade() throws Exception {
     mockMvc
-        .perform(get("/item/complete").param("query", "Dell").param("hasEstoque", "true"))
+        .perform(
+            get("/item/complete-disponivel").param("query", "Dell").param("hasEstoque", "true"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$[0].id").exists())
-        .andExpect(jsonPath("$[0].nome").value("Notebook Dell Latitude"))
-        .andExpect(jsonPath("$[0].grupo.descricao").value("Eletrônicos"))
-        .andExpect(jsonPath("$[0].saldo").value(10.00))
-        .andExpect(jsonPath("$[0].tipoItem").value("P"))
-        .andExpect(jsonPath("$[0].quantidadeEmprestada").value(0.00))
-        .andExpect(jsonPath("$[0].disponivelEmprestimoCalculado").value(10.00));
+        .andExpect(jsonPath("$.content[0].id").exists())
+        .andExpect(jsonPath("$.content[0].nome").value("Notebook Dell Latitude"))
+        .andExpect(jsonPath("$.content[0].grupo.descricao").value("Eletrônicos"))
+        .andExpect(jsonPath("$.content[0].saldo").value(10.00))
+        .andExpect(jsonPath("$.content[0].tipoItem").value("P"))
+        .andExpect(jsonPath("$.content[0].quantidadeEmprestada").value(0.00))
+        .andExpect(jsonPath("$.content[0].disponivelEmprestimoCalculado").value(10.00));
   }
 
   @Test
   void testDtoSerialization_Complete_ItemConsumo_DeveTerDisponibilidadeNula() throws Exception {
     mockMvc
-        .perform(get("/item/complete").param("query", "HDMI").param("hasEstoque", "true"))
+        .perform(
+            get("/item/complete-disponivel").param("query", "HDMI").param("hasEstoque", "true"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$[0].id").exists())
-        .andExpect(jsonPath("$[0].nome").value("Cabo HDMI"))
-        .andExpect(jsonPath("$[0].tipoItem").value("C"))
-        .andExpect(jsonPath("$[0].saldo").value(50.00))
-        .andExpect(jsonPath("$[0].quantidadeEmprestada").value(0.00))
+        .andExpect(jsonPath("$.content[0].id").exists())
+        .andExpect(jsonPath("$.content[0].nome").value("Cabo HDMI"))
+        .andExpect(jsonPath("$.content[0].tipoItem").value("C"))
+        .andExpect(jsonPath("$.content[0].saldo").value(50.00))
+        .andExpect(jsonPath("$.content[0].quantidadeEmprestada").value(0.00))
         // Importante: Item de consumo não deve ter disponibilidade calculada (RN-002)
-        .andExpect(jsonPath("$[0].disponivelEmprestimoCalculado").doesNotExist());
+        .andExpect(jsonPath("$.content[0].disponivelEmprestimoCalculado").doesNotExist());
   }
 }

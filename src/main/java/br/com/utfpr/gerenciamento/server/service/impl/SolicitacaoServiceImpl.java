@@ -1,14 +1,18 @@
 package br.com.utfpr.gerenciamento.server.service.impl;
 
+import br.com.utfpr.gerenciamento.server.dto.SolicitacaoListDto;
 import br.com.utfpr.gerenciamento.server.dto.SolicitacaoResponseDto;
 import br.com.utfpr.gerenciamento.server.model.Solicitacao;
 import br.com.utfpr.gerenciamento.server.model.Usuario;
 import br.com.utfpr.gerenciamento.server.repository.SolicitacaoRepository;
+import br.com.utfpr.gerenciamento.server.repository.projection.SolicitacaoListProjection;
 import br.com.utfpr.gerenciamento.server.service.SolicitacaoService;
 import br.com.utfpr.gerenciamento.server.service.UsuarioService;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Map;
 import org.modelmapper.ModelMapper;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,6 +41,15 @@ public class SolicitacaoServiceImpl
   }
 
   @Override
+  protected Map<String, String> getSearchableFieldMappings() {
+    return Map.of(
+        "id", "id",
+        "descricao", "descricao",
+        "dataSolicitacao", "dataSolicitacao",
+        "usuarioNome", "usuario.nome");
+  }
+
+  @Override
   public SolicitacaoResponseDto toDto(Solicitacao entity) {
     return modelMapper.map(entity, SolicitacaoResponseDto.class);
   }
@@ -48,10 +61,20 @@ public class SolicitacaoServiceImpl
 
   @Override
   @Transactional(readOnly = true)
+  public Page<SolicitacaoListDto> findAllPagedList(String filter, Pageable pageable) {
+    Page<SolicitacaoListProjection> page;
+    if (filter != null && !filter.isBlank()) {
+      page = solicitacaoRepository.findAllProjectedWithFilter(filter, pageable);
+    } else {
+      page = solicitacaoRepository.findAllProjected(pageable);
+    }
+    return page.map(SolicitacaoListDto::fromProjection);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
   public List<SolicitacaoResponseDto> findAllByUsername(String username) {
     Usuario usuario = usuarioService.toEntity(usuarioService.findByUsername(username));
-    return solicitacaoRepository.findAllByUsuario(usuario).stream()
-        .map(solicitacao -> toDto(solicitacao))
-        .collect(Collectors.toList());
+    return solicitacaoRepository.findAllByUsuario(usuario).stream().map(this::toDto).toList();
   }
 }

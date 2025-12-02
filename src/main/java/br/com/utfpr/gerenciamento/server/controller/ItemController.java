@@ -1,16 +1,19 @@
 package br.com.utfpr.gerenciamento.server.controller;
 
+import br.com.utfpr.gerenciamento.server.dto.BaseListDto;
+import br.com.utfpr.gerenciamento.server.dto.ItemListDto;
 import br.com.utfpr.gerenciamento.server.dto.ItemResponseDto;
 import br.com.utfpr.gerenciamento.server.model.Item;
 import br.com.utfpr.gerenciamento.server.model.ItemImage;
 import br.com.utfpr.gerenciamento.server.service.CrudService;
 import br.com.utfpr.gerenciamento.server.service.ItemService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartHttpServletRequest;
 
@@ -19,7 +22,12 @@ import org.springframework.web.multipart.MultipartHttpServletRequest;
 public class ItemController extends CrudController<Item, Long, ItemResponseDto> {
 
   private final ItemService itemService;
-  private List<ItemImage> imagesToCopy;
+
+  /**
+   * ThreadLocal para armazenar imagens a copiar durante o ciclo de vida da requisicao. Evita race
+   * conditions em requisicoes concorrentes (controller e singleton).
+   */
+  private final ThreadLocal<List<ItemImage>> imagesToCopy = new ThreadLocal<>();
 
   public ItemController(ItemService itemService) {
     this.itemService = itemService;
@@ -31,11 +39,16 @@ public class ItemController extends CrudController<Item, Long, ItemResponseDto> 
   }
 
   @Override
+  protected Class<? extends BaseListDto> getListDtoClass() {
+    return ItemListDto.class;
+  }
+
+  @Override
   public void preSave(Item object) {
     if (object.getId() == null
         && object.getImageItem() != null
         && !object.getImageItem().isEmpty()) {
-      this.imagesToCopy = object.getImageItem();
+      this.imagesToCopy.set(object.getImageItem());
       object.setImageItem(null);
     }
   }
@@ -52,42 +65,81 @@ public class ItemController extends CrudController<Item, Long, ItemResponseDto> 
     return getService().findAll(Sort.by("id"));
   }
 
+  /**
+   * Lista paginada de itens com filtro textual usando DTO simplificado.
+   *
+   * <p><b>Otimização:</b> Retorna apenas campos necessários para listagem via projeção SQL.
+   *
+   * @param page Número da página (0-indexed)
+   * @param size Tamanho da página
+   * @param filter Filtro opcional (busca textual em todos os campos)
+   * @param sort Ordenacao no formato "campo,direcao" (ex: "nome,desc")
+   * @return Página de itens simplificados
+   */
   @Override
   @GetMapping("page")
-  public Page<ItemResponseDto> findAllPaged(
+  public Page<? extends BaseListDto> findAllPaged(
       @RequestParam("page") int page,
       @RequestParam("size") int size,
       @RequestParam(required = false) String filter,
-      @RequestParam(required = false) String order,
-      @RequestParam(required = false) Boolean asc) {
-
-    PageRequest pageRequest = PageRequest.of(page, size);
-    if (order != null && asc != null) {
-      pageRequest =
-          PageRequest.of(page, size, asc ? Sort.Direction.ASC : Sort.Direction.DESC, order);
-    }
-
-    if (filter != null && !filter.isEmpty()) {
-      Specification<Item> spec = getService().filterByAllFields(filter);
-      return getService().findAllSpecification(spec, pageRequest);
-    }
-
-    return getService().findAll(pageRequest);
+      @RequestParam(required = false) String sort) {
+    Sort sortObj = parseSortParameter(sort);
+    PageRequest pageRequest = PageRequest.of(page, size, sortObj);
+    return itemService.findAllPagedList(filter, pageRequest);
   }
 
   @Override
   public void postSave(Item object) {
-    if (this.imagesToCopy != null) {
-      itemService.copyImagesItem(this.imagesToCopy, object.getId());
+    List<ItemImage> images = this.imagesToCopy.get();
+    try {
+      if (images != null) {
+        itemService.copyImagesItem(images, object.getId());
+      }
+    } finally {
+      this.imagesToCopy.remove();
     }
-    this.imagesToCopy = null;
   }
 
-  @GetMapping("/complete")
-  public List<ItemResponseDto> complete(
-      @RequestParam("query") String query, @RequestParam("hasEstoque") Boolean hasEstoque) {
-    // TODO: Migrar parâmetro para disponivelParaEmprestimo quando atualizar frontend
-    return itemService.itemComplete(query, hasEstoque);
+  /**
+   * Endpoint paginado para autocomplete de itens com disponibilidade.
+   *
+   * <p>Sobrescreve o complete generico do CrudController para calcular disponibilidade. Retorna
+   * todos os itens (mesmo sem estoque). Para filtrar por disponibilidade, use complete-disponivel.
+   *
+   * @param query Texto para filtro por nome
+   * @param page Numero da pagina (0-indexed, minimo: 0)
+   * @param size Tamanho da pagina (default: 10, minimo: 1, maximo: 100)
+   * @return Pagina de ItemResponseDto com disponibilidade calculada
+   */
+  @Override
+  @GetMapping("complete")
+  public Page<ItemResponseDto> complete(
+      @RequestParam(required = false) String query,
+      @RequestParam(defaultValue = "0") @Min(0) int page,
+      @RequestParam(defaultValue = "10") @Min(1) @Max(100) int size) {
+    PageRequest pageRequest = PageRequest.of(page, size);
+    // Para Item, usamos o metodo especifico que calcula disponibilidade
+    // hasEstoque=false para retornar todos os itens (mesmo sem estoque)
+    return itemService.itemCompletePaged(query, false, pageRequest);
+  }
+
+  /**
+   * Endpoint paginado para autocomplete de itens com filtro de estoque.
+   *
+   * @param query Texto para filtro por nome
+   * @param hasEstoque Se true, filtra apenas itens disponiveis para emprestimo (default: true)
+   * @param page Numero da pagina (0-indexed, minimo: 0)
+   * @param size Tamanho da pagina (default: 10, minimo: 1, maximo: 100)
+   * @return Pagina de ItemResponseDto com disponibilidade calculada
+   */
+  @GetMapping("complete-disponivel")
+  public Page<ItemResponseDto> completeDisponivel(
+      @RequestParam(required = false) String query,
+      @RequestParam(defaultValue = "true") Boolean hasEstoque,
+      @RequestParam(defaultValue = "0") @Min(0) int page,
+      @RequestParam(defaultValue = "10") @Min(1) @Max(100) int size) {
+    PageRequest pageRequest = PageRequest.of(page, size);
+    return itemService.itemCompletePaged(query, hasEstoque, pageRequest);
   }
 
   @PostMapping("upload-images")
@@ -109,5 +161,11 @@ public class ItemController extends CrudController<Item, Long, ItemResponseDto> 
   public void deleteImageItem(
       @PathVariable("idItem") Long idItem, @RequestBody ItemImage itemImage) {
     itemService.deleteImage(itemImage, idItem);
+  }
+
+  @PostMapping("set-cover-image/{idItem}/{idImage}")
+  public void setCoverImage(
+      @PathVariable("idItem") Long idItem, @PathVariable("idImage") Long idImage) {
+    itemService.setCoverImage(idItem, idImage);
   }
 }

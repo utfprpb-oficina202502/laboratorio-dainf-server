@@ -2,8 +2,11 @@ package br.com.utfpr.gerenciamento.server.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.when;
 
+import br.com.utfpr.gerenciamento.server.dto.ItemListDto;
 import br.com.utfpr.gerenciamento.server.dto.ItemResponseDto;
 import br.com.utfpr.gerenciamento.server.enumeration.TipoItem;
 import br.com.utfpr.gerenciamento.server.model.Item;
@@ -96,46 +99,41 @@ class ItemControllerTest {
   @Test
   void testFindAllPaged_DeveRetornarPaginaDoService() {
     // Given
-    ItemResponseDto itemDto = new ItemResponseDto();
-    itemDto.setId(1L);
-    itemDto.setTipoItem(TipoItem.P);
-    itemDto.setSaldo(new BigDecimal("8"));
+    ItemListDto itemListDto =
+        ItemListDto.builder().id(1L).nome("Item Teste").saldo(new BigDecimal("8")).build();
 
-    Page<ItemResponseDto> page = new PageImpl<>(List.of(itemDto));
+    Page<ItemListDto> page = new PageImpl<>(List.of(itemListDto));
 
-    when(itemService.findAll(any(PageRequest.class))).thenReturn(page);
+    when(itemService.findAllPagedList(isNull(), any(PageRequest.class))).thenReturn(page);
 
     // When
-    Page<ItemResponseDto> result = itemController.findAllPaged(0, 10, null, null, null);
+    Page<?> result = itemController.findAllPaged(0, 10, null, null);
 
     // Then
     assertThat(result.getContent()).hasSize(1);
-    assertThat(result.getContent().get(0).getId()).isEqualTo(1L);
-    assertThat(result.getContent().get(0).getTipoItem()).isEqualTo(TipoItem.P);
+    assertThat(((ItemListDto) result.getContent().get(0)).getId()).isEqualTo(1L);
   }
 
   @Test
   void testFindAllPaged_ComFiltro_DeveRetornarPaginaFiltrada() {
     // Given
-    ItemResponseDto itemDto = new ItemResponseDto();
-    itemDto.setId(1L);
-    itemDto.setTipoItem(TipoItem.P);
-    itemDto.setSaldo(new BigDecimal("8"));
+    ItemListDto itemListDto =
+        ItemListDto.builder().id(1L).nome("Item Teste").saldo(new BigDecimal("8")).build();
 
-    Page<ItemResponseDto> page = new PageImpl<>(List.of(itemDto));
+    Page<ItemListDto> page = new PageImpl<>(List.of(itemListDto));
 
-    when(itemService.findAllSpecification(any(), any(PageRequest.class))).thenReturn(page);
+    when(itemService.findAllPagedList(eq("filtro"), any(PageRequest.class))).thenReturn(page);
 
     // When
-    Page<ItemResponseDto> result = itemController.findAllPaged(0, 10, "filtro", "nome", true);
+    Page<?> result = itemController.findAllPaged(0, 10, "filtro", "nome,asc");
 
     // Then
     assertThat(result.getContent()).hasSize(1);
-    assertThat(result.getContent().get(0).getId()).isEqualTo(1L);
+    assertThat(((ItemListDto) result.getContent().get(0)).getId()).isEqualTo(1L);
   }
 
   @Test
-  void testComplete_DeveRetornarListaCompleta() {
+  void testComplete_DeveRetornarPaginaCompleta() {
     // Given
     ItemResponseDto itemDto1 = new ItemResponseDto();
     itemDto1.setId(1L);
@@ -146,16 +144,42 @@ class ItemControllerTest {
     itemDto2.setTipoItem(TipoItem.C);
 
     List<ItemResponseDto> dtos = Arrays.asList(itemDto1, itemDto2);
+    PageRequest pageRequest = PageRequest.of(0, 10);
+    Page<ItemResponseDto> pageResult = new PageImpl<>(dtos, pageRequest, 2);
 
-    when(itemService.itemComplete("query", true)).thenReturn(dtos);
+    // complete() agora usa hasEstoque=false por padrao
+    when(itemService.itemCompletePaged("query", false, pageRequest)).thenReturn(pageResult);
 
-    // When
-    List<ItemResponseDto> result = itemController.complete("query", true);
+    // When - complete() herdado (sem hasEstoque)
+    Page<ItemResponseDto> result = itemController.complete("query", 0, 10);
 
     // Then
-    assertThat(result).hasSize(2);
-    assertThat(result.get(0).getId()).isEqualTo(1L);
-    assertThat(result.get(1).getId()).isEqualTo(2L);
+    assertThat(result.getContent()).hasSize(2);
+    assertThat(result.getContent().get(0).getId()).isEqualTo(1L);
+    assertThat(result.getContent().get(1).getId()).isEqualTo(2L);
+    assertThat(result.getTotalElements()).isEqualTo(2);
+  }
+
+  @Test
+  void testCompleteDisponivel_DeveRetornarPaginaComFiltroEstoque() {
+    // Given
+    ItemResponseDto itemDto1 = new ItemResponseDto();
+    itemDto1.setId(1L);
+    itemDto1.setTipoItem(TipoItem.P);
+
+    List<ItemResponseDto> dtos = Arrays.asList(itemDto1);
+    PageRequest pageRequest = PageRequest.of(0, 10);
+    Page<ItemResponseDto> pageResult = new PageImpl<>(dtos, pageRequest, 1);
+
+    when(itemService.itemCompletePaged("query", true, pageRequest)).thenReturn(pageResult);
+
+    // When - completeDisponivel() com hasEstoque=true
+    Page<ItemResponseDto> result = itemController.completeDisponivel("query", true, 0, 10);
+
+    // Then
+    assertThat(result.getContent()).hasSize(1);
+    assertThat(result.getContent().get(0).getId()).isEqualTo(1L);
+    assertThat(result.getTotalElements()).isEqualTo(1);
   }
 
   @Test
@@ -225,5 +249,14 @@ class ItemControllerTest {
 
     // Then
     assertThat(result).isEqualTo(5L);
+  }
+
+  @Test
+  void testSetCoverImage_DeveDelegarParaService() {
+    // When
+    itemController.setCoverImage(1L, 2L);
+
+    // Then
+    Mockito.verify(itemService).setCoverImage(1L, 2L);
   }
 }

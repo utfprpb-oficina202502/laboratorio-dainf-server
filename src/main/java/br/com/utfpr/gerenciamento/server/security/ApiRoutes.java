@@ -41,6 +41,12 @@ public final class ApiRoutes {
   /** Controle de saída de itens */
   public static final String SAIDA = "/saida/**";
 
+  /** Gerenciamento de reservas */
+  public static final String RESERVA = "/reserva/**";
+
+  /** Solicitações de compra */
+  public static final String SOLICITACAO_COMPRA = "/solicitacao-compra/**";
+
   // ============ Item Endpoints ============
   /** Gerenciamento de itens (equipamentos) */
   public static final String ITEM = "/item/**";
@@ -73,6 +79,12 @@ public final class ApiRoutes {
   /** Busca de usuário por username */
   public static final String USUARIO_FIND_BY_USERNAME = "/usuario/find-by-username/**";
 
+  /** Busca de usuário por ID (controlado por @PreAuthorize no controller) */
+  public static final String USUARIO_BY_ID = "/usuario/{id}";
+
+  /** Lista de permissões disponíveis */
+  public static final String USUARIO_PERMISSAO = "/usuario/permissao";
+
   // ============ Empréstimo Endpoints ============
   /** Base para todos os endpoints de empréstimo */
   public static final String EMPRESTIMO = "/emprestimo/**";
@@ -82,6 +94,10 @@ public final class ApiRoutes {
 
   /** Salvar devolução */
   public static final String EMPRESTIMO_DEVOLUCAO = "/emprestimo/save-devolucao";
+
+  /** Buscar empréstimos por username */
+  public static final String EMPRESTIMO_FIND_ALL_BY_USERNAME =
+      "/emprestimo/find-all-by-username/**";
 
   // ============ Endpoints Públicos ============
   /** Autenticação (login) */
@@ -101,6 +117,16 @@ public final class ApiRoutes {
   /** Base para todos os endpoints de nada consta */
   public static final String NADACONSTA = "/nadaconsta/**";
 
-  /** Endpoint de solicitação de nada consta */
-  public static final String NADACONSTA_SOLICITAR = "/nadaconsta/solicitar";
+  // ============ Auditoria Endpoints ============
+  /** Histórico de auditoria por entidade */
+  public static final String AUDIT_HISTORICO = "/audit/{entidade}/{id}";
+
+  /** Contagem de revisões */
+  public static final String AUDIT_COUNT = "/audit/{entidade}/{id}/count";
+
+  /** Informações de revisão específica */
+  public static final String AUDIT_REVISAO = "/audit/revisao/{revisao}";
+
+  /** Lista de entidades auditadas */
+  public static final String AUDIT_ENTIDADES = "/audit/entidades";
 }

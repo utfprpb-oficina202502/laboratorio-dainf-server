@@ -9,7 +9,7 @@ import lombok.*;
 @AllArgsConstructor
 @ToString
 @Builder
-public class RelatorioResponseDTO {
+public class RelatorioResponseDTO implements BaseListDto {
   private Long id;
 
   private String nome;

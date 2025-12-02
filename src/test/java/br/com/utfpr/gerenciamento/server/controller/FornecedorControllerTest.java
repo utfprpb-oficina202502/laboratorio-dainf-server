@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import static org.mockito.Mockito.any;
 
+import br.com.utfpr.gerenciamento.server.dto.FornecedorListDto;
 import br.com.utfpr.gerenciamento.server.dto.FornecedorResponseDto;
 import br.com.utfpr.gerenciamento.server.model.Fornecedor;
 import br.com.utfpr.gerenciamento.server.service.FornecedorService;
@@ -18,7 +19,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
 
 @ExtendWith(MockitoExtension.class)
 class FornecedorControllerTest {
@@ -29,7 +29,6 @@ class FornecedorControllerTest {
 
   private Fornecedor fornecedor;
   private FornecedorResponseDto fornecedorResponseDto;
-  private List<Fornecedor> fornecedores;
   private List<FornecedorResponseDto> fornecedoresDto;
 
   @BeforeEach
@@ -61,7 +60,6 @@ class FornecedorControllerTest {
 
     FornecedorResponseDto fornecedorResponseDto2 = createFornecedorResponseDtoAlternativo();
 
-    fornecedores = List.of(fornecedor, fornecedor2);
     fornecedoresDto = List.of(fornecedorResponseDto, fornecedorResponseDto2);
   }
 
@@ -76,32 +74,31 @@ class FornecedorControllerTest {
   @Test
   void testComplete() {
     String query = "teste";
-    when(fornecedorService.completeFornecedor(query)).thenReturn(fornecedores);
-    when(fornecedorService.toDto(any(Fornecedor.class)))
-        .thenReturn(fornecedorResponseDto)
-        .thenReturn(createFornecedorResponseDtoAlternativo());
+    int page = 0;
+    int size = 10;
+    Page<FornecedorResponseDto> pageResult = new PageImpl<>(fornecedoresDto);
+    when(fornecedorService.complete(eq(query), any(PageRequest.class))).thenReturn(pageResult);
 
-    List<FornecedorResponseDto> result = fornecedorController.complete(query);
+    Page<FornecedorResponseDto> result = fornecedorController.complete(query, page, size);
 
     assertNotNull(result);
-    assertEquals(2, result.size());
-    verify(fornecedorService).completeFornecedor(query);
-    verify(fornecedorService, times(2)).toDto(any(Fornecedor.class));
+    assertEquals(2, result.getContent().size());
+    verify(fornecedorService).complete(eq(query), any(PageRequest.class));
   }
 
   @Test
   void testCompleteWithEmptyQuery() {
     String query = "";
-    when(fornecedorService.completeFornecedor(query)).thenReturn(fornecedores);
-    when(fornecedorService.toDto(any(Fornecedor.class)))
-        .thenReturn(fornecedorResponseDto)
-        .thenReturn(createFornecedorResponseDtoAlternativo());
+    int page = 0;
+    int size = 10;
+    Page<FornecedorResponseDto> pageResult = new PageImpl<>(fornecedoresDto);
+    when(fornecedorService.complete(eq(query), any(PageRequest.class))).thenReturn(pageResult);
 
-    List<FornecedorResponseDto> result = fornecedorController.complete(query);
+    Page<FornecedorResponseDto> result = fornecedorController.complete(query, page, size);
 
     assertNotNull(result);
-    assertEquals(2, result.size());
-    verify(fornecedorService).completeFornecedor(query);
+    assertEquals(2, result.getContent().size());
+    verify(fornecedorService).complete(eq(query), any(PageRequest.class));
   }
 
   @Test
@@ -178,22 +175,23 @@ class FornecedorControllerTest {
     int page = 0;
     int size = 10;
     String filter = "teste";
-    String order = "nome";
-    Boolean asc = true;
+    String sort = "nome,asc";
 
-    Page<FornecedorResponseDto> pageResult = new PageImpl<>(fornecedoresDto);
-    when(fornecedorService.filterByAllFields(filter)).thenReturn(mock(Specification.class));
-    when(fornecedorService.findAllSpecification(any(Specification.class), any(PageRequest.class)))
+    FornecedorListDto listDto =
+        FornecedorListDto.builder()
+            .id(1L)
+            .nomeFantasia("Fornecedor Teste")
+            .razaoSocial("Empresa Teste Ltda")
+            .build();
+    Page<FornecedorListDto> pageResult = new PageImpl<>(List.of(listDto));
+    when(fornecedorService.findAllPagedList(eq(filter), any(PageRequest.class)))
         .thenReturn(pageResult);
 
-    Page<FornecedorResponseDto> result =
-        fornecedorController.findAllPaged(page, size, filter, order, asc);
+    Page<?> result = fornecedorController.findAllPaged(page, size, filter, sort);
 
     assertNotNull(result);
-    assertEquals(2, result.getContent().size());
-    verify(fornecedorService).filterByAllFields(filter);
-    verify(fornecedorService)
-        .findAllSpecification(any(Specification.class), any(PageRequest.class));
+    assertEquals(1, result.getContent().size());
+    verify(fornecedorService).findAllPagedList(eq(filter), any(PageRequest.class));
   }
 
   @Test
@@ -201,15 +199,21 @@ class FornecedorControllerTest {
     int page = 0;
     int size = 10;
 
-    Page<FornecedorResponseDto> pageResult = new PageImpl<>(fornecedoresDto);
-    when(fornecedorService.findAll(any(PageRequest.class))).thenReturn(pageResult);
+    FornecedorListDto listDto =
+        FornecedorListDto.builder()
+            .id(1L)
+            .nomeFantasia("Fornecedor Teste")
+            .razaoSocial("Empresa Teste Ltda")
+            .build();
+    Page<FornecedorListDto> pageResult = new PageImpl<>(List.of(listDto));
+    when(fornecedorService.findAllPagedList(isNull(), any(PageRequest.class)))
+        .thenReturn(pageResult);
 
-    Page<FornecedorResponseDto> result =
-        fornecedorController.findAllPaged(page, size, null, null, null);
+    Page<?> result = fornecedorController.findAllPaged(page, size, null, null);
 
     assertNotNull(result);
-    assertEquals(2, result.getContent().size());
-    verify(fornecedorService).findAll(any(PageRequest.class));
+    assertEquals(1, result.getContent().size());
+    verify(fornecedorService).findAllPagedList(isNull(), any(PageRequest.class));
   }
 
   @Test
@@ -218,33 +222,44 @@ class FornecedorControllerTest {
     int size = 10;
     String filter = "";
 
-    Page<FornecedorResponseDto> pageResult = new PageImpl<>(fornecedoresDto);
-    when(fornecedorService.findAll(any(PageRequest.class))).thenReturn(pageResult);
+    FornecedorListDto listDto =
+        FornecedorListDto.builder()
+            .id(1L)
+            .nomeFantasia("Fornecedor Teste")
+            .razaoSocial("Empresa Teste Ltda")
+            .build();
+    Page<FornecedorListDto> pageResult = new PageImpl<>(List.of(listDto));
+    when(fornecedorService.findAllPagedList(eq(filter), any(PageRequest.class)))
+        .thenReturn(pageResult);
 
-    Page<FornecedorResponseDto> result =
-        fornecedorController.findAllPaged(page, size, filter, null, null);
+    Page<?> result = fornecedorController.findAllPaged(page, size, filter, null);
 
     assertNotNull(result);
-    assertEquals(2, result.getContent().size());
-    verify(fornecedorService).findAll(any(PageRequest.class));
+    assertEquals(1, result.getContent().size());
+    verify(fornecedorService).findAllPagedList(eq(filter), any(PageRequest.class));
   }
 
   @Test
   void testFindAllPagedWithOrderButNoFilter() {
     int page = 0;
     int size = 10;
-    String order = "nome";
-    Boolean asc = false;
+    String sort = "nome,desc";
 
-    Page<FornecedorResponseDto> pageResult = new PageImpl<>(fornecedoresDto);
-    when(fornecedorService.findAll(any(PageRequest.class))).thenReturn(pageResult);
+    FornecedorListDto listDto =
+        FornecedorListDto.builder()
+            .id(1L)
+            .nomeFantasia("Fornecedor Teste")
+            .razaoSocial("Empresa Teste Ltda")
+            .build();
+    Page<FornecedorListDto> pageResult = new PageImpl<>(List.of(listDto));
+    when(fornecedorService.findAllPagedList(isNull(), any(PageRequest.class)))
+        .thenReturn(pageResult);
 
-    Page<FornecedorResponseDto> result =
-        fornecedorController.findAllPaged(page, size, null, order, asc);
+    Page<?> result = fornecedorController.findAllPaged(page, size, null, sort);
 
     assertNotNull(result);
-    assertEquals(2, result.getContent().size());
-    verify(fornecedorService).findAll(any(PageRequest.class));
+    assertEquals(1, result.getContent().size());
+    verify(fornecedorService).findAllPagedList(isNull(), any(PageRequest.class));
   }
 
   @Test

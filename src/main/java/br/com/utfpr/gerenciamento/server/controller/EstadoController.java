@@ -4,8 +4,8 @@ import br.com.utfpr.gerenciamento.server.dto.EstadoResponseDto;
 import br.com.utfpr.gerenciamento.server.model.Estado;
 import br.com.utfpr.gerenciamento.server.service.CrudService;
 import br.com.utfpr.gerenciamento.server.service.EstadoService;
-import java.util.List;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("estado")
@@ -20,10 +20,5 @@ public class EstadoController extends CrudController<Estado, Long, EstadoRespons
   @Override
   protected CrudService<Estado, Long, EstadoResponseDto> getService() {
     return estadoService;
-  }
-
-  @GetMapping("complete")
-  public List<EstadoResponseDto> complete(@RequestParam("query") String query) {
-    return estadoService.estadoComplete(query);
   }
 }

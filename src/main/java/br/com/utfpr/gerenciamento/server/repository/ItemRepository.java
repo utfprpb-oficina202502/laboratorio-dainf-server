@@ -2,10 +2,14 @@ package br.com.utfpr.gerenciamento.server.repository;
 
 import br.com.utfpr.gerenciamento.server.model.Item;
 import br.com.utfpr.gerenciamento.server.repository.projection.ItemCompleteWithDisponibilidade;
+import br.com.utfpr.gerenciamento.server.repository.projection.ItemListProjection;
+import br.com.utfpr.gerenciamento.server.repository.projection.ItemSimpleProjection;
 import br.com.utfpr.gerenciamento.server.repository.projection.ItemWithQtdeEmprestada;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -21,6 +25,49 @@ public interface ItemRepository extends JpaRepository<Item, Long>, JpaSpecificat
       String query, BigDecimal saldo);
 
   List<Item> findByGrupoIdOrderByNome(Long idGrupo);
+
+  /**
+   * Busca paginada de itens por grupo com filtro opcional.
+   *
+   * @param grupoId ID do grupo
+   * @param filter Texto para filtrar por id ou nome (case insensitive)
+   * @param pageable Configuracao de paginacao
+   * @return Pagina de itens do grupo
+   */
+  @Query(
+      """
+      SELECT i FROM Item i
+      WHERE i.grupo.id = :grupoId
+      AND (:filter IS NULL OR :filter = ''
+           OR LOWER(i.nome) LIKE LOWER(CONCAT('%', :filter, '%'))
+           OR CAST(i.id AS string) LIKE CONCAT('%', :filter, '%'))
+      ORDER BY i.nome
+      """)
+  Page<Item> findByGrupoIdPaged(
+      @Param("grupoId") Long grupoId, @Param("filter") String filter, Pageable pageable);
+
+  /**
+   * Busca paginada simplificada de itens por grupo (apenas id e nome).
+   *
+   * <p>Otimizada para listagens que não precisam de todos os campos do Item.
+   *
+   * @param grupoId ID do grupo
+   * @param filter Texto para filtrar por id ou nome (case insensitive)
+   * @param pageable Configuracao de paginacao
+   * @return Pagina de projeções simplificadas
+   */
+  @Query(
+      """
+      SELECT i.id as id, i.nome as nome
+      FROM Item i
+      WHERE i.grupo.id = :grupoId
+      AND (:filter IS NULL OR :filter = ''
+           OR LOWER(i.nome) LIKE LOWER(CONCAT('%', :filter, '%'))
+           OR CAST(i.id AS string) LIKE CONCAT('%', :filter, '%'))
+      ORDER BY i.nome
+      """)
+  Page<ItemSimpleProjection> findByGrupoIdPagedSimple(
+      @Param("grupoId") Long grupoId, @Param("filter") String filter, Pageable pageable);
 
   @Query("SELECT COUNT(i.id) FROM Item i WHERE i.saldo <= i.qtdeMinima")
   long countAllByQtdeMinimaIsLessThanSaldo();
@@ -123,4 +170,112 @@ public interface ItemRepository extends JpaRepository<Item, Long>, JpaSpecificat
       ORDER BY i.nome
       """)
   List<ItemCompleteWithDisponibilidade> findCompleteAvailableForLoan(@Param("query") String query);
+
+  /**
+   * Busca paginada de itens para autocomplete com dados de disponibilidade.
+   *
+   * @param query Texto para busca por nome (case insensitive)
+   * @param pageable Configuracao de paginacao
+   * @return Pagina de projecoes com dados essenciais para autocomplete
+   */
+  @Query(
+      """
+      SELECT i.id as id,
+             i.nome as nome,
+             i.saldo as saldo,
+             i.valor as valor,
+             i.tipoItem as tipoItem,
+             i.grupo as grupo,
+             COALESCE(SUM(ei.qtde), 0) as qtdeEmprestada
+      FROM Item i
+      LEFT JOIN EmprestimoItem ei ON ei.item.id = i.id AND ei.emprestimo.dataDevolucao IS NULL
+      WHERE (:query IS NULL OR :query = '' OR LOWER(i.nome) LIKE LOWER(CONCAT('%', :query, '%')))
+      GROUP BY i.id, i.nome, i.saldo, i.valor, i.tipoItem, i.grupo
+      ORDER BY i.nome
+      """)
+  Page<ItemCompleteWithDisponibilidade> findCompleteWithDisponibilidadePaged(
+      @Param("query") String query, Pageable pageable);
+
+  /**
+   * Busca paginada de itens disponiveis para emprestimo.
+   *
+   * @param query Texto para busca por nome (case insensitive)
+   * @param pageable Configuracao de paginacao
+   * @return Pagina de projecoes com apenas itens disponiveis para emprestimo
+   */
+  @Query(
+      """
+      SELECT i.id as id,
+             i.nome as nome,
+             i.saldo as saldo,
+             i.valor as valor,
+             i.tipoItem as tipoItem,
+             i.grupo as grupo,
+             COALESCE(SUM(ei.qtde), 0) as qtdeEmprestada
+      FROM Item i
+      LEFT JOIN EmprestimoItem ei ON ei.item.id = i.id AND ei.emprestimo.dataDevolucao IS NULL
+      WHERE (:query IS NULL OR :query = '' OR LOWER(i.nome) LIKE LOWER(CONCAT('%', :query, '%')))
+      AND (
+        (i.tipoItem = 'C' AND i.saldo > 0)
+        OR
+        i.tipoItem = 'P'
+      )
+      GROUP BY i.id, i.nome, i.saldo, i.valor, i.tipoItem, i.grupo
+      HAVING (
+        (i.tipoItem = 'C' AND i.saldo > 0)
+        OR
+        (i.tipoItem = 'P' AND (i.saldo - COALESCE(SUM(ei.qtde), 0)) > 0)
+      )
+      ORDER BY i.nome
+      """)
+  Page<ItemCompleteWithDisponibilidade> findCompleteAvailableForLoanPaged(
+      @Param("query") String query, Pageable pageable);
+
+  /**
+   * Busca paginada de itens para listagem com campos otimizados.
+   *
+   * <p>Inclui primeira imagem via subquery para exibição na tabela.
+   *
+   * @param pageable paginação e ordenação
+   * @return Page de projeções com apenas campos necessários para tabela
+   */
+  @Query(
+      """
+      SELECT i.id as id,
+             i.nome as nome,
+             i.localizacao as localizacao,
+             i.saldo as saldo,
+             g.id as grupoId,
+             g.descricao as grupoDescricao,
+             (SELECT ii.nameImage FROM ItemImage ii WHERE ii.item.id = i.id ORDER BY ii.isCover DESC, ii.id ASC LIMIT 1) as imagemUrl
+      FROM Item i
+      LEFT JOIN i.grupo g
+      """)
+  Page<ItemListProjection> findAllProjected(Pageable pageable);
+
+  /**
+   * Busca paginada de itens com filtro de texto.
+   *
+   * @param filter texto para filtrar por id, nome, localização ou grupo
+   * @param pageable paginação e ordenação
+   * @return Page de projeções filtradas
+   */
+  @Query(
+      """
+      SELECT i.id as id,
+             i.nome as nome,
+             i.localizacao as localizacao,
+             i.saldo as saldo,
+             g.id as grupoId,
+             g.descricao as grupoDescricao,
+             (SELECT ii.nameImage FROM ItemImage ii WHERE ii.item.id = i.id ORDER BY ii.isCover DESC, ii.id ASC LIMIT 1) as imagemUrl
+      FROM Item i
+      LEFT JOIN i.grupo g
+      WHERE CAST(i.id AS string) LIKE CONCAT('%', :filter, '%')
+         OR LOWER(i.nome) LIKE LOWER(CONCAT('%', :filter, '%'))
+         OR LOWER(i.localizacao) LIKE LOWER(CONCAT('%', :filter, '%'))
+         OR LOWER(g.descricao) LIKE LOWER(CONCAT('%', :filter, '%'))
+      """)
+  Page<ItemListProjection> findAllProjectedWithFilter(
+      @Param("filter") String filter, Pageable pageable);
 }

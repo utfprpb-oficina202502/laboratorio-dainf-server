@@ -7,11 +7,13 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.envers.Audited;
 import org.hibernate.proxy.HibernateProxy;
 
 @Getter
 @Setter
 @Entity
+@Audited
 @NoArgsConstructor
 @AllArgsConstructor
 @Table(name = "item_image")
@@ -32,6 +34,9 @@ public class ItemImage {
   @JsonBackReference
   @JoinColumn(name = "item_id", referencedColumnName = "id")
   private Item item;
+
+  @Column(name = "is_cover", nullable = false, columnDefinition = "BOOLEAN DEFAULT false")
+  private boolean isCover = false;
 
   @Transient private String base64;
 

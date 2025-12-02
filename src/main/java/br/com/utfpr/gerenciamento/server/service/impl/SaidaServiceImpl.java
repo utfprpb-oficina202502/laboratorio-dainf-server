@@ -1,16 +1,21 @@
 package br.com.utfpr.gerenciamento.server.service.impl;
 
+import br.com.utfpr.gerenciamento.server.dto.SaidaListDto;
 import br.com.utfpr.gerenciamento.server.dto.SaidaResponseDTO;
 import br.com.utfpr.gerenciamento.server.model.EmprestimoDevolucaoItem;
 import br.com.utfpr.gerenciamento.server.model.Saida;
 import br.com.utfpr.gerenciamento.server.model.SaidaItem;
 import br.com.utfpr.gerenciamento.server.model.dashboards.DashboardItensSaidas;
 import br.com.utfpr.gerenciamento.server.repository.SaidaRepository;
+import br.com.utfpr.gerenciamento.server.repository.projection.SaidaListProjection;
 import br.com.utfpr.gerenciamento.server.service.SaidaService;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.modelmapper.ModelMapper;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,6 +38,16 @@ public class SaidaServiceImpl extends CrudServiceImpl<Saida, Long, SaidaResponse
   }
 
   @Override
+  protected Map<String, String> getSearchableFieldMappings() {
+    return Map.of(
+        "id", "id",
+        "dataSaida", "dataSaida",
+        "observacao", "observacao",
+        "usuarioResponsavelNome", "usuarioResponsavel.nome",
+        "qtdeTotal", "qtdeTotal");
+  }
+
+  @Override
   public SaidaResponseDTO toDto(Saida entity) {
     return modelMapper.map(entity, SaidaResponseDTO.class);
   }
@@ -40,6 +55,18 @@ public class SaidaServiceImpl extends CrudServiceImpl<Saida, Long, SaidaResponse
   @Override
   public Saida toEntity(SaidaResponseDTO saidaResponseDTO) {
     return modelMapper.map(saidaResponseDTO, Saida.class);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public Page<SaidaListDto> findAllPagedList(String filter, Pageable pageable) {
+    Page<SaidaListProjection> page;
+    if (filter != null && !filter.isBlank()) {
+      page = saidaRepository.findAllProjectedWithFilter(filter, pageable);
+    } else {
+      page = saidaRepository.findAllProjected(pageable);
+    }
+    return page.map(SaidaListDto::fromProjection);
   }
 
   @Override
@@ -52,6 +79,10 @@ public class SaidaServiceImpl extends CrudServiceImpl<Saida, Long, SaidaResponse
   @Transactional
   public void createSaidaByDevolucaoEmprestimo(
       List<EmprestimoDevolucaoItem> emprestimoDevolucaoItem) {
+    if (emprestimoDevolucaoItem == null || emprestimoDevolucaoItem.isEmpty()) {
+      throw new IllegalArgumentException("Lista de itens de devolução não pode estar vazia");
+    }
+
     Saida saida = new Saida();
     List<SaidaItem> saidaItemList = new ArrayList<>();
     saida.setIdEmprestimo(emprestimoDevolucaoItem.get(0).getEmprestimo().getId());

@@ -1,17 +1,23 @@
 package br.com.utfpr.gerenciamento.server.service.impl;
 
+import br.com.utfpr.gerenciamento.server.dto.ReservaListDto;
 import br.com.utfpr.gerenciamento.server.dto.ReservaResponseDto;
+import br.com.utfpr.gerenciamento.server.exception.EntityNotFoundException;
 import br.com.utfpr.gerenciamento.server.model.Reserva;
 import br.com.utfpr.gerenciamento.server.model.Usuario;
 import br.com.utfpr.gerenciamento.server.model.modelTemplateEmail.ReservaTemplate;
 import br.com.utfpr.gerenciamento.server.repository.ReservaRepository;
+import br.com.utfpr.gerenciamento.server.repository.projection.ReservaListProjection;
 import br.com.utfpr.gerenciamento.server.service.EmailService;
 import br.com.utfpr.gerenciamento.server.service.ReservaService;
 import br.com.utfpr.gerenciamento.server.service.UsuarioService;
 import br.com.utfpr.gerenciamento.server.util.DateUtil;
 import br.com.utfpr.gerenciamento.server.util.SecurityUtils;
 import java.util.List;
+import java.util.Map;
 import org.modelmapper.ModelMapper;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,7 +29,6 @@ public class ReservaServiceImpl extends CrudServiceImpl<Reserva, Long, ReservaRe
   private final ReservaRepository reservaRepository;
   private final UsuarioService usuarioService;
   private final EmailService emailService;
-
   private final ModelMapper modelMapper;
 
   public ReservaServiceImpl(
@@ -43,6 +48,16 @@ public class ReservaServiceImpl extends CrudServiceImpl<Reserva, Long, ReservaRe
   }
 
   @Override
+  protected Map<String, String> getSearchableFieldMappings() {
+    return Map.of(
+        "id", "id",
+        "descricao", "descricao",
+        "dataReserva", "dataReserva",
+        "dataRetirada", "dataRetirada",
+        "usuarioNome", "usuario.nome");
+  }
+
+  @Override
   public ReservaResponseDto toDto(Reserva entity) {
     return modelMapper.map(entity, ReservaResponseDto.class);
   }
@@ -53,9 +68,33 @@ public class ReservaServiceImpl extends CrudServiceImpl<Reserva, Long, ReservaRe
   }
 
   @Override
+  @Transactional(readOnly = true)
+  public Page<ReservaListDto> findAllPagedList(String filter, Pageable pageable) {
+    Page<ReservaListProjection> page;
+    if (filter != null && !filter.isBlank()) {
+      page = reservaRepository.findAllProjectedWithFilter(filter, pageable);
+    } else {
+      page = reservaRepository.findAllProjected(pageable);
+    }
+    return page.map(ReservaListDto::fromProjection);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public Page<ReservaListDto> findAllPagedListByUser(
+      String filter, Pageable pageable, String username) {
+    Page<ReservaListProjection> page;
+    if (filter != null && !filter.isBlank()) {
+      page = reservaRepository.findAllProjectedByUsernameWithFilter(username, filter, pageable);
+    } else {
+      page = reservaRepository.findAllProjectedByUsername(username, pageable);
+    }
+    return page.map(ReservaListDto::fromProjection);
+  }
+
+  @Override
   @Transactional
   public ReservaResponseDto save(Reserva reserva) {
-    // Extrai username de forma segura do Authentication (evita ClassCastException)
     String username = SecurityUtils.getAuthenticatedUsername();
     reserva.setUsuario(usuarioService.toEntity(usuarioService.findByUsername(username)));
     return super.save(reserva);
@@ -64,7 +103,6 @@ public class ReservaServiceImpl extends CrudServiceImpl<Reserva, Long, ReservaRe
   @Override
   @Transactional(readOnly = true)
   public List<ReservaResponseDto> findAllByAuthenticatedUser() {
-    // Extrai username de forma segura do Authentication (evita ClassCastException)
     String username = SecurityUtils.getAuthenticatedUsername();
     Usuario usuario = usuarioService.toEntity(usuarioService.findByUsername(username));
     return reservaRepository.findAllByUsuario(usuario).stream().map(this::toDto).toList();
@@ -79,13 +117,22 @@ public class ReservaServiceImpl extends CrudServiceImpl<Reserva, Long, ReservaRe
   @Override
   @Transactional
   public void finalizarReserva(Long idReserva) {
-    Reserva reserva = toEntity(this.findOne(idReserva));
+    Reserva reserva =
+        reservaRepository
+            .findById(idReserva)
+            .orElseThrow(() -> new EntityNotFoundException("Reserva não encontrada."));
+
+    String authenticatedUsername = SecurityUtils.getAuthenticatedUsername();
+    if (!reserva.getUsuario().getUsername().equals(authenticatedUsername)) {
+      throw new EntityNotFoundException("Usuário não tem permissão para finalizar esta reserva");
+    }
+
     emailService.sendEmailWithTemplate(
         converterObjectToTemplateEmail(reserva),
         reserva.getUsuario().getEmail(),
         "Reserva Finalizada",
         "templateFinalizacaoReserva");
-    this.delete(idReserva);
+    reservaRepository.deleteById(idReserva);
   }
 
   @Override
