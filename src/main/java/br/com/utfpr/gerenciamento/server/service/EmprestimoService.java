@@ -66,6 +66,8 @@ public interface EmprestimoService extends CrudService<Emprestimo, Long, Emprest
 
   List<EmprestimoResponseDto> findAllByItemId(Long itemId);
 
+  Page<EmprestimoResponseDto> findAllByItemIdPaged(Long itemId, Pageable pageable);
+
   List<EmprestimoResponseDto> findAllEmprestimosAbertos();
 
   List<EmprestimoResponseDto> findAllEmprestimosAbertosByUsuario(String username);

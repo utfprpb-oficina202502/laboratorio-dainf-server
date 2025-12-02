@@ -2,6 +2,8 @@ package br.com.utfpr.gerenciamento.server.controller;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -23,6 +25,10 @@ import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -388,16 +394,23 @@ class EmprestimoControllerTest {
     // Given
     Long itemId = 999L;
 
-    when(emprestimoService.findAllByItemId(itemId)).thenReturn(Collections.emptyList());
+    PageRequest pageRequest = PageRequest.of(0, 10);
+    Page<EmprestimoResponseDto> emptyPage = new PageImpl<>(Collections.emptyList(), pageRequest, 0);
+    when(emprestimoService.findAllByItemIdPaged(eq(itemId), any(Pageable.class)))
+        .thenReturn(emptyPage);
 
     // When & Then
     mockMvc
         .perform(
-            get("/emprestimo/find-by-item/{itemId}", itemId).accept(MediaType.APPLICATION_JSON))
+            get("/emprestimo/find-by-item/{itemId}", itemId)
+                .param("page", "0")
+                .param("size", "10")
+                .accept(MediaType.APPLICATION_JSON))
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-        .andExpect(jsonPath("$").isArray())
-        .andExpect(jsonPath("$").isEmpty());
+        .andExpect(jsonPath("$.content").isArray())
+        .andExpect(jsonPath("$.content").isEmpty())
+        .andExpect(jsonPath("$.totalElements").value(0));
   }
 
   @Test
@@ -407,15 +420,21 @@ class EmprestimoControllerTest {
     EmprestimoResponseDto emprestimoDto = new EmprestimoResponseDto();
     emprestimoDto.setId(1L);
 
-    when(emprestimoService.findAllByItemId(itemId))
-        .thenReturn(Collections.singletonList(emprestimoDto));
+    PageRequest pageRequest = PageRequest.of(0, 10);
+    Page<EmprestimoResponseDto> page =
+        new PageImpl<>(Collections.singletonList(emprestimoDto), pageRequest, 1);
+    when(emprestimoService.findAllByItemIdPaged(eq(itemId), any(Pageable.class))).thenReturn(page);
 
     // When & Then
     mockMvc
         .perform(
-            get("/emprestimo/find-by-item/{itemId}", itemId).accept(MediaType.APPLICATION_JSON))
+            get("/emprestimo/find-by-item/{itemId}", itemId)
+                .param("page", "0")
+                .param("size", "10")
+                .accept(MediaType.APPLICATION_JSON))
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-        .andExpect(jsonPath("$[0].id").value(1L));
+        .andExpect(jsonPath("$.content[0].id").value(1L))
+        .andExpect(jsonPath("$.totalElements").value(1));
   }
 }

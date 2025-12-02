@@ -36,7 +36,8 @@ import org.springframework.web.bind.annotation.*;
  *   <li>POST /emprestimo/save-devolucao - Salva devolução
  *   <li>POST /emprestimo/filter - Filtra empréstimos
  *   <li>GET /emprestimo/find-all-by-username/{username} - Busca empréstimos por usuário
- *   <li>GET /emprestimo/find-by-item/{itemId} - Busca empréstimos por item
+ *   <li>GET /emprestimo/find-by-item/{itemId}?page=0&size=10&order=id&asc=true - Busca empréstimos
+ *       por item (paginado)
  *   <li>GET /emprestimo/change-prazo-devolucao - Altera prazo de devolução
  *   <li>GET /emprestimo/page - Paginação de empréstimos
  * </ul>
@@ -186,8 +187,21 @@ public class EmprestimoController extends CrudController<Emprestimo, Long, Empre
   @PreAuthorize(
       "hasAnyAuthority('" + ROLE_LABORATORISTA_NAME + "', '" + ROLE_ADMINISTRADOR_NAME + "')")
   @GetMapping("find-by-item/{itemId}")
-  public List<EmprestimoResponseDto> findByItemId(@PathVariable("itemId") Long itemId) {
-    return emprestimoService.findAllByItemId(itemId);
+  public Page<EmprestimoResponseDto> findByItemId(
+      @PathVariable("itemId") Long itemId,
+      @RequestParam("page") int page,
+      @RequestParam("size") int size,
+      @RequestParam(required = false) String order,
+      @RequestParam(required = false) Boolean asc) {
+
+    // Configura ordenação
+    Sort sort = Sort.by("id");
+    if (order != null && asc != null) {
+      sort = Sort.by(asc ? Sort.Direction.ASC : Sort.Direction.DESC, order);
+    }
+    PageRequest pageRequest = PageRequest.of(page, size, sort);
+
+    return emprestimoService.findAllByItemIdPaged(itemId, pageRequest);
   }
 
   /**
