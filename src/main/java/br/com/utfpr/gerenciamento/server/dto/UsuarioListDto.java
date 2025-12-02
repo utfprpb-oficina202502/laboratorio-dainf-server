@@ -21,7 +21,7 @@ public class UsuarioListDto implements BaseListDto {
 
   @SortableField private Long id;
   @SortableField private String nome;
-  @SortableField private String username;
+  @SortableField private String email;
 
   // Permissões é uma coleção - não pode ser ordenado diretamente
   private List<PermissaoListDto> permissoes;
@@ -70,7 +70,7 @@ public class UsuarioListDto implements BaseListDto {
     return UsuarioListDto.builder()
         .id(projection.getId())
         .nome(projection.getNome())
-        .username(projection.getUsername())
+        .email(projection.getEmail())
         .permissoes(permissoesList)
         .build();
   }
