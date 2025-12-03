@@ -107,7 +107,17 @@ public class WebSecurity {
                 authorize
                     // Endpoints administrativos - requerem LABORATORISTA ou ADMINISTRADOR
                     .requestMatchers(
-                        CIDADE, ESTADO, PAIS, RELATORIO, FORNECEDOR, COMPRA, ENTRADA, GRUPO, SAIDA)
+                        CIDADE, ESTADO, PAIS, RELATORIO, FORNECEDOR, COMPRA, ENTRADA, SAIDA)
+                    .hasAnyRole(ROLE_LABORATORISTA_NAME, ROLE_ADMINISTRADOR_NAME)
+
+                    // Grupo - POST/PUT/DELETE requerem LABORATORISTA ou ADMINISTRADOR
+                    .requestMatchers(HttpMethod.GET, GRUPO)
+                    .authenticated()
+                    .requestMatchers(HttpMethod.POST, GRUPO)
+                    .hasAnyRole(ROLE_LABORATORISTA_NAME, ROLE_ADMINISTRADOR_NAME)
+                    .requestMatchers(HttpMethod.PUT, GRUPO)
+                    .hasAnyRole(ROLE_LABORATORISTA_NAME, ROLE_ADMINISTRADOR_NAME)
+                    .requestMatchers(HttpMethod.DELETE, GRUPO)
                     .hasAnyRole(ROLE_LABORATORISTA_NAME, ROLE_ADMINISTRADOR_NAME)
 
                     // Item - POST/DELETE requerem LABORATORISTA ou ADMINISTRADOR
