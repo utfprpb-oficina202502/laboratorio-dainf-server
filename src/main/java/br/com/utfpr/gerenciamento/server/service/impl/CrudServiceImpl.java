@@ -2,6 +2,7 @@ package br.com.utfpr.gerenciamento.server.service.impl;
 
 import br.com.utfpr.gerenciamento.server.exception.EntityNotFoundException;
 import br.com.utfpr.gerenciamento.server.service.CrudService;
+import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.From;
 import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Path;
@@ -260,7 +261,11 @@ public abstract class CrudServiceImpl<T, ID extends Serializable, DTO>
     if (attr.getJavaType().equals(String.class)) {
       return cb.like(cb.lower(root.get(attr.getName())), likeFilter, LIKE_ESCAPE_CHAR);
     }
-    return cb.like(cb.toString(root.get(attr.getName())), likeFilter, LIKE_ESCAPE_CHAR);
+    // Concatena com string vazia para forcar conversao para varchar
+    // Compativel com PostgreSQL (evita erro "bigint ~~ text")
+    Expression<String> numAsString =
+        cb.concat(cb.literal(""), root.get(attr.getName()).as(String.class));
+    return cb.like(numAsString, likeFilter, LIKE_ESCAPE_CHAR);
   }
 
   /**
@@ -325,7 +330,10 @@ public abstract class CrudServiceImpl<T, ID extends Serializable, DTO>
       if (String.class.equals(type)) {
         return cb.like(cb.lower((Path<String>) attrPath), likeFilter, LIKE_ESCAPE_CHAR);
       } else if (Number.class.isAssignableFrom(type)) {
-        return cb.like(attrPath.as(String.class), likeFilter, LIKE_ESCAPE_CHAR);
+        // Concatena com string vazia para forcar conversao para varchar
+        // Gera SQL compativel com PostgreSQL (evita erro "bigint ~~ text")
+        Expression<String> numAsString = cb.concat(cb.literal(""), attrPath.as(String.class));
+        return cb.like(numAsString, likeFilter, LIKE_ESCAPE_CHAR);
       } else if (LocalDate.class.equals(type)) {
         // Tenta fazer parse da data no formato brasileiro
         return createLocalDatePredicate(cb, (Path<LocalDate>) attrPath, originalFilter);

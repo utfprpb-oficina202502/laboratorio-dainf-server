@@ -17,6 +17,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -319,5 +321,69 @@ class ItemServiceImplIntegrationTest {
 
     // Assert
     assertThat(saldoFinal).isEqualByComparingTo(new BigDecimal("55.00"));
+  }
+
+  // =================================================================
+  // Testes para complete() com campos numericos (Long e BigDecimal)
+  // Valida fix para PostgreSQL "bigint ~~ text" error
+  // =================================================================
+
+  /**
+   * Testa busca por ID (Long) via complete().
+   *
+   * <p>Garante que campos Long sao convertidos corretamente para String no LIKE, evitando erro
+   * "operator does not exist: bigint ~~ text" no PostgreSQL.
+   */
+  @Test
+  void complete_ComIdNumerico_DeveEncontrarItem() {
+    // Given - busca pelo ID do item
+    String query = itemPermanente.getId().toString();
+    PageRequest pageable = PageRequest.of(0, 10);
+
+    // When
+    Page<ItemResponseDto> result = itemService.complete(query, pageable);
+
+    // Then
+    assertThat(result.getContent()).isNotEmpty();
+    assertThat(result.getContent().stream().findFirst().orElseThrow().getId())
+        .isEqualTo(itemPermanente.getId());
+  }
+
+  /**
+   * Testa busca por saldo (BigDecimal) via complete().
+   *
+   * <p>Garante que campos BigDecimal sao convertidos corretamente para String no LIKE, evitando
+   * erro de tipo no PostgreSQL.
+   */
+  @Test
+  void complete_ComSaldoNumerico_DeveEncontrarItem() {
+    // Given - busca pelo saldo do item (10.00)
+    String query = "10";
+    PageRequest pageable = PageRequest.of(0, 10);
+
+    // When
+    Page<ItemResponseDto> result = itemService.complete(query, pageable);
+
+    // Then - deve encontrar o itemPermanente que tem saldo 10.00
+    assertThat(result.getContent()).isNotEmpty();
+    assertThat(
+            result.getContent().stream()
+                .anyMatch(dto -> dto.getSaldo().compareTo(new BigDecimal("10.00")) == 0))
+        .isTrue();
+  }
+
+  @Test
+  void complete_ComNome_DeveEncontrarItem() {
+    // Given
+    String query = "Notebook";
+    PageRequest pageable = PageRequest.of(0, 10);
+
+    // When
+    Page<ItemResponseDto> result = itemService.complete(query, pageable);
+
+    // Then
+    assertThat(result.getContent()).hasSize(1);
+    assertThat(result.getContent().stream().findFirst().orElseThrow().getNome())
+        .containsIgnoringCase("Notebook");
   }
 }
