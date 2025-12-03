@@ -24,6 +24,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -46,6 +47,7 @@ import org.springframework.web.bind.annotation.*;
  */
 @RestController
 @RequestMapping("emprestimo")
+@Validated
 public class EmprestimoController extends CrudController<Emprestimo, Long, EmprestimoResponseDto> {
 
   public static final String PREFIXO_ROLE = "ROLE_";
