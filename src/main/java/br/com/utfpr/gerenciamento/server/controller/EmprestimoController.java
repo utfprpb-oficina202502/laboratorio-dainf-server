@@ -23,7 +23,6 @@ import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -56,17 +55,6 @@ public class EmprestimoController extends CrudController<Emprestimo, Long, Empre
   public EmprestimoController(EmprestimoService emprestimoService, UsuarioService usuarioService) {
     this.emprestimoService = emprestimoService;
     this.usuarioService = usuarioService;
-  }
-
-  @ExceptionHandler(IllegalArgumentException.class)
-  public ResponseEntity<String> handleIllegalArgumentException(IllegalArgumentException e) {
-    return ResponseEntity.badRequest().body(e.getMessage());
-  }
-
-  @ExceptionHandler(java.time.format.DateTimeParseException.class)
-  public ResponseEntity<String> handleDateTimeParseException(
-      java.time.format.DateTimeParseException e) {
-    return ResponseEntity.badRequest().body("Data inválida: " + e.getMessage());
   }
 
   @Override

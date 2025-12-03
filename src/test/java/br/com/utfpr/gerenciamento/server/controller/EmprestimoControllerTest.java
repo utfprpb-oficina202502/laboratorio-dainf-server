@@ -13,6 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import br.com.utfpr.gerenciamento.server.dto.EmprestimoListDto;
 import br.com.utfpr.gerenciamento.server.dto.EmprestimoResponseDto;
 import br.com.utfpr.gerenciamento.server.dto.UsuarioResponseDto;
+import br.com.utfpr.gerenciamento.server.exception.GlobalExceptionHandler;
 import br.com.utfpr.gerenciamento.server.model.Emprestimo;
 import br.com.utfpr.gerenciamento.server.model.EmprestimoItem;
 import br.com.utfpr.gerenciamento.server.model.Usuario;
@@ -65,7 +66,10 @@ class EmprestimoControllerTest {
 
   @BeforeEach
   void setUp() {
-    mockMvc = MockMvcBuilders.standaloneSetup(emprestimoController).build();
+    mockMvc =
+        MockMvcBuilders.standaloneSetup(emprestimoController)
+            .setControllerAdvice(new GlobalExceptionHandler())
+            .build();
     emprestimoFilter = new EmprestimoFilter();
 
     // Setup usuário aluno
@@ -596,8 +600,8 @@ class EmprestimoControllerTest {
                 .param("page", "0")
                 .param("size", "10")
                 .accept(MediaType.APPLICATION_JSON))
-        .andExpect(status().isBadRequest());
-
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.detail").value("Parâmetro inválido."));
     verify(emprestimoService, never()).findAllByItemIdPaged(anyLong(), any());
   }
 
