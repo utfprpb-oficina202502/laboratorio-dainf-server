@@ -7,6 +7,7 @@ import com.auth0.jwt.exceptions.TokenExpiredException;
 import jakarta.annotation.Nullable;
 import java.net.URI;
 import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -191,6 +192,17 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         "Elemento não encontrado",
         "O elemento solicitado não foi encontrado.",
         URI.create("/errors/elemento-nao-encontrado"));
+  }
+
+  /** Data inválida - 400 Bad Request */
+  @ExceptionHandler(DateTimeParseException.class)
+  public ProblemDetail handleDateTimeParseException(DateTimeParseException ex) {
+    log.warn("Data inválida: {}", ex.getMessage());
+    return criarProblemDetail(
+        HttpStatus.BAD_REQUEST,
+        "Data inválida",
+        "Formato de data inválido ou não reconhecido.",
+        URI.create("/errors/data-invalida"));
   }
 
   // ==================== Exceção Genérica (Fallback) ====================

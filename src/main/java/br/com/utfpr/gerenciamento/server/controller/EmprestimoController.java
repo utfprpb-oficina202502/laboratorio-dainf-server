@@ -17,11 +17,14 @@ import br.com.utfpr.gerenciamento.server.service.UsuarioService;
 import br.com.utfpr.gerenciamento.server.util.DateUtil;
 import br.com.utfpr.gerenciamento.server.util.SecurityUtils;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -36,14 +39,15 @@ import org.springframework.web.bind.annotation.*;
  *   <li>POST /emprestimo/save-devolucao - Salva devolução
  *   <li>POST /emprestimo/filter - Filtra empréstimos
  *   <li>GET /emprestimo/find-all-by-username/{username} - Busca empréstimos por usuário
- *   <li>GET /emprestimo/find-by-item/{itemId}?page=0&size=10&order=id&asc=true - Busca empréstimos
- *       por item (paginado)
+ *   <li>GET /emprestimo/find-by-item/{itemId}?page=0&size=10&sort=id,asc - Busca empréstimos por
+ *       item (paginado)
  *   <li>GET /emprestimo/change-prazo-devolucao - Altera prazo de devolução
  *   <li>GET /emprestimo/page - Paginação de empréstimos
  * </ul>
  */
 @RestController
 @RequestMapping("emprestimo")
+@Validated
 public class EmprestimoController extends CrudController<Emprestimo, Long, EmprestimoResponseDto> {
 
   public static final String PREFIXO_ROLE = "ROLE_";
@@ -184,23 +188,29 @@ public class EmprestimoController extends CrudController<Emprestimo, Long, Empre
     emprestimoService.changePrazoDevolucao(id, DateUtil.parseStringToLocalDate(novaData));
   }
 
-  @PreAuthorize(
-      "hasAnyAuthority('" + ROLE_LABORATORISTA_NAME + "', '" + ROLE_ADMINISTRADOR_NAME + "')")
+  /**
+   * Lista paginada de empréstimos por item.
+   *
+   * <p>Endpoint administrativo para listar empréstimos associados a um item específico. Acesso
+   * controlado por WebSecurity (requer LABORATORISTA ou ADMINISTRADOR).
+   *
+   * @param itemId ID do item
+   * @param page Número da página (0-indexed)
+   * @param size Tamanho da página
+   * @param sort Ordenacao no formato "campo,direcao" (ex: "dataEmprestimo,desc")
+   * @return Página de empréstimos do item especificado
+   */
   @GetMapping("find-by-item/{itemId}")
   public Page<EmprestimoResponseDto> findByItemId(
       @PathVariable("itemId") Long itemId,
-      @RequestParam("page") int page,
-      @RequestParam("size") int size,
-      @RequestParam(required = false) String order,
-      @RequestParam(required = false) Boolean asc) {
-
-    // Configura ordenação
-    Sort sort = Sort.by("id");
-    if (order != null && asc != null) {
-      sort = Sort.by(asc ? Sort.Direction.ASC : Sort.Direction.DESC, order);
+      @RequestParam("page") @Min(0) int page,
+      @RequestParam("size") @Min(1) @Max(100) int size,
+      @RequestParam(required = false) String sort) {
+    if (itemId == null || itemId <= 0) {
+      throw new IllegalArgumentException("ID do item inválido");
     }
-    PageRequest pageRequest = PageRequest.of(page, size, sort);
-
+    Sort sortObj = parseSortParameter(sort);
+    PageRequest pageRequest = PageRequest.of(page, size, sortObj);
     return emprestimoService.findAllByItemIdPaged(itemId, pageRequest);
   }
 
@@ -221,8 +231,8 @@ public class EmprestimoController extends CrudController<Emprestimo, Long, Empre
   @Override
   @GetMapping("page")
   public Page<? extends BaseListDto> findAllPaged(
-      @RequestParam("page") int page,
-      @RequestParam("size") int size,
+      @RequestParam("page") @Min(0) int page,
+      @RequestParam("size") @Min(1) @Max(100) int size,
       @RequestParam(required = false) String filter,
       @RequestParam(required = false) String sort) {
     Sort sortObj = parseSortParameter(sort);

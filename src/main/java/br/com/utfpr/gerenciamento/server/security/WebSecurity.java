@@ -14,6 +14,7 @@ import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.CONFIG;
 import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.EMPRESTIMO;
 import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.EMPRESTIMO_DEVOLUCAO;
 import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.EMPRESTIMO_FIND_ALL_BY_USERNAME;
+import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.EMPRESTIMO_FIND_BY_ITEM;
 import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.EMPRESTIMO_SAVE;
 import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.ENTRADA;
 import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.ESTADO;
@@ -177,6 +178,9 @@ public class WebSecurity {
                     // todos)
                     .requestMatchers(HttpMethod.GET, EMPRESTIMO_FIND_ALL_BY_USERNAME)
                     .authenticated()
+                    // find-by-item requer LABORATORISTA ou ADMINISTRADOR
+                    .requestMatchers(HttpMethod.GET, EMPRESTIMO_FIND_BY_ITEM)
+                    .hasAnyRole(ROLE_LABORATORISTA_NAME, ROLE_ADMINISTRADOR_NAME)
 
                     // Nada Consta - todos os endpoints requerem LABORATORISTA ou ADMINISTRADOR
                     .requestMatchers(NADACONSTA)
