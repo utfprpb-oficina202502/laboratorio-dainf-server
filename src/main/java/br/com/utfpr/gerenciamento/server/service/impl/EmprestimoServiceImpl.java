@@ -501,6 +501,19 @@ public class EmprestimoServiceImpl extends CrudServiceImpl<Emprestimo, Long, Emp
         emprestimo.getEmprestimoDevolucaoItem() == null
             ? Collections.emptyList()
             : emprestimo.getEmprestimoDevolucaoItem();
+
+    // Trata itens com id == 0 como novos (seta id para null)
+    // Isso evita o erro "Row was updated or deleted by another transaction"
+    // quando o frontend envia id: 0 para novos itens
+    itensDevolucao.forEach(item -> {
+      if (item.getId() != null && item.getId() == 0) {
+        item.setId(null);
+        emprestimo.getEmprestimoItem().stream().filter(item2 -> item.getItem() == item2.getItem() ).forEach(item2 -> {
+
+      }
+    });
+
+
     boolean isPendente =
         itensDevolucao.stream()
             .anyMatch(empDevItem -> empDevItem.getStatusDevolucao().equals(StatusDevolucao.P));
