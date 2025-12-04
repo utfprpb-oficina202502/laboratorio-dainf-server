@@ -501,19 +501,6 @@ public class EmprestimoServiceImpl extends CrudServiceImpl<Emprestimo, Long, Emp
         emprestimo.getEmprestimoDevolucaoItem() == null
             ? Collections.emptyList()
             : emprestimo.getEmprestimoDevolucaoItem();
-
-    // Trata itens com id == 0 como novos (seta id para null)
-    // Isso evita o erro "Row was updated or deleted by another transaction"
-    // quando o frontend envia id: 0 para novos itens
-    itensDevolucao.forEach(item -> {
-      if (item.getId() != null && item.getId() == 0) {
-        item.setId(null);
-        emprestimo.getEmprestimoItem().stream().filter(item2 -> item.getItem() == item2.getItem() ).forEach(item2 -> {
-
-      }
-    });
-
-
     boolean isPendente =
         itensDevolucao.stream()
             .anyMatch(empDevItem -> empDevItem.getStatusDevolucao().equals(StatusDevolucao.P));
@@ -564,7 +551,28 @@ public class EmprestimoServiceImpl extends CrudServiceImpl<Emprestimo, Long, Emp
     // Cria itens de devolução para materiais consumíveis
     Set<EmprestimoItem> itensSet =
         Optional.ofNullable(emprestimo.getEmprestimoItem()).orElse(Collections.emptySet());
-    emprestimo.setEmprestimoDevolucaoItem(createEmprestimoItemDevolucao(new ArrayList<>(itensSet)));
+    List<EmprestimoDevolucaoItem> novosItensDevolucao = createEmprestimoItemDevolucao(new ArrayList<>(itensSet));
+    
+    // Preserva o status dos itens de devolução existentes que não estão pendentes
+    List<EmprestimoDevolucaoItem> itensExistentes = 
+        Optional.ofNullable(emprestimo.getEmprestimoDevolucaoItem()).orElse(Collections.emptyList());
+    
+    // Mescla novos itens com existentes, preservando status diferente de P
+    for (EmprestimoDevolucaoItem itemExistente : itensExistentes) {
+      if (itemExistente != null && !StatusDevolucao.P.equals(itemExistente.getStatusDevolucao())) {
+        // Remove o item pendente da lista de novos se já existe com outro status
+        novosItensDevolucao.removeIf(novoItem -> 
+            novoItem != null 
+            && novoItem.getItem() != null 
+            && itemExistente.getItem() != null
+            && novoItem.getItem().getId().equals(itemExistente.getItem().getId())
+            && novoItem.getQtde().equals(itemExistente.getQtde()));
+        // Adiciona o item existente com status preservado
+        novosItensDevolucao.add(itemExistente);
+      }
+    }
+    
+    emprestimo.setEmprestimoDevolucaoItem(novosItensDevolucao);
   }
 
   @Override
