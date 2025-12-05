@@ -766,6 +766,7 @@ class EmprestimoServiceImplTest {
 
     emprestimoTeste.setEmprestimoDevolucaoItem(new ArrayList<>(List.of(itemDevolvido)));
 
+    when(emprestimoRepository.findById(1L)).thenReturn(Optional.of(emprestimoTeste));
     when(itemService.getSaldoItem(100L)).thenReturn(BigDecimal.valueOf(50));
     when(itemService.saldoItemIsValid(any(), any())).thenReturn(true);
 
@@ -819,6 +820,7 @@ class EmprestimoServiceImplTest {
 
     emprestimoTeste.setEmprestimoDevolucaoItem(new ArrayList<>(List.of(itemDevolvido)));
 
+    when(emprestimoRepository.findById(1L)).thenReturn(Optional.of(emprestimoTeste));
     when(itemService.getSaldoItem(200L)).thenReturn(BigDecimal.valueOf(50));
     when(itemService.saldoItemIsValid(any(), any())).thenReturn(true);
 
@@ -859,6 +861,7 @@ class EmprestimoServiceImplTest {
 
     emprestimoTeste.setEmprestimoDevolucaoItem(new ArrayList<>(List.of(itemDevolvido)));
 
+    when(emprestimoRepository.findById(1L)).thenReturn(Optional.of(emprestimoTeste));
     when(itemService.getSaldoItem(300L)).thenReturn(BigDecimal.valueOf(50));
     when(itemService.saldoItemIsValid(any(), any())).thenReturn(true);
 
@@ -898,6 +901,7 @@ class EmprestimoServiceImplTest {
 
     emprestimoTeste.setEmprestimoDevolucaoItem(new ArrayList<>(List.of(item1, item2)));
 
+    when(emprestimoRepository.findById(1L)).thenReturn(Optional.of(emprestimoTeste));
     when(itemService.getSaldoItem(400L)).thenReturn(BigDecimal.valueOf(50));
     when(itemService.saldoItemIsValid(any(), any())).thenReturn(true);
 
@@ -950,6 +954,7 @@ class EmprestimoServiceImplTest {
 
     emprestimoTeste.setEmprestimoDevolucaoItem(new ArrayList<>(List.of(itemDevolvido)));
 
+    when(emprestimoRepository.findById(1L)).thenReturn(Optional.of(emprestimoTeste));
     when(itemService.getSaldoItem(500L)).thenReturn(BigDecimal.valueOf(50));
     when(itemService.saldoItemIsValid(any(), any())).thenReturn(true);
 
@@ -995,6 +1000,7 @@ class EmprestimoServiceImplTest {
     // Item2: nada devolvido ainda
     emprestimoTeste.setEmprestimoDevolucaoItem(new ArrayList<>(List.of(devolucaoItem1)));
 
+    when(emprestimoRepository.findById(1L)).thenReturn(Optional.of(emprestimoTeste));
     when(itemService.getSaldoItem(600L)).thenReturn(BigDecimal.valueOf(50));
     when(itemService.getSaldoItem(601L)).thenReturn(BigDecimal.valueOf(50));
     when(itemService.saldoItemIsValid(any(), any())).thenReturn(true);
