@@ -1149,8 +1149,12 @@ class EmprestimoServiceImplTest {
     emprestimoSalvoDto.setId(1L);
 
     doReturn(emprestimoSalvoDto).when(service).save(any(Emprestimo.class));
-    doReturn(emprestimoSalvo).when(modelMapper).map(any(EmprestimoResponseDto.class), eq(Emprestimo.class));
-    doReturn(emprestimoSalvoDto).when(modelMapper).map(any(Emprestimo.class), eq(EmprestimoResponseDto.class));
+    doReturn(emprestimoSalvo)
+        .when(modelMapper)
+        .map(any(EmprestimoResponseDto.class), eq(Emprestimo.class));
+    doReturn(emprestimoSalvoDto)
+        .when(modelMapper)
+        .map(any(Emprestimo.class), eq(EmprestimoResponseDto.class));
 
     // When
     EmprestimoResponseDto result = service.processDevolucao(emprestimoTeste);
@@ -1188,8 +1192,12 @@ class EmprestimoServiceImplTest {
     emprestimoSalvoDto.setId(1L);
 
     doReturn(emprestimoSalvoDto).when(service).save(any(Emprestimo.class));
-    doReturn(emprestimoSalvo).when(modelMapper).map(any(EmprestimoResponseDto.class), eq(Emprestimo.class));
-    doReturn(emprestimoSalvoDto).when(modelMapper).map(any(Emprestimo.class), eq(EmprestimoResponseDto.class));
+    doReturn(emprestimoSalvo)
+        .when(modelMapper)
+        .map(any(EmprestimoResponseDto.class), eq(Emprestimo.class));
+    doReturn(emprestimoSalvoDto)
+        .when(modelMapper)
+        .map(any(Emprestimo.class), eq(EmprestimoResponseDto.class));
 
     // When
     service.processDevolucao(emprestimoTeste);
@@ -1216,8 +1224,12 @@ class EmprestimoServiceImplTest {
     emprestimoSalvoDto.setId(1L);
 
     doReturn(emprestimoSalvoDto).when(service).save(any(Emprestimo.class));
-    doReturn(emprestimoSalvo).when(modelMapper).map(any(EmprestimoResponseDto.class), eq(Emprestimo.class));
-    doReturn(emprestimoSalvoDto).when(modelMapper).map(any(Emprestimo.class), eq(EmprestimoResponseDto.class));
+    doReturn(emprestimoSalvo)
+        .when(modelMapper)
+        .map(any(EmprestimoResponseDto.class), eq(Emprestimo.class));
+    doReturn(emprestimoSalvoDto)
+        .when(modelMapper)
+        .map(any(Emprestimo.class), eq(EmprestimoResponseDto.class));
 
     // When/Then - Não deve lançar exceção
     assertDoesNotThrow(() -> service.processDevolucao(emprestimoTeste));
@@ -1266,8 +1278,12 @@ class EmprestimoServiceImplTest {
     emprestimoSalvoDto.setId(1L);
 
     doReturn(emprestimoSalvoDto).when(service).save(any(Emprestimo.class));
-    doReturn(emprestimoSalvo).when(modelMapper).map(any(EmprestimoResponseDto.class), eq(Emprestimo.class));
-    doReturn(emprestimoSalvoDto).when(modelMapper).map(any(Emprestimo.class), eq(EmprestimoResponseDto.class));
+    doReturn(emprestimoSalvo)
+        .when(modelMapper)
+        .map(any(EmprestimoResponseDto.class), eq(Emprestimo.class));
+    doReturn(emprestimoSalvoDto)
+        .when(modelMapper)
+        .map(any(Emprestimo.class), eq(EmprestimoResponseDto.class));
 
     // When
     service.processDevolucao(emprestimoTeste);
