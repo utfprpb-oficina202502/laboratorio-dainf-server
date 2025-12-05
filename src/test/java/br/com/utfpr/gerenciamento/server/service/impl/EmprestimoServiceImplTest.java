@@ -1030,4 +1030,25 @@ class EmprestimoServiceImplTest {
             .orElseThrow();
     assertEquals(BigDecimal.valueOf(5), item2Pendente.getQtde());
   }
+
+  @Test
+  void testFindAllByItemIdPaged() {
+    // Given
+    Long itemId = 1L;
+    Pageable pageable = PageRequest.of(0, 10);
+    List<Emprestimo> emprestimos = Collections.singletonList(emprestimo);
+    Page<Emprestimo> emprestimoPage = new PageImpl<>(emprestimos, pageable, 1);
+
+    when(emprestimoRepository.findAll(any(Specification.class), eq(pageable)))
+        .thenReturn(emprestimoPage);
+    doReturn(emprestimoDto).when(service).toDto(emprestimo);
+
+    // When
+    Page<EmprestimoResponseDto> result = service.findAllByItemIdPaged(itemId, pageable);
+
+    // Then
+    assertNotNull(result);
+    assertEquals(1, result.getTotalElements());
+    verify(emprestimoRepository).findAll(any(Specification.class), eq(pageable));
+  }
 }

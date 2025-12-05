@@ -17,11 +17,13 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class UsuarioListDto {
+public class UsuarioListDto implements BaseListDto {
 
-  private Long id;
-  private String nome;
-  private String username;
+  @SortableField private Long id;
+  @SortableField private String nome;
+  @SortableField private String email;
+
+  // Permissões é uma coleção - não pode ser ordenado diretamente
   private List<PermissaoListDto> permissoes;
 
   /** DTO aninhado para permissões. */
@@ -68,7 +70,7 @@ public class UsuarioListDto {
     return UsuarioListDto.builder()
         .id(projection.getId())
         .nome(projection.getNome())
-        .username(projection.getUsername())
+        .email(projection.getEmail())
         .permissoes(permissoesList)
         .build();
   }

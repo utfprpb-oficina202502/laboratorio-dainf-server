@@ -7,6 +7,7 @@ import br.com.utfpr.gerenciamento.server.repository.FornecedorRepository;
 import br.com.utfpr.gerenciamento.server.repository.projection.FornecedorListProjection;
 import br.com.utfpr.gerenciamento.server.service.FornecedorService;
 import java.util.List;
+import java.util.Map;
 import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -32,6 +33,15 @@ public class FornecedorServiceImpl extends CrudServiceImpl<Fornecedor, Long, For
   @Override
   protected JpaRepository<Fornecedor, Long> getRepository() {
     return fornecedorRepository;
+  }
+
+  @Override
+  protected Map<String, String> getSearchableFieldMappings() {
+    return Map.of(
+        "id", "id",
+        "razaoSocial", "razaoSocial",
+        "nomeFantasia", "nomeFantasia",
+        "cnpj", "cnpj");
   }
 
   @Override

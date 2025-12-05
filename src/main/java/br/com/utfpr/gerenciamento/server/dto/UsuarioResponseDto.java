@@ -6,7 +6,7 @@ import lombok.Data;
 import org.springframework.security.core.GrantedAuthority;
 
 @Data
-public class UsuarioResponseDto {
+public class UsuarioResponseDto implements BaseListDto {
 
   private Long id;
 

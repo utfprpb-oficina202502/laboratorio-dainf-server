@@ -1,5 +1,6 @@
 package br.com.utfpr.gerenciamento.server.controller;
 
+import br.com.utfpr.gerenciamento.server.dto.BaseListDto;
 import br.com.utfpr.gerenciamento.server.dto.NadaConstaRequestDto;
 import br.com.utfpr.gerenciamento.server.dto.NadaConstaResponseDto;
 import br.com.utfpr.gerenciamento.server.exception.EntityNotFoundException;
@@ -43,6 +44,11 @@ public class NadaConstaController extends CrudController<NadaConsta, Long, NadaC
   @Override
   protected CrudService<NadaConsta, Long, NadaConstaResponseDto> getService() {
     return nadaConstaService;
+  }
+
+  @Override
+  protected Class<? extends BaseListDto> getListDtoClass() {
+    return NadaConstaResponseDto.class;
   }
 
   /**

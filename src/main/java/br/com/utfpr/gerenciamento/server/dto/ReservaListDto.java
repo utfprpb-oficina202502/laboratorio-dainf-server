@@ -20,20 +20,23 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ReservaListDto {
+public class ReservaListDto implements BaseListDto {
 
-  private Long id;
-  private String descricao;
+  @SortableField private Long id;
+  @SortableField private String descricao;
 
+  @SortableField
   @JsonSerialize(using = LocalDateSerializer.class)
   @JsonDeserialize(using = LocalDateDeserializer.class)
   private LocalDate dataReserva;
 
+  @SortableField
   @JsonSerialize(using = LocalDateSerializer.class)
   @JsonDeserialize(using = LocalDateDeserializer.class)
   private LocalDate dataRetirada;
 
-  private String nomeUsuario;
+  @SortableField(entityPath = "usuario.nome")
+  private String usuarioNome;
 
   /**
    * Converte uma projection JPA para DTO.
@@ -50,7 +53,7 @@ public class ReservaListDto {
         .descricao(projection.getDescricao())
         .dataReserva(projection.getDataReserva())
         .dataRetirada(projection.getDataRetirada())
-        .nomeUsuario(projection.getUsuarioNome())
+        .usuarioNome(projection.getUsuarioNome())
         .build();
   }
 }

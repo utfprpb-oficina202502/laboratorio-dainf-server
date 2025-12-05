@@ -20,16 +20,20 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class SaidaListDto {
+public class SaidaListDto implements BaseListDto {
 
-  private Long id;
+  @SortableField private Long id;
 
+  @SortableField
   @JsonSerialize(using = LocalDateSerializer.class)
   @JsonDeserialize(using = LocalDateDeserializer.class)
   private LocalDate dataSaida;
 
-  private String observacao;
-  private String nomeUsuarioResponsavel;
+  @SortableField private String observacao;
+
+  @SortableField(entityPath = "usuarioResponsavel.nome")
+  private String usuarioResponsavelNome;
+
   private java.math.BigDecimal qtdeTotal;
 
   /**
@@ -46,7 +50,7 @@ public class SaidaListDto {
         .id(projection.getId())
         .dataSaida(projection.getDataSaida())
         .observacao(projection.getObservacao())
-        .nomeUsuarioResponsavel(projection.getUsuarioResponsavelNome())
+        .usuarioResponsavelNome(projection.getUsuarioResponsavelNome())
         .qtdeTotal(projection.getQtdeTotal())
         .build();
   }

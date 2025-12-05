@@ -1,5 +1,6 @@
 package br.com.utfpr.gerenciamento.server.controller;
 
+import br.com.utfpr.gerenciamento.server.dto.BaseListDto;
 import br.com.utfpr.gerenciamento.server.dto.GrupoResponseDto;
 import br.com.utfpr.gerenciamento.server.dto.ItemSimpleDto;
 import br.com.utfpr.gerenciamento.server.model.Grupo;
@@ -25,6 +26,11 @@ public class GrupoController extends CrudController<Grupo, Long, GrupoResponseDt
   @Override
   protected CrudService<Grupo, Long, GrupoResponseDto> getService() {
     return grupoService;
+  }
+
+  @Override
+  protected Class<? extends BaseListDto> getListDtoClass() {
+    return GrupoResponseDto.class;
   }
 
   // Endpoint /complete herdado de CrudController com paginacao

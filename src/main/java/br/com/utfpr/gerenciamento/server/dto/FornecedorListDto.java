@@ -15,12 +15,12 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class FornecedorListDto {
+public class FornecedorListDto implements BaseListDto {
 
-  private Long id;
-  private String razaoSocial;
-  private String nomeFantasia;
-  private String cnpj;
+  @SortableField private Long id;
+  @SortableField private String razaoSocial;
+  @SortableField private String nomeFantasia;
+  @SortableField private String cnpj;
 
   /**
    * Converte uma projection JPA para DTO.

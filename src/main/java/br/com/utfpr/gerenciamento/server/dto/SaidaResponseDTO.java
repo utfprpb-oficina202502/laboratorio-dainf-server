@@ -15,7 +15,7 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class SaidaResponseDTO {
+public class SaidaResponseDTO implements BaseListDto {
   private Long id;
 
   @JsonSerialize(using = LocalDateSerializer.class)

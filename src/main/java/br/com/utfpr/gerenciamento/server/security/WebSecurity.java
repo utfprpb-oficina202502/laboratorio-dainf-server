@@ -14,6 +14,7 @@ import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.CONFIG;
 import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.EMPRESTIMO;
 import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.EMPRESTIMO_DEVOLUCAO;
 import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.EMPRESTIMO_FIND_ALL_BY_USERNAME;
+import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.EMPRESTIMO_FIND_BY_ITEM;
 import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.EMPRESTIMO_SAVE;
 import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.ENTRADA;
 import static br.com.utfpr.gerenciamento.server.security.ApiRoutes.ESTADO;
@@ -106,7 +107,17 @@ public class WebSecurity {
                 authorize
                     // Endpoints administrativos - requerem LABORATORISTA ou ADMINISTRADOR
                     .requestMatchers(
-                        CIDADE, ESTADO, PAIS, RELATORIO, FORNECEDOR, COMPRA, ENTRADA, GRUPO, SAIDA)
+                        CIDADE, ESTADO, PAIS, RELATORIO, FORNECEDOR, COMPRA, ENTRADA, SAIDA)
+                    .hasAnyRole(ROLE_LABORATORISTA_NAME, ROLE_ADMINISTRADOR_NAME)
+
+                    // Grupo - POST/PUT/DELETE requerem LABORATORISTA ou ADMINISTRADOR
+                    .requestMatchers(HttpMethod.GET, GRUPO)
+                    .authenticated()
+                    .requestMatchers(HttpMethod.POST, GRUPO)
+                    .hasAnyRole(ROLE_LABORATORISTA_NAME, ROLE_ADMINISTRADOR_NAME)
+                    .requestMatchers(HttpMethod.PUT, GRUPO)
+                    .hasAnyRole(ROLE_LABORATORISTA_NAME, ROLE_ADMINISTRADOR_NAME)
+                    .requestMatchers(HttpMethod.DELETE, GRUPO)
                     .hasAnyRole(ROLE_LABORATORISTA_NAME, ROLE_ADMINISTRADOR_NAME)
 
                     // Item - POST/DELETE requerem LABORATORISTA ou ADMINISTRADOR
@@ -177,6 +188,9 @@ public class WebSecurity {
                     // todos)
                     .requestMatchers(HttpMethod.GET, EMPRESTIMO_FIND_ALL_BY_USERNAME)
                     .authenticated()
+                    // find-by-item requer LABORATORISTA ou ADMINISTRADOR
+                    .requestMatchers(HttpMethod.GET, EMPRESTIMO_FIND_BY_ITEM)
+                    .hasAnyRole(ROLE_LABORATORISTA_NAME, ROLE_ADMINISTRADOR_NAME)
 
                     // Nada Consta - todos os endpoints requerem LABORATORISTA ou ADMINISTRADOR
                     .requestMatchers(NADACONSTA)

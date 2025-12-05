@@ -5,6 +5,8 @@ import static br.com.utfpr.gerenciamento.server.enumeration.UserRole.ROLE_ALUNO_
 import static br.com.utfpr.gerenciamento.server.enumeration.UserRole.ROLE_LABORATORISTA_NAME;
 import static br.com.utfpr.gerenciamento.server.enumeration.UserRole.ROLE_PROFESSOR_NAME;
 
+import br.com.utfpr.gerenciamento.server.dto.BaseListDto;
+import br.com.utfpr.gerenciamento.server.dto.EmprestimoListDto;
 import br.com.utfpr.gerenciamento.server.dto.EmprestimoResponseDto;
 import br.com.utfpr.gerenciamento.server.model.Emprestimo;
 import br.com.utfpr.gerenciamento.server.model.Usuario;
@@ -15,11 +17,14 @@ import br.com.utfpr.gerenciamento.server.service.UsuarioService;
 import br.com.utfpr.gerenciamento.server.util.DateUtil;
 import br.com.utfpr.gerenciamento.server.util.SecurityUtils;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -34,13 +39,15 @@ import org.springframework.web.bind.annotation.*;
  *   <li>POST /emprestimo/save-devolucao - Salva devolução
  *   <li>POST /emprestimo/filter - Filtra empréstimos
  *   <li>GET /emprestimo/find-all-by-username/{username} - Busca empréstimos por usuário
- *   <li>GET /emprestimo/find-by-item/{itemId} - Busca empréstimos por item
+ *   <li>GET /emprestimo/find-by-item/{itemId}?page=0&size=10&sort=id,asc - Busca empréstimos por
+ *       item (paginado)
  *   <li>GET /emprestimo/change-prazo-devolucao - Altera prazo de devolução
  *   <li>GET /emprestimo/page - Paginação de empréstimos
  * </ul>
  */
 @RestController
 @RequestMapping("emprestimo")
+@Validated
 public class EmprestimoController extends CrudController<Emprestimo, Long, EmprestimoResponseDto> {
 
   public static final String PREFIXO_ROLE = "ROLE_";
@@ -55,6 +62,11 @@ public class EmprestimoController extends CrudController<Emprestimo, Long, Empre
   @Override
   protected CrudService<Emprestimo, Long, EmprestimoResponseDto> getService() {
     return emprestimoService;
+  }
+
+  @Override
+  protected Class<? extends BaseListDto> getListDtoClass() {
+    return EmprestimoListDto.class;
   }
 
   /**
@@ -176,11 +188,30 @@ public class EmprestimoController extends CrudController<Emprestimo, Long, Empre
     emprestimoService.changePrazoDevolucao(id, DateUtil.parseStringToLocalDate(novaData));
   }
 
-  @PreAuthorize(
-      "hasAnyAuthority('" + ROLE_LABORATORISTA_NAME + "', '" + ROLE_ADMINISTRADOR_NAME + "')")
+  /**
+   * Lista paginada de empréstimos por item.
+   *
+   * <p>Endpoint administrativo para listar empréstimos associados a um item específico. Acesso
+   * controlado por WebSecurity (requer LABORATORISTA ou ADMINISTRADOR).
+   *
+   * @param itemId ID do item
+   * @param page Número da página (0-indexed)
+   * @param size Tamanho da página
+   * @param sort Ordenacao no formato "campo,direcao" (ex: "dataEmprestimo,desc")
+   * @return Página de empréstimos do item especificado
+   */
   @GetMapping("find-by-item/{itemId}")
-  public List<EmprestimoResponseDto> findByItemId(@PathVariable("itemId") Long itemId) {
-    return emprestimoService.findAllByItemId(itemId);
+  public Page<EmprestimoResponseDto> findByItemId(
+      @PathVariable("itemId") Long itemId,
+      @RequestParam("page") @Min(0) int page,
+      @RequestParam("size") @Min(1) @Max(100) int size,
+      @RequestParam(required = false) String sort) {
+    if (itemId == null || itemId <= 0) {
+      throw new IllegalArgumentException("ID do item inválido");
+    }
+    Sort sortObj = parseSortParameter(sort);
+    PageRequest pageRequest = PageRequest.of(page, size, sortObj);
+    return emprestimoService.findAllByItemIdPaged(itemId, pageRequest);
   }
 
   /**
@@ -194,35 +225,27 @@ public class EmprestimoController extends CrudController<Emprestimo, Long, Empre
    * @param page Número da página (0-indexed)
    * @param size Tamanho da página
    * @param filter Filtro opcional (busca textual em todos os campos)
-   * @param order Campo de ordenação (padrão: "id")
-   * @param asc Direção da ordenação (true = ASC, false = DESC, padrão: ASC)
+   * @param sort Ordenacao no formato "campo,direcao" (ex: "dataEmprestimo,desc")
    * @return Página de empréstimos simplificados conforme a role do usuário autenticado
    */
   @Override
   @GetMapping("page")
-  @SuppressWarnings("unchecked")
-  public Page<EmprestimoResponseDto> findAllPaged(
-      @RequestParam("page") int page,
-      @RequestParam("size") int size,
+  public Page<? extends BaseListDto> findAllPaged(
+      @RequestParam("page") @Min(0) int page,
+      @RequestParam("size") @Min(1) @Max(100) int size,
       @RequestParam(required = false) String filter,
-      @RequestParam(required = false) String order,
-      @RequestParam(required = false) Boolean asc) {
-    Sort sort = Sort.by("id");
-    if (order != null && asc != null) {
-      sort = Sort.by(asc ? Sort.Direction.ASC : Sort.Direction.DESC, order);
-    }
-    PageRequest pageRequest = PageRequest.of(page, size, sort);
+      @RequestParam(required = false) String sort) {
+    Sort sortObj = parseSortParameter(sort);
+    PageRequest pageRequest = PageRequest.of(page, size, sortObj);
 
     String username = SecurityUtils.getAuthenticatedUsername();
     List<String> userRoles = SecurityUtils.getAuthenticatedUserRoles();
 
     if (userRoles.contains(PREFIXO_ROLE + ROLE_ALUNO_NAME)
         || userRoles.contains(PREFIXO_ROLE + ROLE_PROFESSOR_NAME)) {
-      return (Page<EmprestimoResponseDto>)
-          (Page<?>) emprestimoService.findAllPagedListByUser(filter, pageRequest, username);
+      return emprestimoService.findAllPagedListByUser(filter, pageRequest, username);
     }
 
-    return (Page<EmprestimoResponseDto>)
-        (Page<?>) emprestimoService.findAllPagedList(filter, pageRequest);
+    return emprestimoService.findAllPagedList(filter, pageRequest);
   }
 }

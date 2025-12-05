@@ -35,6 +35,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
@@ -91,6 +92,16 @@ public class EmprestimoServiceImpl extends CrudServiceImpl<Emprestimo, Long, Emp
   @Override
   protected JpaRepository<Emprestimo, Long> getRepository() {
     return emprestimoRepository;
+  }
+
+  @Override
+  protected Map<String, String> getSearchableFieldMappings() {
+    return Map.of(
+        "id", "id",
+        "dataEmprestimo", "dataEmprestimo",
+        "prazoDevolucao", "prazoDevolucao",
+        "dataDevolucao", "dataDevolucao",
+        "usuarioEmprestimoNome", "usuarioEmprestimo.nome");
   }
 
   @Override
@@ -379,6 +390,12 @@ public class EmprestimoServiceImpl extends CrudServiceImpl<Emprestimo, Long, Emp
   @Transactional(readOnly = true)
   public List<EmprestimoResponseDto> findAllByItemId(Long itemId) {
     return emprestimoRepository.findAllByItemId(itemId).stream().map(this::toDto).toList();
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public Page<EmprestimoResponseDto> findAllByItemIdPaged(Long itemId, Pageable pageable) {
+    return findAllSpecification(EmprestimoSpecifications.byItemId(itemId), pageable);
   }
 
   @Override

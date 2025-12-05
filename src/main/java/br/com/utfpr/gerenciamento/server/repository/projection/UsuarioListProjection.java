@@ -13,7 +13,7 @@ import java.util.Set;
  * <ul>
  *   <li>id - Identificador único do usuário
  *   <li>nome - Nome completo do usuário
- *   <li>username - Login do usuário
+ *   <li>email - Email do usuário (identificador principal de login)
  *   <li>permissoes - Grupos de acesso (apenas id e nome)
  * </ul>
  */
@@ -25,8 +25,8 @@ public interface UsuarioListProjection {
   /** Nome completo do usuário. */
   String getNome();
 
-  /** Login/username do usuário. */
-  String getUsername();
+  /** Email do usuário (identificador principal de login). */
+  String getEmail();
 
   /** Permissões/grupos de acesso do usuário. */
   Set<PermissaoProjection> getPermissoes();

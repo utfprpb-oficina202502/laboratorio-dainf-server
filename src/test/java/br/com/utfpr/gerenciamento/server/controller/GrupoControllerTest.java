@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+import br.com.utfpr.gerenciamento.server.dto.BaseListDto;
 import br.com.utfpr.gerenciamento.server.dto.GrupoResponseDto;
 import br.com.utfpr.gerenciamento.server.dto.ItemSimpleDto;
 import br.com.utfpr.gerenciamento.server.model.Grupo;
@@ -14,6 +15,9 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -210,7 +214,7 @@ class GrupoControllerTest {
     org.springframework.data.domain.Sort sort =
         org.springframework.data.domain.Sort.by(
             org.springframework.data.domain.Sort.Direction.ASC, "id");
-    when(grupoService.findAll(eq(sort))).thenReturn(gruposDto);
+    when(grupoService.findAll(sort)).thenReturn(gruposDto);
 
     // When
     List<GrupoResponseDto> result = grupoController.findAll();
@@ -218,7 +222,7 @@ class GrupoControllerTest {
     // Then
     assertNotNull(result);
     assertEquals(2, result.size());
-    verify(grupoService).findAll(eq(sort));
+    verify(grupoService).findAll(sort);
   }
 
   @Test
@@ -300,34 +304,27 @@ class GrupoControllerTest {
     int page = 0;
     int size = 10;
     String filter = "teste";
-    String order = "nome";
-    Boolean asc = true;
+    String sort = "descricao,asc";
 
     Page<GrupoResponseDto> pageResult = new PageImpl<>(gruposDto);
 
     // Use a mock Specification<Grupo>
     org.springframework.data.jpa.domain.Specification<Grupo> specificationMock =
         mock(org.springframework.data.jpa.domain.Specification.class);
-    when(grupoService.filterByAllFields(eq(filter))).thenReturn(specificationMock);
+    when(grupoService.filterByAllFields(filter)).thenReturn(specificationMock);
     when(grupoService.findAllSpecification(any(), any())).thenReturn(pageResult);
 
     // When
-    Page<GrupoResponseDto> result = grupoController.findAllPaged(page, size, filter, order, asc);
+    Page<? extends BaseListDto> result = grupoController.findAllPaged(page, size, filter, sort);
 
     // Then
     assertNotNull(result);
     assertEquals(2, result.getContent().size());
-    verify(grupoService).filterByAllFields(eq(filter));
-    // The controller creates a PageRequest with sorting if 'order' and 'asc' are provided
+    verify(grupoService).filterByAllFields(filter);
+    // The controller creates a PageRequest with sorting based on sort parameter
     PageRequest sortedPageRequest =
-        PageRequest.of(
-            page,
-            size,
-            asc
-                ? org.springframework.data.domain.Sort.Direction.ASC
-                : org.springframework.data.domain.Sort.Direction.DESC,
-            order);
-    verify(grupoService).findAllSpecification(eq(specificationMock), eq(sortedPageRequest));
+        PageRequest.of(page, size, org.springframework.data.domain.Sort.Direction.ASC, "descricao");
+    verify(grupoService).findAllSpecification(specificationMock, sortedPageRequest);
   }
 
   @Test
@@ -340,7 +337,7 @@ class GrupoControllerTest {
     when(grupoService.findAll(any(PageRequest.class))).thenReturn(pageResult);
 
     // When
-    Page<GrupoResponseDto> result = grupoController.findAllPaged(page, size, null, null, null);
+    Page<? extends BaseListDto> result = grupoController.findAllPaged(page, size, null, null);
 
     // Then
     assertNotNull(result);
@@ -359,7 +356,7 @@ class GrupoControllerTest {
     when(grupoService.findAll(any(PageRequest.class))).thenReturn(pageResult);
 
     // When
-    Page<GrupoResponseDto> result = grupoController.findAllPaged(page, size, filter, null, null);
+    Page<? extends BaseListDto> result = grupoController.findAllPaged(page, size, filter, null);
 
     // Then
     assertNotNull(result);
@@ -372,18 +369,20 @@ class GrupoControllerTest {
     // Given
     int page = 0;
     int size = 10;
-    PageRequest pageRequest = PageRequest.of(page, size);
+    // Controller now adds default sort by id when sort param is null
+    PageRequest pageRequest =
+        PageRequest.of(page, size, org.springframework.data.domain.Sort.by("id"));
     Page<GrupoResponseDto> pageResult = new PageImpl<>(gruposDto);
 
-    when(grupoService.findAll(eq(pageRequest))).thenReturn(pageResult);
+    when(grupoService.findAll(pageRequest)).thenReturn(pageResult);
 
     // When
-    Page<GrupoResponseDto> result = grupoController.findAllPaged(page, size, null, null, null);
+    Page<? extends BaseListDto> result = grupoController.findAllPaged(page, size, null, null);
 
     // Then
     assertNotNull(result);
     assertEquals(2, result.getSize());
-    verify(grupoService).findAll(eq(pageRequest));
+    verify(grupoService).findAll(pageRequest);
   }
 
   @Test
@@ -395,8 +394,130 @@ class GrupoControllerTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> {
-          grupoController.findAllPaged(page, size, null, null, null);
+          grupoController.findAllPaged(page, size, null, null);
         });
+  }
+
+  @Test
+  void testGetAllowedSortProperties() {
+    // When
+    var allowedProperties = grupoController.getAllowedSortProperties();
+
+    // Then
+    assertNotNull(allowedProperties);
+    assertEquals(2, allowedProperties.size());
+    assertTrue(allowedProperties.contains("id"));
+    assertTrue(allowedProperties.contains("descricao"));
+    assertFalse(allowedProperties.contains("nome")); // Grupo nao tem campo nome
+  }
+
+  @Test
+  void testParseSortParameter_WithValidProperty() {
+    // Given
+    int page = 0;
+    int size = 10;
+    String filter = "teste";
+    String sort = "descricao,asc";
+
+    Page<GrupoResponseDto> pageResult = new PageImpl<>(gruposDto);
+    org.springframework.data.jpa.domain.Specification<Grupo> specificationMock =
+        mock(org.springframework.data.jpa.domain.Specification.class);
+    when(grupoService.filterByAllFields(filter)).thenReturn(specificationMock);
+    when(grupoService.findAllSpecification(any(), any())).thenReturn(pageResult);
+
+    // When
+    grupoController.findAllPaged(page, size, filter, sort);
+
+    // Then - deve usar a ordenacao solicitada
+    PageRequest expectedPageRequest =
+        PageRequest.of(page, size, org.springframework.data.domain.Sort.Direction.ASC, "descricao");
+    verify(grupoService).findAllSpecification(specificationMock, expectedPageRequest);
+  }
+
+  @ParameterizedTest(name = "Sort ''{0}'' deve usar ordenacao padrao (id)")
+  @NullAndEmptySource
+  @ValueSource(strings = {"   ", "campoInexistente,asc"})
+  void testParseSortParameter_FallbackToDefault(String sort) {
+    // Given
+    int page = 0;
+    int size = 10;
+
+    Page<GrupoResponseDto> pageResult = new PageImpl<>(gruposDto);
+    PageRequest expectedPageRequest =
+        PageRequest.of(page, size, org.springframework.data.domain.Sort.by("id"));
+    when(grupoService.findAll(expectedPageRequest)).thenReturn(pageResult);
+
+    // When
+    grupoController.findAllPaged(page, size, null, sort);
+
+    // Then - deve usar ordenacao padrao (id)
+    verify(grupoService).findAll(expectedPageRequest);
+  }
+
+  @Test
+  void testParseSortParameter_WithDescDirection() {
+    // Given
+    int page = 0;
+    int size = 10;
+    String filter = "teste";
+    String sort = "descricao,desc";
+
+    Page<GrupoResponseDto> pageResult = new PageImpl<>(gruposDto);
+    org.springframework.data.jpa.domain.Specification<Grupo> specificationMock =
+        mock(org.springframework.data.jpa.domain.Specification.class);
+    when(grupoService.filterByAllFields(filter)).thenReturn(specificationMock);
+    when(grupoService.findAllSpecification(any(), any())).thenReturn(pageResult);
+
+    // When
+    grupoController.findAllPaged(page, size, filter, sort);
+
+    // Then - deve usar ordenacao DESC
+    PageRequest expectedPageRequest =
+        PageRequest.of(
+            page, size, org.springframework.data.domain.Sort.Direction.DESC, "descricao");
+    verify(grupoService).findAllSpecification(specificationMock, expectedPageRequest);
+  }
+
+  @Test
+  void testParseSortParameter_WithPropertyOnly_DefaultsToAsc() {
+    // Given
+    int page = 0;
+    int size = 10;
+    String filter = "teste";
+    String sort = "descricao"; // Sem direcao
+
+    Page<GrupoResponseDto> pageResult = new PageImpl<>(gruposDto);
+    org.springframework.data.jpa.domain.Specification<Grupo> specificationMock =
+        mock(org.springframework.data.jpa.domain.Specification.class);
+    when(grupoService.filterByAllFields(filter)).thenReturn(specificationMock);
+    when(grupoService.findAllSpecification(any(), any())).thenReturn(pageResult);
+
+    // When
+    grupoController.findAllPaged(page, size, filter, sort);
+
+    // Then - deve usar ordenacao ASC como padrao
+    PageRequest expectedPageRequest =
+        PageRequest.of(page, size, org.springframework.data.domain.Sort.Direction.ASC, "descricao");
+    verify(grupoService).findAllSpecification(specificationMock, expectedPageRequest);
+  }
+
+  @Test
+  void testParseSortParameter_WithSqlInjectionAttempt() {
+    // Given
+    int page = 0;
+    int size = 10;
+    String sort = "id; DROP TABLE grupo--,asc"; // Tentativa de SQL injection
+
+    Page<GrupoResponseDto> pageResult = new PageImpl<>(gruposDto);
+    PageRequest expectedPageRequest =
+        PageRequest.of(page, size, org.springframework.data.domain.Sort.by("id"));
+    when(grupoService.findAll(expectedPageRequest)).thenReturn(pageResult);
+
+    // When
+    grupoController.findAllPaged(page, size, null, sort);
+
+    // Then - deve usar ordenacao padrao (id) pois propriedade nao e permitida
+    verify(grupoService).findAll(expectedPageRequest);
   }
 
   @Test

@@ -150,7 +150,7 @@ class ReservaControllerTest {
           .thenReturn(reservasListDtoPage);
 
       // Act
-      Page<?> resultado = reservaController.findAllPaged(0, 10, null, null, null);
+      Page<?> resultado = reservaController.findAllPaged(0, 10, null, null);
 
       // Assert
       assertEquals(reservasListDtoPage, resultado);
@@ -176,7 +176,7 @@ class ReservaControllerTest {
           .thenReturn(reservasListDtoPage);
 
       // Act
-      Page<?> resultado = reservaController.findAllPaged(0, 10, null, null, null);
+      Page<?> resultado = reservaController.findAllPaged(0, 10, null, null);
 
       // Assert
       assertEquals(reservasListDtoPage, resultado);
@@ -200,7 +200,7 @@ class ReservaControllerTest {
           .thenReturn(reservasListDtoPage);
 
       // Act
-      Page<?> resultado = reservaController.findAllPaged(0, 10, "item.nome:Laptop", null, null);
+      Page<?> resultado = reservaController.findAllPaged(0, 10, "item.nome:Laptop", null);
 
       // Assert
       assertEquals(reservasListDtoPage, resultado);
@@ -226,8 +226,7 @@ class ReservaControllerTest {
           .thenReturn(reservasListDtoPage);
 
       // Act
-      Page<?> resultado =
-          reservaController.findAllPaged(0, 10, "dataReserva:27/10/2025", null, null);
+      Page<?> resultado = reservaController.findAllPaged(0, 10, "dataReserva:27/10/2025", null);
 
       // Assert
       assertEquals(reservasListDtoPage, resultado);
@@ -251,7 +250,7 @@ class ReservaControllerTest {
           .thenReturn(reservasListDtoPage);
 
       // Act
-      Page<?> resultado = reservaController.findAllPaged(0, 10, null, "dataReserva", true);
+      Page<?> resultado = reservaController.findAllPaged(0, 10, null, "dataReserva,asc");
 
       // Assert
       assertEquals(reservasListDtoPage, resultado);
@@ -274,7 +273,7 @@ class ReservaControllerTest {
           .thenReturn(reservasListDtoPage);
 
       // Act
-      Page<?> resultado = reservaController.findAllPaged(0, 10, null, null, null);
+      Page<?> resultado = reservaController.findAllPaged(0, 10, null, null);
 
       // Assert
       assertEquals(reservasListDtoPage, resultado);

@@ -3,7 +3,7 @@ package br.com.utfpr.gerenciamento.server.dto;
 import lombok.Data;
 
 @Data
-public class EstadoResponseDto {
+public class EstadoResponseDto implements BaseListDto {
 
   private Long id;
 
