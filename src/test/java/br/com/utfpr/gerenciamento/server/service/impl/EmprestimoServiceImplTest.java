@@ -1031,4 +1031,3 @@ class EmprestimoServiceImplTest {
     assertEquals(BigDecimal.valueOf(5), item2Pendente.getQtde());
   }
 }
-
