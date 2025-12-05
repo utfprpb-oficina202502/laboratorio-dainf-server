@@ -740,4 +740,295 @@ class EmprestimoServiceImplTest {
     verify(emprestimoRepository).findAllByItemId(itemId);
     verify(service).toDto(emprestimo);
   }
+
+  @Test
+  void testPrepareEmprestimo_PreservaItensDevolvidos() {
+    // Given - Empréstimo com item já parcialmente devolvido
+    Emprestimo emprestimoTeste = new Emprestimo();
+    emprestimoTeste.setId(1L);
+
+    Item item = new Item();
+    item.setId(100L);
+    item.setTipoItem(TipoItem.C);
+
+    // Empréstimo de 10 unidades
+    EmprestimoItem emprestimoItem = new EmprestimoItem();
+    emprestimoItem.setItem(item);
+    emprestimoItem.setQtde(BigDecimal.TEN);
+    emprestimoTeste.setEmprestimoItem(Collections.singleton(emprestimoItem));
+
+    // Já tem 5 unidades devolvidas (status D)
+    EmprestimoDevolucaoItem itemDevolvido = new EmprestimoDevolucaoItem();
+    itemDevolvido.setId(1L);
+    itemDevolvido.setItem(item);
+    itemDevolvido.setQtde(BigDecimal.valueOf(5));
+    itemDevolvido.setStatusDevolucao(StatusDevolucao.D);
+
+    emprestimoTeste.setEmprestimoDevolucaoItem(new ArrayList<>(List.of(itemDevolvido)));
+
+    when(itemService.getSaldoItem(100L)).thenReturn(BigDecimal.valueOf(50));
+    when(itemService.saldoItemIsValid(any(), any())).thenReturn(true);
+
+    // When
+    service.prepareEmprestimo(emprestimoTeste);
+
+    // Then - Deve ter 2 itens: 5 devolvidos (D) + 5 pendentes (P)
+    List<EmprestimoDevolucaoItem> resultado = emprestimoTeste.getEmprestimoDevolucaoItem();
+    assertNotNull(resultado);
+    assertEquals(2, resultado.size());
+
+    // Verifica item devolvido preservado
+    EmprestimoDevolucaoItem preservado =
+        resultado.stream()
+            .filter(i -> StatusDevolucao.D.equals(i.getStatusDevolucao()))
+            .findFirst()
+            .orElseThrow();
+    assertEquals(BigDecimal.valueOf(5), preservado.getQtde());
+    assertEquals(100L, preservado.getItem().getId());
+
+    // Verifica item pendente com quantidade ajustada
+    EmprestimoDevolucaoItem pendente =
+        resultado.stream()
+            .filter(i -> StatusDevolucao.P.equals(i.getStatusDevolucao()))
+            .findFirst()
+            .orElseThrow();
+    assertEquals(BigDecimal.valueOf(5), pendente.getQtde());
+  }
+
+  @Test
+  void testPrepareEmprestimo_AjustaQuantidadePendenteAposEdicao() {
+    // Given - Empréstimo editado com quantidade aumentada
+    Emprestimo emprestimoTeste = new Emprestimo();
+    emprestimoTeste.setId(1L);
+
+    Item item = new Item();
+    item.setId(200L);
+    item.setTipoItem(TipoItem.C);
+
+    // Empréstimo editado para 15 unidades (era 10)
+    EmprestimoItem emprestimoItem = new EmprestimoItem();
+    emprestimoItem.setItem(item);
+    emprestimoItem.setQtde(BigDecimal.valueOf(15));
+    emprestimoTeste.setEmprestimoItem(Collections.singleton(emprestimoItem));
+
+    // Já tinha 5 unidades devolvidas
+    EmprestimoDevolucaoItem itemDevolvido = new EmprestimoDevolucaoItem();
+    itemDevolvido.setItem(item);
+    itemDevolvido.setQtde(BigDecimal.valueOf(5));
+    itemDevolvido.setStatusDevolucao(StatusDevolucao.D);
+
+    emprestimoTeste.setEmprestimoDevolucaoItem(new ArrayList<>(List.of(itemDevolvido)));
+
+    when(itemService.getSaldoItem(200L)).thenReturn(BigDecimal.valueOf(50));
+    when(itemService.saldoItemIsValid(any(), any())).thenReturn(true);
+
+    // When
+    service.prepareEmprestimo(emprestimoTeste);
+
+    // Then - Pendente deve ser 15 - 5 = 10
+    List<EmprestimoDevolucaoItem> resultado = emprestimoTeste.getEmprestimoDevolucaoItem();
+    EmprestimoDevolucaoItem pendente =
+        resultado.stream()
+            .filter(i -> StatusDevolucao.P.equals(i.getStatusDevolucao()))
+            .findFirst()
+            .orElseThrow();
+    assertEquals(BigDecimal.valueOf(10), pendente.getQtde());
+  }
+
+  @Test
+  void testPrepareEmprestimo_LancaExcecaoQuandoQuantidadeDevolvidaExcedeEmprestimo() {
+    // Given - Quantidade devolvida maior que a do empréstimo
+    Emprestimo emprestimoTeste = new Emprestimo();
+    emprestimoTeste.setId(1L);
+
+    Item item = new Item();
+    item.setId(300L);
+    item.setTipoItem(TipoItem.C);
+
+    // Empréstimo editado para apenas 3 unidades
+    EmprestimoItem emprestimoItem = new EmprestimoItem();
+    emprestimoItem.setItem(item);
+    emprestimoItem.setQtde(BigDecimal.valueOf(3));
+    emprestimoTeste.setEmprestimoItem(Collections.singleton(emprestimoItem));
+
+    // Mas já tinha 5 unidades devolvidas!
+    EmprestimoDevolucaoItem itemDevolvido = new EmprestimoDevolucaoItem();
+    itemDevolvido.setItem(item);
+    itemDevolvido.setQtde(BigDecimal.valueOf(5));
+    itemDevolvido.setStatusDevolucao(StatusDevolucao.D);
+
+    emprestimoTeste.setEmprestimoDevolucaoItem(new ArrayList<>(List.of(itemDevolvido)));
+
+    when(itemService.getSaldoItem(300L)).thenReturn(BigDecimal.valueOf(50));
+    when(itemService.saldoItemIsValid(any(), any())).thenReturn(true);
+
+    // When/Then - Deve lançar exceção
+    IllegalStateException exception =
+        assertThrows(IllegalStateException.class, () -> service.prepareEmprestimo(emprestimoTeste));
+    assertTrue(exception.getMessage().contains("excede a quantidade no empréstimo"));
+    assertTrue(exception.getMessage().contains("300"));
+  }
+
+  @Test
+  void testPrepareEmprestimo_PreservaMultiplosItensComStatusDiferente() {
+    // Given - Item com devolução parcial fracionada
+    Emprestimo emprestimoTeste = new Emprestimo();
+    emprestimoTeste.setId(1L);
+
+    Item item = new Item();
+    item.setId(400L);
+    item.setTipoItem(TipoItem.C);
+
+    // Empréstimo de 10 unidades
+    EmprestimoItem emprestimoItem = new EmprestimoItem();
+    emprestimoItem.setItem(item);
+    emprestimoItem.setQtde(BigDecimal.TEN);
+    emprestimoTeste.setEmprestimoItem(Collections.singleton(emprestimoItem));
+
+    // 3 devolvidas (D), 2 para saída (S)
+    EmprestimoDevolucaoItem item1 = new EmprestimoDevolucaoItem();
+    item1.setItem(item);
+    item1.setQtde(BigDecimal.valueOf(3));
+    item1.setStatusDevolucao(StatusDevolucao.D);
+
+    EmprestimoDevolucaoItem item2 = new EmprestimoDevolucaoItem();
+    item2.setItem(item);
+    item2.setQtde(BigDecimal.valueOf(2));
+    item2.setStatusDevolucao(StatusDevolucao.S);
+
+    emprestimoTeste.setEmprestimoDevolucaoItem(new ArrayList<>(List.of(item1, item2)));
+
+    when(itemService.getSaldoItem(400L)).thenReturn(BigDecimal.valueOf(50));
+    when(itemService.saldoItemIsValid(any(), any())).thenReturn(true);
+
+    // When
+    service.prepareEmprestimo(emprestimoTeste);
+
+    // Then - Deve ter 3 itens: D(3) + S(2) + P(5)
+    List<EmprestimoDevolucaoItem> resultado = emprestimoTeste.getEmprestimoDevolucaoItem();
+    assertEquals(3, resultado.size());
+
+    // Verifica que os processados foram preservados
+    long countDevolvidos =
+        resultado.stream().filter(i -> StatusDevolucao.D.equals(i.getStatusDevolucao())).count();
+    assertEquals(1, countDevolvidos);
+
+    long countSaida =
+        resultado.stream().filter(i -> StatusDevolucao.S.equals(i.getStatusDevolucao())).count();
+    assertEquals(1, countSaida);
+
+    // Verifica quantidade pendente correta: 10 - 3 - 2 = 5
+    EmprestimoDevolucaoItem pendente =
+        resultado.stream()
+            .filter(i -> StatusDevolucao.P.equals(i.getStatusDevolucao()))
+            .findFirst()
+            .orElseThrow();
+    assertEquals(BigDecimal.valueOf(5), pendente.getQtde());
+  }
+
+  @Test
+  void testPrepareEmprestimo_NaoAdicionaPendenteQuandoTudoJaFoiDevolvido() {
+    // Given - Item completamente devolvido
+    Emprestimo emprestimoTeste = new Emprestimo();
+    emprestimoTeste.setId(1L);
+
+    Item item = new Item();
+    item.setId(500L);
+    item.setTipoItem(TipoItem.C);
+
+    // Empréstimo de 10 unidades
+    EmprestimoItem emprestimoItem = new EmprestimoItem();
+    emprestimoItem.setItem(item);
+    emprestimoItem.setQtde(BigDecimal.TEN);
+    emprestimoTeste.setEmprestimoItem(Collections.singleton(emprestimoItem));
+
+    // 10 unidades já devolvidas
+    EmprestimoDevolucaoItem itemDevolvido = new EmprestimoDevolucaoItem();
+    itemDevolvido.setItem(item);
+    itemDevolvido.setQtde(BigDecimal.TEN);
+    itemDevolvido.setStatusDevolucao(StatusDevolucao.D);
+
+    emprestimoTeste.setEmprestimoDevolucaoItem(new ArrayList<>(List.of(itemDevolvido)));
+
+    when(itemService.getSaldoItem(500L)).thenReturn(BigDecimal.valueOf(50));
+    when(itemService.saldoItemIsValid(any(), any())).thenReturn(true);
+
+    // When
+    service.prepareEmprestimo(emprestimoTeste);
+
+    // Then - Deve ter apenas 1 item (o devolvido), sem pendente
+    List<EmprestimoDevolucaoItem> resultado = emprestimoTeste.getEmprestimoDevolucaoItem();
+    assertEquals(1, resultado.size());
+    assertEquals(StatusDevolucao.D, resultado.get(0).getStatusDevolucao());
+  }
+
+  @Test
+  void testPrepareEmprestimo_TrataDiferentesItensIndependentemente() {
+    // Given - Empréstimo com múltiplos itens diferentes
+    Emprestimo emprestimoTeste = new Emprestimo();
+    emprestimoTeste.setId(1L);
+
+    Item item1 = new Item();
+    item1.setId(600L);
+    item1.setTipoItem(TipoItem.C);
+
+    Item item2 = new Item();
+    item2.setId(601L);
+    item2.setTipoItem(TipoItem.C);
+
+    EmprestimoItem emprestimoItem1 = new EmprestimoItem();
+    emprestimoItem1.setItem(item1);
+    emprestimoItem1.setQtde(BigDecimal.TEN);
+
+    EmprestimoItem emprestimoItem2 = new EmprestimoItem();
+    emprestimoItem2.setItem(item2);
+    emprestimoItem2.setQtde(BigDecimal.valueOf(5));
+
+    emprestimoTeste.setEmprestimoItem(new HashSet<>(List.of(emprestimoItem1, emprestimoItem2)));
+
+    // Item1: 7 devolvidas
+    EmprestimoDevolucaoItem devolucaoItem1 = new EmprestimoDevolucaoItem();
+    devolucaoItem1.setItem(item1);
+    devolucaoItem1.setQtde(BigDecimal.valueOf(7));
+    devolucaoItem1.setStatusDevolucao(StatusDevolucao.D);
+
+    // Item2: nada devolvido ainda
+    emprestimoTeste.setEmprestimoDevolucaoItem(new ArrayList<>(List.of(devolucaoItem1)));
+
+    when(itemService.getSaldoItem(600L)).thenReturn(BigDecimal.valueOf(50));
+    when(itemService.getSaldoItem(601L)).thenReturn(BigDecimal.valueOf(50));
+    when(itemService.saldoItemIsValid(any(), any())).thenReturn(true);
+
+    // When
+    service.prepareEmprestimo(emprestimoTeste);
+
+    // Then
+    List<EmprestimoDevolucaoItem> resultado = emprestimoTeste.getEmprestimoDevolucaoItem();
+
+    // Deve ter 3 itens: Item1-D(7) + Item1-P(3) + Item2-P(5)
+    assertEquals(3, resultado.size());
+
+    // Verifica item1 pendente = 10 - 7 = 3
+    EmprestimoDevolucaoItem item1Pendente =
+        resultado.stream()
+            .filter(
+                i ->
+                    StatusDevolucao.P.equals(i.getStatusDevolucao())
+                        && i.getItem().getId().equals(600L))
+            .findFirst()
+            .orElseThrow();
+    assertEquals(BigDecimal.valueOf(3), item1Pendente.getQtde());
+
+    // Verifica item2 pendente = 5 (tudo pendente)
+    EmprestimoDevolucaoItem item2Pendente =
+        resultado.stream()
+            .filter(
+                i ->
+                    StatusDevolucao.P.equals(i.getStatusDevolucao())
+                        && i.getItem().getId().equals(601L))
+            .findFirst()
+            .orElseThrow();
+    assertEquals(BigDecimal.valueOf(5), item2Pendente.getQtde());
+  }
 }
+
