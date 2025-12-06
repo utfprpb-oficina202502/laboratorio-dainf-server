@@ -42,6 +42,23 @@ public class RateLimitProperties {
   /** Configuracao para endpoint /usuario/confirm-email */
   private EndpointLimit confirmEmail = new EndpointLimit(10, 15);
 
+  // ========== Endpoints do Dashboard Pessoal ==========
+
+  /** Configuracao para endpoint /dashboard/my-stats */
+  private EndpointLimit dashboardMyStats = new EndpointLimit(30, 1);
+
+  /** Configuracao para endpoint /dashboard/my-frequent-items */
+  private EndpointLimit dashboardMyFrequentItems = new EndpointLimit(30, 1);
+
+  /** Configuracao para endpoint /dashboard/my-usage-history */
+  private EndpointLimit dashboardMyUsageHistory = new EndpointLimit(30, 1);
+
+  /** Configuracao para endpoint /dashboard/my-activity */
+  private EndpointLimit dashboardMyActivity = new EndpointLimit(30, 1);
+
+  /** Configuracao para endpoint /dashboard/my-calendar-events */
+  private EndpointLimit dashboardMyCalendarEvents = new EndpointLimit(30, 1);
+
   /** Habilita ou desabilita o rate limiting globalmente */
   private boolean enabled = true;
 

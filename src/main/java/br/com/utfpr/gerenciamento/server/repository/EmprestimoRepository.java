@@ -1,5 +1,7 @@
 package br.com.utfpr.gerenciamento.server.repository;
 
+import br.com.utfpr.gerenciamento.server.dto.dashboards.EstatisticasEmprestimoProjection;
+import br.com.utfpr.gerenciamento.server.dto.dashboards.ItemFrequenteUsuarioDto;
 import br.com.utfpr.gerenciamento.server.model.Emprestimo;
 import br.com.utfpr.gerenciamento.server.model.Usuario;
 import br.com.utfpr.gerenciamento.server.model.dashboards.DashboardEmprestimoCountRange;
@@ -185,4 +187,122 @@ public interface EmprestimoRepository
       """)
   Page<EmprestimoListProjection> findAllProjectedByUsernameWithFilter(
       @Param("username") String username, @Param("filter") String filter, Pageable pageable);
+
+  // ========== DASHBOARD PESSOAL DO USUARIO ==========
+
+  /**
+   * Conta estatisticas de emprestimos do usuario: em aberto, em atraso e total.
+   *
+   * @param username Username do usuario logado
+   * @return Projection com estatisticas (emAberto, emAtraso, total)
+   */
+  @Query(
+      """
+      SELECT new br.com.utfpr.gerenciamento.server.dto.dashboards.EstatisticasEmprestimoProjection(
+          COALESCE(SUM(CASE WHEN e.dataDevolucao IS NULL AND e.prazoDevolucao >= CURRENT_DATE THEN 1L ELSE 0L END), 0L),
+          COALESCE(SUM(CASE WHEN e.dataDevolucao IS NULL AND e.prazoDevolucao < CURRENT_DATE THEN 1L ELSE 0L END), 0L),
+          COUNT(e))
+      FROM Emprestimo e
+      WHERE e.usuarioEmprestimo.username = :username
+      """)
+  EstatisticasEmprestimoProjection countEstatisticasByUsername(@Param("username") String username);
+
+  /**
+   * Busca a proxima data de devolucao pendente do usuario.
+   *
+   * @param username Username do usuario logado
+   * @return Data da proxima devolucao ou null se nao houver
+   */
+  @Query(
+      """
+      SELECT MIN(e.prazoDevolucao)
+      FROM Emprestimo e
+      WHERE e.usuarioEmprestimo.username = :username
+        AND e.dataDevolucao IS NULL
+      """)
+  LocalDate findProximaDevolucaoByUsername(@Param("username") String username);
+
+  /**
+   * Busca os itens mais emprestados pelo usuario.
+   *
+   * @param username Username do usuario logado
+   * @param pageable Paginacao para limitar resultados
+   * @return Lista de itens frequentes com contagem
+   */
+  @Query(
+      """
+      SELECT new br.com.utfpr.gerenciamento.server.dto.dashboards.ItemFrequenteUsuarioDto(
+          i.id, i.nome, COUNT(ei), i.saldo)
+      FROM EmprestimoItem ei
+      JOIN ei.emprestimo e
+      JOIN ei.item i
+      WHERE e.usuarioEmprestimo.username = :username
+      GROUP BY i.id, i.nome, i.saldo
+      ORDER BY COUNT(ei) DESC
+      """)
+  List<ItemFrequenteUsuarioDto> findItensMaisEmprestadosByUsername(
+      @Param("username") String username, Pageable pageable);
+
+  /**
+   * Conta emprestimos por mes do usuario para historico de uso.
+   *
+   * @param username Username do usuario logado
+   * @param dtIni Data inicial do periodo
+   * @param dtFim Data final do periodo
+   * @return Lista de arrays [ano, mes, quantidade]
+   */
+  @Query(
+      """
+      SELECT YEAR(e.dataEmprestimo), MONTH(e.dataEmprestimo), COUNT(e)
+      FROM Emprestimo e
+      WHERE e.usuarioEmprestimo.username = :username
+        AND e.dataEmprestimo BETWEEN :dtIni AND :dtFim
+      GROUP BY YEAR(e.dataEmprestimo), MONTH(e.dataEmprestimo)
+      ORDER BY YEAR(e.dataEmprestimo), MONTH(e.dataEmprestimo)
+      """)
+  List<Object[]> countEmprestimosPorMesByUsername(
+      @Param("username") String username,
+      @Param("dtIni") LocalDate dtIni,
+      @Param("dtFim") LocalDate dtFim);
+
+  /**
+   * Busca emprestimos do usuario para exibicao no calendario.
+   *
+   * @param username Username do usuario logado
+   * @param dtIni Data inicial do periodo
+   * @param dtFim Data final do periodo
+   * @return Lista de emprestimos com itens carregados
+   */
+  @EntityGraph(attributePaths = {"emprestimoItem", "emprestimoItem.item"})
+  @Query(
+      """
+      SELECT e
+      FROM Emprestimo e
+      WHERE e.usuarioEmprestimo.username = :username
+        AND (e.dataEmprestimo BETWEEN :dtIni AND :dtFim
+             OR e.prazoDevolucao BETWEEN :dtIni AND :dtFim
+             OR (e.dataDevolucao IS NOT NULL AND e.dataDevolucao BETWEEN :dtIni AND :dtFim))
+      """)
+  List<Emprestimo> findEmprestimosParaCalendarioByUsername(
+      @Param("username") String username,
+      @Param("dtIni") LocalDate dtIni,
+      @Param("dtFim") LocalDate dtFim);
+
+  /**
+   * Busca emprestimos do usuario para timeline de atividades.
+   *
+   * @param username Username do usuario logado
+   * @param pageable Paginacao para limitar resultados
+   * @return Lista de emprestimos ordenados por data
+   */
+  @EntityGraph(attributePaths = {"emprestimoItem", "emprestimoItem.item"})
+  @Query(
+      """
+      SELECT e
+      FROM Emprestimo e
+      WHERE e.usuarioEmprestimo.username = :username
+      ORDER BY e.dataEmprestimo DESC
+      """)
+  List<Emprestimo> findEmprestimosParaAtividadesByUsername(
+      @Param("username") String username, Pageable pageable);
 }

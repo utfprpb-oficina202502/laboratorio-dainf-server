@@ -17,9 +17,13 @@ import java.io.StringWriter;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
@@ -51,6 +55,7 @@ class RateLimitFilterTest {
         Caffeine.newBuilder().expireAfterAccess(2, TimeUnit.HOURS).maximumSize(10_000).build();
 
     endpointLimits = new ConcurrentHashMap<>();
+    // Endpoints publicos (POST)
     endpointLimits.put(RateLimitedEndpoint.LOGIN, properties.getLogin());
     endpointLimits.put(RateLimitedEndpoint.AUTH, new RateLimitProperties.EndpointLimit(10, 15));
     endpointLimits.put(
@@ -62,6 +67,20 @@ class RateLimitFilterTest {
         RateLimitedEndpoint.RESEND_EMAIL, new RateLimitProperties.EndpointLimit(5, 60));
     endpointLimits.put(
         RateLimitedEndpoint.CONFIRM_EMAIL, new RateLimitProperties.EndpointLimit(10, 15));
+    // Endpoints do dashboard pessoal (GET)
+    endpointLimits.put(
+        RateLimitedEndpoint.DASHBOARD_MY_STATS, new RateLimitProperties.EndpointLimit(3, 1));
+    endpointLimits.put(
+        RateLimitedEndpoint.DASHBOARD_MY_FREQUENT_ITEMS,
+        new RateLimitProperties.EndpointLimit(3, 1));
+    endpointLimits.put(
+        RateLimitedEndpoint.DASHBOARD_MY_USAGE_HISTORY,
+        new RateLimitProperties.EndpointLimit(3, 1));
+    endpointLimits.put(
+        RateLimitedEndpoint.DASHBOARD_MY_ACTIVITY, new RateLimitProperties.EndpointLimit(3, 1));
+    endpointLimits.put(
+        RateLimitedEndpoint.DASHBOARD_MY_CALENDAR_EVENTS,
+        new RateLimitProperties.EndpointLimit(3, 1));
 
     rateLimitFilter =
         new RateLimitFilter(properties, rateLimitConfig, rateLimitCache, endpointLimits);
@@ -109,15 +128,82 @@ class RateLimitFilterTest {
     assertTrue(jsonResponse.contains("Muitas tentativas"));
   }
 
-  @Test
-  void shouldSkipNonPostRequests() throws Exception {
-    when(request.getMethod()).thenReturn("GET");
-    when(request.getRequestURI()).thenReturn("/login");
+  /**
+   * Testa que requisicoes com metodo HTTP incorreto para o endpoint sao ignoradas pelo rate
+   * limiting.
+   *
+   * @param httpMethod Metodo HTTP da requisicao
+   * @param uri URI do endpoint
+   * @param descricao Descricao do cenario de teste
+   */
+  @ParameterizedTest(name = "{2}")
+  @MethodSource("httpMethodMismatchProvider")
+  void shouldSkipRequestsWithMismatchedHttpMethod(String httpMethod, String uri, String descricao)
+      throws Exception {
+    when(request.getMethod()).thenReturn(httpMethod);
+    when(request.getRequestURI()).thenReturn(uri);
 
     rateLimitFilter.doFilterInternal(request, response, filterChain);
 
     verify(filterChain).doFilter(request, response);
     verify(response, never()).setStatus(429);
+  }
+
+  static Stream<Arguments> httpMethodMismatchProvider() {
+    return Stream.of(
+        Arguments.of("GET", "/login", "GET em endpoint POST (/login) deve ser ignorado"),
+        Arguments.of(
+            "POST",
+            "/dashboard/my-stats",
+            "POST em endpoint GET (/dashboard/my-stats) deve ser ignorado"),
+        Arguments.of("PUT", "/login", "PUT em endpoint POST (/login) deve ser ignorado"));
+  }
+
+  @Test
+  void shouldApplyRateLimitToGetDashboardEndpoints() throws Exception {
+    when(request.getMethod()).thenReturn("GET");
+    when(request.getRequestURI()).thenReturn("/dashboard/my-stats");
+    when(request.getRemoteAddr()).thenReturn("192.168.1.50");
+
+    rateLimitFilter.doFilterInternal(request, response, filterChain);
+
+    verify(filterChain).doFilter(request, response);
+
+    // Verifica que o bucket foi criado para o endpoint de dashboard
+    Bucket bucket =
+        rateLimitCache.getIfPresent(
+            "192.168.1.50:" + RateLimitedEndpoint.DASHBOARD_MY_STATS.name());
+    assertNotNull(bucket);
+  }
+
+  @Test
+  void shouldBlockGetDashboardEndpointWhenRateLimitExceeded() throws Exception {
+    StringWriter stringWriter = new StringWriter();
+    PrintWriter writer = new PrintWriter(stringWriter);
+    when(response.getWriter()).thenReturn(writer);
+    when(request.getMethod()).thenReturn("GET");
+    when(request.getRequestURI()).thenReturn("/dashboard/my-stats");
+    when(request.getRemoteAddr()).thenReturn("192.168.1.51");
+
+    // Consumir todos os tokens (limite = 3)
+    for (int i = 0; i < 3; i++) {
+      rateLimitFilter.doFilterInternal(request, response, filterChain);
+    }
+
+    // Reset writer para proxima requisicao
+    stringWriter = new StringWriter();
+    writer = new PrintWriter(stringWriter);
+    when(response.getWriter()).thenReturn(writer);
+
+    // 4a requisicao deve ser bloqueada
+    rateLimitFilter.doFilterInternal(request, response, filterChain);
+
+    writer.flush();
+    String jsonResponse = stringWriter.toString();
+
+    verify(response).setHeader(eq("Retry-After"), anyString());
+    assertTrue(jsonResponse.contains("rate-limit-exceeded"));
+    assertTrue(jsonResponse.contains("Muitas tentativas"));
   }
 
   @Test
