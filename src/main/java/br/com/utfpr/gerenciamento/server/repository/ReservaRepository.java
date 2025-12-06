@@ -6,6 +6,7 @@ import br.com.utfpr.gerenciamento.server.repository.projection.ReservaListProjec
 import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -118,16 +119,18 @@ public interface ReservaRepository
   /**
    * Busca reservas do usuario para timeline de atividades.
    *
+   * <p>Usa @EntityGraph ao inves de JOIN FETCH para evitar duplicacao de linhas e permitir
+   * paginacao correta no banco de dados (evita HHH000104 in-memory pagination).
+   *
    * @param username Username do usuario logado
    * @param pageable Paginacao para limitar resultados
    * @return Lista de reservas ordenadas por data
    */
+  @EntityGraph(attributePaths = {"reservaItem", "reservaItem.item"})
   @Query(
       """
       SELECT r
       FROM Reserva r
-      LEFT JOIN FETCH r.reservaItem ri
-      LEFT JOIN FETCH ri.item
       WHERE r.usuario.username = :username
       ORDER BY r.dataReserva DESC
       """)
