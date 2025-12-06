@@ -112,4 +112,25 @@ public interface ReservaRepository
       """)
   Page<ReservaListProjection> findAllProjectedByUsernameWithFilter(
       @Param("username") String username, @Param("filter") String filter, Pageable pageable);
+
+  // ========== DASHBOARD PESSOAL DO USUARIO ==========
+
+  /**
+   * Busca reservas do usuario para timeline de atividades.
+   *
+   * @param username Username do usuario logado
+   * @param pageable Paginacao para limitar resultados
+   * @return Lista de reservas ordenadas por data
+   */
+  @Query(
+      """
+      SELECT r
+      FROM Reserva r
+      LEFT JOIN FETCH r.reservaItem ri
+      LEFT JOIN FETCH ri.item
+      WHERE r.usuario.username = :username
+      ORDER BY r.dataReserva DESC
+      """)
+  List<Reserva> findReservasParaAtividadesByUsername(
+      @Param("username") String username, Pageable pageable);
 }

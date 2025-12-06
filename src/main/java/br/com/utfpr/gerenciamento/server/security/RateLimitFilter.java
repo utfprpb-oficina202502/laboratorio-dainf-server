@@ -61,17 +61,25 @@ public class RateLimitFilter extends OncePerRequestFilter {
       return;
     }
 
-    // Apenas POST para endpoints de rate limit
-    if (!HttpMethod.POST.matches(request.getMethod())) {
-      filterChain.doFilter(request, response);
-      return;
-    }
-
     String path = request.getRequestURI();
     RateLimitedEndpoint endpoint = RateLimitedEndpoint.fromPath(path);
 
     // Endpoint nao esta na lista de rate limit
     if (endpoint == null) {
+      filterChain.doFilter(request, response);
+      return;
+    }
+
+    // Verifica se o metodo HTTP corresponde ao tipo do endpoint
+    boolean isPostRequest = HttpMethod.POST.matches(request.getMethod());
+    boolean isGetRequest = HttpMethod.GET.matches(request.getMethod());
+
+    if (endpoint.isGetEndpoint() && !isGetRequest) {
+      filterChain.doFilter(request, response);
+      return;
+    }
+
+    if (!endpoint.isGetEndpoint() && !isPostRequest) {
       filterChain.doFilter(request, response);
       return;
     }
@@ -103,8 +111,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
           HttpStatus.TOO_MANY_REQUESTS,
           "Limite de requisicoes excedido",
           String.format(
-              "Muitas tentativas para %s. Tente novamente em %d minutos.",
-              getEndpointDescription(endpoint), (waitTimeSeconds / 60) + 1),
+              "Muitas tentativas para %s. Tente novamente em %d segundos.",
+              getEndpointDescription(endpoint), waitTimeSeconds > 0 ? waitTimeSeconds : 1),
           "/errors/rate-limit-exceeded");
     }
   }
@@ -147,6 +155,11 @@ public class RateLimitFilter extends OncePerRequestFilter {
       case PASSWORD_RESET -> "redefinicao de senha";
       case RESEND_EMAIL -> "reenvio de email";
       case CONFIRM_EMAIL -> "confirmacao de email";
+      case DASHBOARD_MY_STATS -> "estatisticas do usuario";
+      case DASHBOARD_MY_FREQUENT_ITEMS -> "itens frequentes";
+      case DASHBOARD_MY_USAGE_HISTORY -> "historico de uso";
+      case DASHBOARD_MY_ACTIVITY -> "atividades do usuario";
+      case DASHBOARD_MY_CALENDAR_EVENTS -> "eventos do calendario";
     };
   }
 }

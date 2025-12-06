@@ -28,22 +28,36 @@ public class RateLimitConfig {
 
   /** Enum que mapeia endpoints para suas configuracoes de rate limit. */
   public enum RateLimitedEndpoint {
-    LOGIN("/login"),
-    AUTH("/auth"),
-    PASSWORD_RESET_REQUEST("/usuario/request-code-reset-password"),
-    NEW_USER("/usuario/new-user"),
-    PASSWORD_RESET("/usuario/reset-password"),
-    RESEND_EMAIL("/usuario/resend-confirm-email"),
-    CONFIRM_EMAIL("/usuario/confirm-email");
+    // Endpoints publicos (POST)
+    LOGIN("/login", false),
+    AUTH("/auth", false),
+    PASSWORD_RESET_REQUEST("/usuario/request-code-reset-password", false),
+    NEW_USER("/usuario/new-user", false),
+    PASSWORD_RESET("/usuario/reset-password", false),
+    RESEND_EMAIL("/usuario/resend-confirm-email", false),
+    CONFIRM_EMAIL("/usuario/confirm-email", false),
+
+    // Endpoints autenticados do dashboard pessoal (GET)
+    DASHBOARD_MY_STATS("/dashboard/my-stats", true),
+    DASHBOARD_MY_FREQUENT_ITEMS("/dashboard/my-frequent-items", true),
+    DASHBOARD_MY_USAGE_HISTORY("/dashboard/my-usage-history", true),
+    DASHBOARD_MY_ACTIVITY("/dashboard/my-activity", true),
+    DASHBOARD_MY_CALENDAR_EVENTS("/dashboard/my-calendar-events", true);
 
     private final String path;
+    private final boolean isGetEndpoint;
 
-    RateLimitedEndpoint(String path) {
+    RateLimitedEndpoint(String path, boolean isGetEndpoint) {
       this.path = path;
+      this.isGetEndpoint = isGetEndpoint;
     }
 
     public String getPath() {
       return path;
+    }
+
+    public boolean isGetEndpoint() {
+      return isGetEndpoint;
     }
 
     /**
@@ -86,6 +100,7 @@ public class RateLimitConfig {
   public Map<RateLimitedEndpoint, RateLimitProperties.EndpointLimit> endpointLimits() {
     Map<RateLimitedEndpoint, RateLimitProperties.EndpointLimit> limits = new ConcurrentHashMap<>();
 
+    // Endpoints publicos
     limits.put(RateLimitedEndpoint.LOGIN, properties.getLogin());
     limits.put(RateLimitedEndpoint.AUTH, properties.getAuth());
     limits.put(RateLimitedEndpoint.PASSWORD_RESET_REQUEST, properties.getPasswordResetRequest());
@@ -93,6 +108,17 @@ public class RateLimitConfig {
     limits.put(RateLimitedEndpoint.PASSWORD_RESET, properties.getPasswordReset());
     limits.put(RateLimitedEndpoint.RESEND_EMAIL, properties.getResendEmail());
     limits.put(RateLimitedEndpoint.CONFIRM_EMAIL, properties.getConfirmEmail());
+
+    // Endpoints do dashboard pessoal
+    limits.put(RateLimitedEndpoint.DASHBOARD_MY_STATS, properties.getDashboardMyStats());
+    limits.put(
+        RateLimitedEndpoint.DASHBOARD_MY_FREQUENT_ITEMS, properties.getDashboardMyFrequentItems());
+    limits.put(
+        RateLimitedEndpoint.DASHBOARD_MY_USAGE_HISTORY, properties.getDashboardMyUsageHistory());
+    limits.put(RateLimitedEndpoint.DASHBOARD_MY_ACTIVITY, properties.getDashboardMyActivity());
+    limits.put(
+        RateLimitedEndpoint.DASHBOARD_MY_CALENDAR_EVENTS,
+        properties.getDashboardMyCalendarEvents());
 
     log.info("Rate limiting configurado para {} endpoints", limits.size());
     limits.forEach(
