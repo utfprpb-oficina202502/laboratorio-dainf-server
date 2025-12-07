@@ -1011,7 +1011,7 @@ class EmprestimoServiceImplTest {
     itemResponseDto1.setId(600L);
     ItemResponseDto itemResponseDto2 = new ItemResponseDto();
     itemResponseDto2.setId(601L);
-    
+
     when(itemService.findOne(600L)).thenReturn(itemResponseDto1);
     when(itemService.findOne(601L)).thenReturn(itemResponseDto2);
     when(itemService.toEntity(any())).thenReturn(item1, item2);

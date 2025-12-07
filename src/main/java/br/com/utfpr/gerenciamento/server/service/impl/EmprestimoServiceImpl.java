@@ -593,8 +593,7 @@ public class EmprestimoServiceImpl extends CrudServiceImpl<Emprestimo, Long, Emp
             if (!StatusDevolucao.P.equals(item.getStatusDevolucao())) {
               // Preserva itens já processados (D ou S)
               itensProcessados.add(item);
-              qtdeProcessadaPorItem.merge(
-                  item.getItem().getId(), item.getQtde(), BigDecimal::add);
+              qtdeProcessadaPorItem.merge(item.getItem().getId(), item.getQtde(), BigDecimal::add);
             }
           }
         });
@@ -604,8 +603,7 @@ public class EmprestimoServiceImpl extends CrudServiceImpl<Emprestimo, Long, Emp
 
     qtdeTotalPorItem.forEach(
         (itemId, qtdeTotal) -> {
-          BigDecimal qtdeProcessada =
-              qtdeProcessadaPorItem.getOrDefault(itemId, BigDecimal.ZERO);
+          BigDecimal qtdeProcessada = qtdeProcessadaPorItem.getOrDefault(itemId, BigDecimal.ZERO);
           BigDecimal qtdePendente = qtdeTotal.subtract(qtdeProcessada);
 
           if (qtdePendente.compareTo(BigDecimal.ZERO) > 0) {
