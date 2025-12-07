@@ -37,7 +37,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.cache.annotation.CacheEvict;
@@ -574,8 +573,7 @@ public class EmprestimoServiceImpl extends CrudServiceImpl<Emprestimo, Long, Emp
           .forEach(
               empItem -> {
                 Long itemId = empItem.getItem().getId();
-                qtdeTotalPorItem.merge(
-                    itemId, empItem.getQtde(), java.math.BigDecimal::add);
+                qtdeTotalPorItem.merge(itemId, empItem.getQtde(), java.math.BigDecimal::add);
               });
     }
 

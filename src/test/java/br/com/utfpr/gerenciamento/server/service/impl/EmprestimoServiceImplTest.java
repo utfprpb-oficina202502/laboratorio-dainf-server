@@ -1004,7 +1004,7 @@ class EmprestimoServiceImplTest {
     when(itemService.getSaldoItem(600L)).thenReturn(BigDecimal.valueOf(50));
     when(itemService.getSaldoItem(601L)).thenReturn(BigDecimal.valueOf(50));
     when(itemService.saldoItemIsValid(any(), any())).thenReturn(true);
-    
+
     // Mock para carregar itens - retorna os itens já criados
     when(itemService.toEntity(any())).thenReturn(item1, item2);
 
