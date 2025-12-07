@@ -40,7 +40,7 @@ public class RelatorioGeneratorService {
    * @return Array de bytes do arquivo gerado
    */
   public byte[] gerarHistoricoEmprestimo(String documento, FormatoRelatorio formato) {
-    log.info("Gerando relatório Histórico de Empréstimo - Formato: {}", formato);
+    log.info("Gerando relatório Histórico de Empréstimo");
 
     List<HistoricoEmprestimoDto> dados = reportDataService.getHistoricoEmprestimo(documento);
 
@@ -81,7 +81,7 @@ public class RelatorioGeneratorService {
    * @return Array de bytes do arquivo gerado
    */
   public byte[] gerarItensSemEstoque(FormatoRelatorio formato) {
-    log.info("Gerando relatório Itens Sem Estoque - Formato: {}", formato);
+    log.info("Gerando relatório Itens Sem Estoque");
 
     List<ItemSemEstoqueDto> dados = reportDataService.getItensSemEstoque();
 
@@ -117,7 +117,7 @@ public class RelatorioGeneratorService {
    */
   public byte[] gerarEmprestimosRealizados(
       LocalDate dataInicio, LocalDate dataFim, FormatoRelatorio formato) {
-    log.info("Gerando relatório Empréstimos Realizados - Formato: {}", formato);
+    log.info("Gerando relatório Empréstimos Realizados");
 
     List<EmprestimoRealizadoDto> dados =
         reportDataService.getEmprestimosRealizados(dataInicio, dataFim);
@@ -156,7 +156,7 @@ public class RelatorioGeneratorService {
    * @return Array de bytes do arquivo gerado
    */
   public byte[] gerarReservasDoItem(Long itemId, String nomeItem, FormatoRelatorio formato) {
-    log.info("Gerando relatório Reservas do Item - Formato: {}", formato);
+    log.info("Gerando relatório Reservas do Item");
 
     List<ReservaItemDto> dados = reportDataService.getReservasDoItem(itemId);
 
@@ -193,7 +193,7 @@ public class RelatorioGeneratorService {
    * @return Array de bytes do arquivo gerado
    */
   public byte[] gerarSolicitacoesDoItem(Long itemId, String nomeItem, FormatoRelatorio formato) {
-    log.info("Gerando relatório Solicitações do Item - Formato: {}", formato);
+    log.info("Gerando relatório Solicitações do Item");
 
     List<SolicitacaoItemDto> dados = reportDataService.getSolicitacoesDoItem(itemId);
 
@@ -229,7 +229,7 @@ public class RelatorioGeneratorService {
    * @return Array de bytes do arquivo gerado
    */
   public byte[] gerarItensQtdeMinima(FormatoRelatorio formato) {
-    log.info("Gerando relatório Itens Quantidade Mínima - Formato: {}", formato);
+    log.info("Gerando relatório Itens Quantidade Mínima");
 
     List<ItemQtdeMinimaDto> dados = reportDataService.getItensQtdeMinima();
 

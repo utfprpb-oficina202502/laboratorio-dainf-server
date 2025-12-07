@@ -120,12 +120,17 @@ public class PdfGeneratorService {
     try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
       ITextRenderer renderer = new ITextRenderer();
 
-      // Configurar documento HTML
-      renderer.setDocumentFromString(html);
-      renderer.layout();
+      try {
+        // Configurar documento HTML
+        renderer.setDocumentFromString(html);
+        renderer.layout();
 
-      // Gerar PDF
-      renderer.createPDF(outputStream);
+        // Gerar PDF
+        renderer.createPDF(outputStream);
+      } finally {
+        // Limpar estado interno do renderer (evita vazamento de recursos)
+        renderer.finishPDF();
+      }
 
       int tamanho = outputStream.size();
       log.debug("PDF gerado com sucesso, tamanho: {} bytes", tamanho);
