@@ -89,7 +89,7 @@ public class PdfGeneratorService {
    */
   private void validarTemplate(String templateName) {
     if (templateName == null || !TEMPLATES_PERMITIDOS.contains(templateName)) {
-      log.warn("Tentativa de acesso a template não permitido: {}", templateName);
+      log.warn("Tentativa de acesso a template não permitido");
       throw new RelatorioException("Template de relatório não disponível");
     }
   }
