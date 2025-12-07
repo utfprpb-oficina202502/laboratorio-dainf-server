@@ -2,6 +2,7 @@ package br.com.utfpr.gerenciamento.server.service.impl;
 
 import br.com.utfpr.gerenciamento.server.dto.ReservaListDto;
 import br.com.utfpr.gerenciamento.server.dto.ReservaResponseDto;
+import br.com.utfpr.gerenciamento.server.event.reserva.ReservaCriadaEvent;
 import br.com.utfpr.gerenciamento.server.exception.EntityNotFoundException;
 import br.com.utfpr.gerenciamento.server.model.Reserva;
 import br.com.utfpr.gerenciamento.server.model.Usuario;
@@ -16,6 +17,7 @@ import br.com.utfpr.gerenciamento.server.util.SecurityUtils;
 import java.util.List;
 import java.util.Map;
 import org.modelmapper.ModelMapper;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -30,16 +32,19 @@ public class ReservaServiceImpl extends CrudServiceImpl<Reserva, Long, ReservaRe
   private final UsuarioService usuarioService;
   private final EmailService emailService;
   private final ModelMapper modelMapper;
+  private final ApplicationEventPublisher eventPublisher;
 
   public ReservaServiceImpl(
       ReservaRepository reservaRepository,
       UsuarioService usuarioService,
       EmailService emailService,
-      ModelMapper modelMapper) {
+      ModelMapper modelMapper,
+      ApplicationEventPublisher eventPublisher) {
     this.reservaRepository = reservaRepository;
     this.usuarioService = usuarioService;
     this.emailService = emailService;
     this.modelMapper = modelMapper;
+    this.eventPublisher = eventPublisher;
   }
 
   @Override
@@ -97,7 +102,11 @@ public class ReservaServiceImpl extends CrudServiceImpl<Reserva, Long, ReservaRe
   public ReservaResponseDto save(Reserva reserva) {
     String username = SecurityUtils.getAuthenticatedUsername();
     reserva.setUsuario(usuarioService.toEntity(usuarioService.findByUsername(username)));
-    return super.save(reserva);
+    ReservaResponseDto reservaResponseDto = super.save(reserva);
+    // Publica evento para envio de email APÓS commit da transação
+    eventPublisher.publishEvent(
+        new ReservaCriadaEvent(this, reserva.getId(), reserva.getUsuario().getEmail()));
+    return reservaResponseDto;
   }
 
   @Override
@@ -133,15 +142,6 @@ public class ReservaServiceImpl extends CrudServiceImpl<Reserva, Long, ReservaRe
         "Reserva Finalizada",
         "templateFinalizacaoReserva");
     reservaRepository.deleteById(idReserva);
-  }
-
-  @Override
-  public void sendEmailConfirmacaoReserva(Reserva reserva) {
-    emailService.sendEmailWithTemplate(
-        converterObjectToTemplateEmail(reserva),
-        reserva.getUsuario().getEmail(),
-        "Confirmação de Reserva de Materiais",
-        "templateConfirmacaoReserva");
   }
 
   public ReservaTemplate converterObjectToTemplateEmail(Reserva reserva) {

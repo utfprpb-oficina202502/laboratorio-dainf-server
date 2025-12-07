@@ -7,16 +7,22 @@ import br.com.utfpr.gerenciamento.server.event.emprestimo.EmprestimoPrazoProximo
 import br.com.utfpr.gerenciamento.server.event.item.EstoqueMinNotificacaoEvent;
 import br.com.utfpr.gerenciamento.server.event.nadaConsta.NadaConstaEmitidoEvent;
 import br.com.utfpr.gerenciamento.server.event.nadaConsta.NadaConstaPendenciasEvent;
+import br.com.utfpr.gerenciamento.server.event.reserva.ReservaCriadaEvent;
 import br.com.utfpr.gerenciamento.server.event.usuario.UsuarioCriadoEvent;
 import br.com.utfpr.gerenciamento.server.exception.EntityNotFoundException;
 import br.com.utfpr.gerenciamento.server.mapper.EmprestimoTemplateMapper;
+import br.com.utfpr.gerenciamento.server.mapper.ReservaTemplateMapper;
 import br.com.utfpr.gerenciamento.server.model.Email;
 import br.com.utfpr.gerenciamento.server.model.Emprestimo;
+import br.com.utfpr.gerenciamento.server.model.Reserva;
 import br.com.utfpr.gerenciamento.server.model.Usuario;
+import br.com.utfpr.gerenciamento.server.model.modelTemplateEmail.ReservaTemplate;
 import br.com.utfpr.gerenciamento.server.repository.EmprestimoRepository;
+import br.com.utfpr.gerenciamento.server.repository.ReservaRepository;
 import br.com.utfpr.gerenciamento.server.repository.UsuarioRepository;
 import br.com.utfpr.gerenciamento.server.service.EmailService;
 import br.com.utfpr.gerenciamento.server.service.RelatorioService;
+import br.com.utfpr.gerenciamento.server.service.SystemConfigService;
 import br.com.utfpr.gerenciamento.server.util.EmailUtils;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -98,6 +104,9 @@ public class EmailEventListener {
   private final EmprestimoRepository emprestimoRepository;
   private final EmprestimoTemplateMapper templateMapper;
   private final RelatorioService relatorioService;
+  private final ReservaRepository reservaRepository;
+  private final ReservaTemplateMapper reservaTemplateMapper;
+  private final SystemConfigService systemConfigService;
   private final UsuarioRepository usuarioRepository;
 
   /**
@@ -301,9 +310,9 @@ public class EmailEventListener {
       return nadaConstaEmitidoEvent.getTemplateData();
     } else if (event instanceof NadaConstaPendenciasEvent nadaConstaPendenciasEvent) {
       return nadaConstaPendenciasEvent.getTemplateData();
+    } else if (event instanceof ReservaCriadaEvent reservaCriadaEvent) {
+      return prepareReservaTemplateData(reservaCriadaEvent.getReservaId());
     }
-
-    // TODO: Adicionar outros tipos de eventos aqui (Reserva, etc.)
 
     throw new IllegalArgumentException("Tipo de evento não suportado: " + event.getClass());
   }
@@ -336,11 +345,11 @@ public class EmailEventListener {
   /**
    * Carrega dados de um usuário e prepara template para email de confirmação de cadastro.
    *
-   * <p>Constrói os dados necessários para o template templateConfirmacaoCadastro, incluindo nome do
-   * usuário e link de confirmação com código de verificação.
+   * <p>Constrói os dados necessários para o template templateConfirmacaoCadastro.html, incluindo
+   * nome do usuário, link de confirmação com código de verificação e URL do logo.
    *
    * @param event Evento de usuário criado contendo ID, email e código de verificação
-   * @return Map com dados do template (nome, url)
+   * @return Map com dados do template (nome, url, logoUrl)
    */
   private Map<String, Object> prepareUsuarioTemplateData(UsuarioCriadoEvent event) {
     // Carrega usuário em NOVA transação
@@ -360,7 +369,31 @@ public class EmailEventListener {
     Map<String, Object> templateData = new java.util.HashMap<>();
     templateData.put("usuario", usuario.getNome());
     templateData.put("url", urlConfirmacao);
+    templateData.put("logoUrl", systemConfigService.getLogoUrl());
 
     return templateData;
+  }
+
+  /**
+   * Carrega dados de uma reserva e prepara template para email de confirmação.
+   *
+   * <p>Este método carrega a reserva com suas relações e delega o mapeamento para o componente
+   * especializado.
+   *
+   * @param reservaId ID da reserva
+   * @return ReservaTemplate com dados formatados para template FreeMarker
+   */
+  private ReservaTemplate prepareReservaTemplateData(Long reservaId) {
+    // Carrega reserva em NOVA transação
+    Reserva reserva =
+        reservaRepository
+            .findById(reservaId)
+            .orElseThrow(
+                () ->
+                    new EntityNotFoundException(
+                        "Reserva não encontrada para envio de email: " + reservaId));
+
+    // Delega mapeamento para componente especializado
+    return reservaTemplateMapper.toTemplateData(reserva);
   }
 }

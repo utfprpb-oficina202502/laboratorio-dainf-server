@@ -6,7 +6,8 @@ import lombok.Getter;
 /**
  * Evento publicado quando um novo usuário é criado no sistema.
  *
- * <p>Dispara envio de email de confirmação de cadastro usando template templateConfirmacaoCadastro.
+ * <p>Dispara envio de email de confirmação de cadastro usando template
+ * templateConfirmacaoCadastro.html.
  *
  * <p>Este evento garante que:
  *
@@ -39,7 +40,7 @@ public class UsuarioCriadoEvent extends EmailEvent {
         source,
         recipient,
         "Confirmação de email - Laboratório DAINF-PB (UTFPR)",
-        "templateConfirmacaoCadastro");
+        "templateConfirmacaoCadastro.html");
     this.usuarioId = usuarioId;
     this.codigoVerificacao = codigoVerificacao;
   }
