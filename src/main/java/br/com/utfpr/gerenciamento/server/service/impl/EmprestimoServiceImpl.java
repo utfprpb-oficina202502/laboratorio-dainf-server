@@ -565,61 +565,67 @@ public class EmprestimoServiceImpl extends CrudServiceImpl<Emprestimo, Long, Emp
                       itemService.getSaldoItem(empItem.getItem().getId()), empItem.getQtde()));
     }
 
-    // Cria itens de devolução para materiais consumíveis
-    Set<EmprestimoItem> itensSet =
-        Optional.ofNullable(emprestimo.getEmprestimoItem()).orElse(Collections.emptySet());
-    List<EmprestimoDevolucaoItem> novosItensDevolucao =
-        createEmprestimoItemDevolucao(new ArrayList<>(itensSet));
+    // ETAPA 1: Agrupa emprestimoItem por item.id e soma quantidades
+    java.util.Map<Long, java.math.BigDecimal> qtdeTotalPorItem = new java.util.HashMap<>();
+    if (emprestimo.getEmprestimoItem() != null) {
+      emprestimo.getEmprestimoItem().stream()
+          .filter(empItem -> empItem != null && empItem.getItem() != null)
+          .filter(empItem -> TipoItem.C.equals(empItem.getItem().getTipoItem()))
+          .forEach(
+              empItem -> {
+                Long itemId = empItem.getItem().getId();
+                qtdeTotalPorItem.merge(
+                    itemId, empItem.getQtde(), java.math.BigDecimal::add);
+              });
+    }
 
-    // Preserva o status dos itens de devolução existentes, ajustando quantidades pendentes
+    // ETAPA 2: Separa itens existentes em processados vs pendentes
     List<EmprestimoDevolucaoItem> itensExistentes =
         Optional.ofNullable(emprestimo.getEmprestimoDevolucaoItem())
             .orElse(Collections.emptyList());
 
-    // Agrupa itens existentes por item.id para facilitar reconciliação
-    java.util.Map<Long, List<EmprestimoDevolucaoItem>> existentesPorItemId =
-        itensExistentes.stream()
-            .filter(item -> item != null && item.getItem() != null)
-            .collect(java.util.stream.Collectors.groupingBy(item -> item.getItem().getId()));
+    java.util.Map<Long, java.math.BigDecimal> qtdeProcessadaPorItem = new java.util.HashMap<>();
+    List<EmprestimoDevolucaoItem> itensProcessados = new ArrayList<>();
 
-    // Para cada novo item, ajusta quantidade baseado em devoluções já processadas
-    List<EmprestimoDevolucaoItem> resultadoFinal = new ArrayList<>();
-    for (EmprestimoDevolucaoItem novoItem : novosItensDevolucao) {
-      if (novoItem == null || novoItem.getItem() == null) continue;
+    itensExistentes.forEach(
+        item -> {
+          if (item != null && item.getItem() != null) {
+            if (!StatusDevolucao.P.equals(item.getStatusDevolucao())) {
+              // Preserva itens já processados (D ou S)
+              itensProcessados.add(item);
+              qtdeProcessadaPorItem.merge(
+                  item.getItem().getId(), item.getQtde(), java.math.BigDecimal::add);
+            }
+          }
+        });
 
-      Long itemId = novoItem.getItem().getId();
-      List<EmprestimoDevolucaoItem> existentesDoItem =
-          existentesPorItemId.getOrDefault(itemId, Collections.emptyList());
+    // ETAPA 3: Calcula quantidades pendentes e cria novos itens de devolução
+    List<EmprestimoDevolucaoItem> resultadoFinal = new ArrayList<>(itensProcessados);
 
-      // Adiciona itens já processados (D ou S) preservando seus status
-      List<EmprestimoDevolucaoItem> processados =
-          existentesDoItem.stream()
-              .filter(item -> !StatusDevolucao.P.equals(item.getStatusDevolucao()))
-              .toList();
-      resultadoFinal.addAll(processados);
+    qtdeTotalPorItem.forEach(
+        (itemId, qtdeTotal) -> {
+          java.math.BigDecimal qtdeProcessada =
+              qtdeProcessadaPorItem.getOrDefault(itemId, java.math.BigDecimal.ZERO);
+          java.math.BigDecimal qtdePendente = qtdeTotal.subtract(qtdeProcessada);
 
-      // Calcula quantidade ainda pendente
-      java.math.BigDecimal qtdeProcessada =
-          processados.stream()
-              .map(EmprestimoDevolucaoItem::getQtde)
-              .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
-      java.math.BigDecimal qtdePendente = novoItem.getQtde().subtract(qtdeProcessada);
-
-      // Adiciona item pendente apenas se ainda há quantidade a devolver
-      if (qtdePendente.compareTo(java.math.BigDecimal.ZERO) > 0) {
-        novoItem.setQtde(qtdePendente);
-        resultadoFinal.add(novoItem);
-      } else if (qtdePendente.compareTo(java.math.BigDecimal.ZERO) < 0) {
-        // Quantidade devolvida excede a do empréstimo - situação inconsistente
-        throw new IllegalStateException(
-            "Quantidade devolvida ("
-                + qtdeProcessada
-                + ") excede a quantidade no empréstimo ("
-                + novoItem.getQtde()
-                + ") para item "
-                + itemId);
-      }
-    }
+          if (qtdePendente.compareTo(java.math.BigDecimal.ZERO) > 0) {
+            // Cria UM ÚNICO item pendente com a quantidade restante
+            EmprestimoDevolucaoItem itemPendente = new EmprestimoDevolucaoItem();
+            itemPendente.setItem(itemService.toEntity(itemService.findOne(itemId)));
+            itemPendente.setQtde(qtdePendente);
+            itemPendente.setStatusDevolucao(StatusDevolucao.P);
+            itemPendente.setEmprestimo(emprestimo);
+            resultadoFinal.add(itemPendente);
+          } else if (qtdePendente.compareTo(java.math.BigDecimal.ZERO) < 0) {
+            throw new IllegalStateException(
+                "Quantidade devolvida ("
+                    + qtdeProcessada
+                    + ") excede a quantidade no empréstimo ("
+                    + qtdeTotal
+                    + ") para item "
+                    + itemId);
+          }
+        });
 
     emprestimo.setEmprestimoDevolucaoItem(resultadoFinal);
   }
