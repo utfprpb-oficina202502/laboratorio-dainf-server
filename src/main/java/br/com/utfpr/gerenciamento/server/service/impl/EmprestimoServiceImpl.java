@@ -16,6 +16,7 @@ import br.com.utfpr.gerenciamento.server.exception.EntityNotFoundException;
 import br.com.utfpr.gerenciamento.server.model.Emprestimo;
 import br.com.utfpr.gerenciamento.server.model.EmprestimoDevolucaoItem;
 import br.com.utfpr.gerenciamento.server.model.EmprestimoItem;
+import br.com.utfpr.gerenciamento.server.model.Item;
 import br.com.utfpr.gerenciamento.server.model.Usuario;
 import br.com.utfpr.gerenciamento.server.model.dashboards.DashboardEmprestimoDia;
 import br.com.utfpr.gerenciamento.server.model.dashboards.DashboardItensEmprestados;
@@ -566,8 +567,9 @@ public class EmprestimoServiceImpl extends CrudServiceImpl<Emprestimo, Long, Emp
                       itemService.getSaldoItem(empItem.getItem().getId()), empItem.getQtde()));
     }
 
-    // ETAPA 1: Agrupa emprestimoItem por item.id e soma quantidades
+    // ETAPA 1: Agrupa emprestimoItem por item.id, soma quantidades e mapeia Item
     Map<Long, BigDecimal> qtdeTotalPorItem = new HashMap<>();
+    Map<Long, Item> itemPorId = new HashMap<>();
     if (emprestimo.getEmprestimoItem() != null) {
       emprestimo.getEmprestimoItem().stream()
           .filter(empItem -> empItem != null && empItem.getItem() != null)
@@ -576,6 +578,7 @@ public class EmprestimoServiceImpl extends CrudServiceImpl<Emprestimo, Long, Emp
               empItem -> {
                 Long itemId = empItem.getItem().getId();
                 qtdeTotalPorItem.merge(itemId, empItem.getQtde(), BigDecimal::add);
+                itemPorId.putIfAbsent(itemId, empItem.getItem());
               });
     }
 
@@ -590,7 +593,9 @@ public class EmprestimoServiceImpl extends CrudServiceImpl<Emprestimo, Long, Emp
     itensExistentes.forEach(
         item -> {
           if (item != null && item.getItem() != null) {
-            if (!StatusDevolucao.P.equals(item.getStatusDevolucao())) {
+            StatusDevolucao status = item.getStatusDevolucao();
+            // Trata null como pendente (não processado)
+            if (status != null && !StatusDevolucao.P.equals(status)) {
               // Preserva itens já processados (D ou S)
               itensProcessados.add(item);
               qtdeProcessadaPorItem.merge(item.getItem().getId(), item.getQtde(), BigDecimal::add);
@@ -609,7 +614,8 @@ public class EmprestimoServiceImpl extends CrudServiceImpl<Emprestimo, Long, Emp
           if (qtdePendente.compareTo(BigDecimal.ZERO) > 0) {
             // Cria UM ÚNICO item pendente com a quantidade restante
             EmprestimoDevolucaoItem itemPendente = new EmprestimoDevolucaoItem();
-            itemPendente.setItem(itemService.toEntity(itemService.findOne(itemId)));
+            // Reutiliza a instância do Item já carregada
+            itemPendente.setItem(itemPorId.get(itemId));
             itemPendente.setQtde(qtdePendente);
             itemPendente.setStatusDevolucao(StatusDevolucao.P);
             itemPendente.setEmprestimo(emprestimo);
