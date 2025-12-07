@@ -6,11 +6,16 @@ import static org.mockito.Mockito.*;
 import br.com.utfpr.gerenciamento.server.event.emprestimo.*;
 import br.com.utfpr.gerenciamento.server.event.item.EstoqueMinNotificacaoEvent;
 import br.com.utfpr.gerenciamento.server.event.nadaConsta.*;
+import br.com.utfpr.gerenciamento.server.event.reserva.ReservaCriadaEvent;
 import br.com.utfpr.gerenciamento.server.exception.EntityNotFoundException;
 import br.com.utfpr.gerenciamento.server.mapper.EmprestimoTemplateMapper;
+import br.com.utfpr.gerenciamento.server.mapper.ReservaTemplateMapper;
 import br.com.utfpr.gerenciamento.server.model.Email;
 import br.com.utfpr.gerenciamento.server.model.Emprestimo;
+import br.com.utfpr.gerenciamento.server.model.Reserva;
+import br.com.utfpr.gerenciamento.server.model.modelTemplateEmail.ReservaTemplate;
 import br.com.utfpr.gerenciamento.server.repository.EmprestimoRepository;
+import br.com.utfpr.gerenciamento.server.repository.ReservaRepository;
 import br.com.utfpr.gerenciamento.server.service.EmailService;
 import br.com.utfpr.gerenciamento.server.service.RelatorioService;
 import java.lang.reflect.Field;
@@ -29,6 +34,8 @@ class EmailEventListenerTest {
   @Mock EmprestimoRepository emprestimoRepository;
   @Mock EmprestimoTemplateMapper templateMapper;
   @Mock RelatorioService relatorioService;
+  @Mock ReservaRepository reservaRepository;
+  @Mock ReservaTemplateMapper reservaTemplateMapper;
   AutoCloseable mocks;
 
   @BeforeEach
@@ -417,5 +424,58 @@ class EmailEventListenerTest {
             "to@email.com",
             "Confirmação de Empréstimo",
             "templateConfirmacaoFinalizacaoEmprestimo.html");
+  }
+
+  @Test
+  void testHandleReservaCriadaEventSuccess() {
+    Reserva reserva = mock(Reserva.class);
+    when(reservaRepository.findReservaByIdWithRelations(1L)).thenReturn(Optional.of(reserva));
+    ReservaTemplate templateData = new ReservaTemplate();
+    when(reservaTemplateMapper.toTemplateData(reserva)).thenReturn(templateData);
+    ReservaCriadaEvent event = new ReservaCriadaEvent(this, 1L, "to@email.com");
+    doNothing()
+        .when(emailService)
+        .sendEmailWithTemplate(
+            templateData,
+            "to@email.com",
+            "Confirmação de Reserva de Materiais",
+            "templateConfirmacaoReserva.html");
+    listener.handleEmailEvent(event);
+    verify(emailService)
+        .sendEmailWithTemplate(
+            templateData,
+            "to@email.com",
+            "Confirmação de Reserva de Materiais",
+            "templateConfirmacaoReserva.html");
+  }
+
+  @Test
+  void testPrepareReservaTemplateDataSuccess() throws Exception {
+    Reserva reserva = mock(Reserva.class);
+    when(reservaRepository.findReservaByIdWithRelations(1L)).thenReturn(Optional.of(reserva));
+    ReservaTemplate templateData = new ReservaTemplate();
+    when(reservaTemplateMapper.toTemplateData(reserva)).thenReturn(templateData);
+    Method m = EmailEventListener.class.getDeclaredMethod("prepareReservaTemplateData", Long.class);
+    m.setAccessible(true);
+    ReservaTemplate result = (ReservaTemplate) m.invoke(listener, 1L);
+    assertEquals(templateData, result);
+  }
+
+  @Test
+  void testPrepareReservaTemplateDataEntityNotFound() throws Exception {
+    when(reservaRepository.findReservaByIdWithRelations(2L)).thenReturn(Optional.empty());
+    Method m = EmailEventListener.class.getDeclaredMethod("prepareReservaTemplateData", Long.class);
+    m.setAccessible(true);
+    assertThrows(
+        EntityNotFoundException.class,
+        () -> {
+          try {
+            m.invoke(listener, 2L);
+          } catch (Exception e) {
+            Throwable cause = e.getCause();
+            if (cause instanceof EntityNotFoundException ex) throw ex;
+            throw new RuntimeException(e);
+          }
+        });
   }
 }

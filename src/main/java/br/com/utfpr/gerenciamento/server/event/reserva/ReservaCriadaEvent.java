@@ -6,7 +6,8 @@ import lombok.Getter;
 /**
  * Evento publicado quando uma nova reserva é criada no sistema.
  *
- * <p>Dispara envio de email de confirmação de reserva usando template templateConfirmacaoReserva.
+ * <p>Dispara envio de email de confirmação de reserva usando template
+ * templateConfirmacaoReserva.html.
  *
  * <p>Este evento garante que:
  *
@@ -32,7 +33,11 @@ public class ReservaCriadaEvent extends EmailEvent {
    * @param recipient Email do usuário que fez a reserva
    */
   public ReservaCriadaEvent(Object source, Long reservaId, String recipient) {
-    super(source, recipient, "Confirmação de Reserva de Materiais", "templateConfirmacaoReserva");
+    super(
+        source,
+        recipient,
+        "Confirmação de Reserva de Materiais",
+        "templateConfirmacaoReserva.html");
     this.reservaId = reservaId;
   }
 }

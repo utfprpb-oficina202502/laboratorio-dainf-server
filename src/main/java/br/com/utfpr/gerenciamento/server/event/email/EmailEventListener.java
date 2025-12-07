@@ -384,10 +384,11 @@ public class EmailEventListener {
    * @return ReservaTemplate com dados formatados para template FreeMarker
    */
   private ReservaTemplate prepareReservaTemplateData(Long reservaId) {
-    // Carrega reserva em NOVA transação
+    // Carrega reserva com @EntityGraph em NOVA transação (elimina N+1 queries e
+    // LazyInitializationException)
     Reserva reserva =
         reservaRepository
-            .findById(reservaId)
+            .findReservaByIdWithRelations(reservaId)
             .orElseThrow(
                 () ->
                     new EntityNotFoundException(
