@@ -56,12 +56,12 @@ public class PdfGeneratorService {
   public byte[] generatePdf(String templateName, Map<String, Object> dados) {
     log.debug("Iniciando geração de PDF");
 
-    // Validar template contra whitelist (prevenção de Path Traversal)
-    validarTemplate(templateName);
+    // Validar e obter template da whitelist (prevenção de Path Traversal e Log Injection)
+    String templateValidado = obterTemplateValidado(templateName);
 
     try {
       // 1. Processar template Thymeleaf → HTML
-      String html = processarTemplate(templateName, dados);
+      String html = processarTemplate(templateValidado, dados);
 
       // 2. Converter HTML → PDF usando Flying Saucer
       return converterHtmlParaPdf(html);
@@ -81,16 +81,30 @@ public class PdfGeneratorService {
   }
 
   /**
-   * Valida se o template está na whitelist de templates permitidos.
+   * Obtém o template validado da whitelist.
+   *
+   * <p>Retorna o valor da whitelist (não o input do usuário) para quebrar a cadeia de taint e
+   * prevenir log injection (SonarQube S5145).
    *
    * @param templateName Nome do template a validar
+   * @return Template da whitelist (valor seguro)
    * @throws RelatorioException Se o template não for permitido
    */
-  private void validarTemplate(String templateName) {
-    if (templateName == null || !TEMPLATES_PERMITIDOS.contains(templateName)) {
+  private String obterTemplateValidado(String templateName) {
+    if (templateName == null) {
       log.warn("Tentativa de acesso a template não permitido");
       throw new RelatorioException("Template de relatório não disponível");
     }
+
+    // Busca o template na whitelist e retorna o valor da lista (não o input do usuário)
+    return TEMPLATES_PERMITIDOS.stream()
+        .filter(t -> t.equals(templateName))
+        .findFirst()
+        .orElseThrow(
+            () -> {
+              log.warn("Tentativa de acesso a template não permitido");
+              return new RelatorioException("Template de relatório não disponível");
+            });
   }
 
   /**

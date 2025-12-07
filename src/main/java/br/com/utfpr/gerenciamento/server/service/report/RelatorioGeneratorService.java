@@ -110,13 +110,17 @@ public class RelatorioGeneratorService {
   /**
    * Gera relatório de empréstimos em um período.
    *
-   * @param dataInicio Data inicial do período
-   * @param dataFim Data final do período
+   * @param dataInicio Data inicial do período (não pode ser null)
+   * @param dataFim Data final do período (não pode ser null)
    * @param formato Formato de saída (PDF ou EXCEL)
    * @return Array de bytes do arquivo gerado
+   * @throws IllegalArgumentException Se dataInicio ou dataFim forem null, ou dataInicio for após
+   *     dataFim
    */
   public byte[] gerarEmprestimosRealizados(
       LocalDate dataInicio, LocalDate dataFim, FormatoRelatorio formato) {
+    validarPeriodo(dataInicio, dataFim);
+
     log.info("Gerando relatório Empréstimos Realizados");
 
     List<EmprestimoRealizadoDto> dados =
@@ -253,6 +257,26 @@ public class RelatorioGeneratorService {
   }
 
   // ========== MÉTODOS AUXILIARES ==========
+
+  /**
+   * Valida o período de datas para o relatório.
+   *
+   * @param dataInicio Data inicial do período
+   * @param dataFim Data final do período
+   * @throws IllegalArgumentException Se dataInicio ou dataFim forem null, ou dataInicio for após
+   *     dataFim
+   */
+  private void validarPeriodo(LocalDate dataInicio, LocalDate dataFim) {
+    if (dataInicio == null) {
+      throw new IllegalArgumentException("dataInicio não pode ser null");
+    }
+    if (dataFim == null) {
+      throw new IllegalArgumentException("dataFim não pode ser null");
+    }
+    if (dataInicio.isAfter(dataFim)) {
+      throw new IllegalArgumentException("dataInicio deve ser anterior ou igual a dataFim");
+    }
+  }
 
   /**
    * Resolve o nome do item para exibição no relatório.
