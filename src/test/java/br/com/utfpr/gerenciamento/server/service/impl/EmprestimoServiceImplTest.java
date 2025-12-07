@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import br.com.utfpr.gerenciamento.server.dto.EmprestimoResponseDto;
+import br.com.utfpr.gerenciamento.server.dto.ItemResponseDto;
 import br.com.utfpr.gerenciamento.server.dto.UsuarioResponseDto;
 import br.com.utfpr.gerenciamento.server.enumeration.StatusDevolucao;
 import br.com.utfpr.gerenciamento.server.enumeration.TipoItem;
@@ -1005,7 +1006,14 @@ class EmprestimoServiceImplTest {
     when(itemService.getSaldoItem(601L)).thenReturn(BigDecimal.valueOf(50));
     when(itemService.saldoItemIsValid(any(), any())).thenReturn(true);
 
-    // Mock para carregar itens - retorna os itens já criados
+    // Mock para findOne e toEntity dos itens
+    ItemResponseDto itemResponseDto1 = new ItemResponseDto();
+    itemResponseDto1.setId(600L);
+    ItemResponseDto itemResponseDto2 = new ItemResponseDto();
+    itemResponseDto2.setId(601L);
+    
+    when(itemService.findOne(600L)).thenReturn(itemResponseDto1);
+    when(itemService.findOne(601L)).thenReturn(itemResponseDto2);
     when(itemService.toEntity(any())).thenReturn(item1, item2);
 
     // When

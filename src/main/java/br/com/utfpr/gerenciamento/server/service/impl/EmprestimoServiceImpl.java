@@ -31,9 +31,11 @@ import br.com.utfpr.gerenciamento.server.service.UsuarioService;
 import br.com.utfpr.gerenciamento.server.specification.EmprestimoSpecifications;
 import br.com.utfpr.gerenciamento.server.util.EmailUtils;
 import br.com.utfpr.gerenciamento.server.util.SecurityUtils;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -565,7 +567,7 @@ public class EmprestimoServiceImpl extends CrudServiceImpl<Emprestimo, Long, Emp
     }
 
     // ETAPA 1: Agrupa emprestimoItem por item.id e soma quantidades
-    java.util.Map<Long, java.math.BigDecimal> qtdeTotalPorItem = new java.util.HashMap<>();
+    Map<Long, BigDecimal> qtdeTotalPorItem = new HashMap<>();
     if (emprestimo.getEmprestimoItem() != null) {
       emprestimo.getEmprestimoItem().stream()
           .filter(empItem -> empItem != null && empItem.getItem() != null)
@@ -573,16 +575,16 @@ public class EmprestimoServiceImpl extends CrudServiceImpl<Emprestimo, Long, Emp
           .forEach(
               empItem -> {
                 Long itemId = empItem.getItem().getId();
-                qtdeTotalPorItem.merge(itemId, empItem.getQtde(), java.math.BigDecimal::add);
+                qtdeTotalPorItem.merge(itemId, empItem.getQtde(), BigDecimal::add);
               });
     }
 
-    // ETAPA 2: Separa itens existentes em processados vs pendentes
+    // ETAPA 2: Filtra e preserva apenas itens já processados (D ou S), descartando pendentes
     List<EmprestimoDevolucaoItem> itensExistentes =
         Optional.ofNullable(emprestimo.getEmprestimoDevolucaoItem())
             .orElse(Collections.emptyList());
 
-    java.util.Map<Long, java.math.BigDecimal> qtdeProcessadaPorItem = new java.util.HashMap<>();
+    Map<Long, BigDecimal> qtdeProcessadaPorItem = new HashMap<>();
     List<EmprestimoDevolucaoItem> itensProcessados = new ArrayList<>();
 
     itensExistentes.forEach(
@@ -592,7 +594,7 @@ public class EmprestimoServiceImpl extends CrudServiceImpl<Emprestimo, Long, Emp
               // Preserva itens já processados (D ou S)
               itensProcessados.add(item);
               qtdeProcessadaPorItem.merge(
-                  item.getItem().getId(), item.getQtde(), java.math.BigDecimal::add);
+                  item.getItem().getId(), item.getQtde(), BigDecimal::add);
             }
           }
         });
@@ -602,11 +604,11 @@ public class EmprestimoServiceImpl extends CrudServiceImpl<Emprestimo, Long, Emp
 
     qtdeTotalPorItem.forEach(
         (itemId, qtdeTotal) -> {
-          java.math.BigDecimal qtdeProcessada =
-              qtdeProcessadaPorItem.getOrDefault(itemId, java.math.BigDecimal.ZERO);
-          java.math.BigDecimal qtdePendente = qtdeTotal.subtract(qtdeProcessada);
+          BigDecimal qtdeProcessada =
+              qtdeProcessadaPorItem.getOrDefault(itemId, BigDecimal.ZERO);
+          BigDecimal qtdePendente = qtdeTotal.subtract(qtdeProcessada);
 
-          if (qtdePendente.compareTo(java.math.BigDecimal.ZERO) > 0) {
+          if (qtdePendente.compareTo(BigDecimal.ZERO) > 0) {
             // Cria UM ÚNICO item pendente com a quantidade restante
             EmprestimoDevolucaoItem itemPendente = new EmprestimoDevolucaoItem();
             itemPendente.setItem(itemService.toEntity(itemService.findOne(itemId)));
@@ -614,7 +616,7 @@ public class EmprestimoServiceImpl extends CrudServiceImpl<Emprestimo, Long, Emp
             itemPendente.setStatusDevolucao(StatusDevolucao.P);
             itemPendente.setEmprestimo(emprestimo);
             resultadoFinal.add(itemPendente);
-          } else if (qtdePendente.compareTo(java.math.BigDecimal.ZERO) < 0) {
+          } else if (qtdePendente.compareTo(BigDecimal.ZERO) < 0) {
             throw new IllegalStateException(
                 "Quantidade devolvida ("
                     + qtdeProcessada
