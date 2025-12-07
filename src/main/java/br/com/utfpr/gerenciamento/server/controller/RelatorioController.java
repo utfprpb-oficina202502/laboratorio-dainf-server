@@ -55,7 +55,7 @@ public class RelatorioController {
       @RequestParam @NotBlank(message = "Documento é obrigatório") String documento,
       @RequestParam(defaultValue = "PDF") FormatoRelatorio formato) {
 
-    log.info("Requisição de relatório Histórico de Empréstimo - Documento: {}", documento);
+    log.info("Requisição de relatório Histórico de Empréstimo");
 
     byte[] conteudo = relatorioGeneratorService.gerarHistoricoEmprestimo(documento, formato);
 
@@ -99,8 +99,7 @@ public class RelatorioController {
           LocalDate dataFim,
       @RequestParam(defaultValue = "PDF") FormatoRelatorio formato) {
 
-    log.info(
-        "Requisição de relatório Empréstimos Realizados - Período: {} a {}", dataInicio, dataFim);
+    log.info("Requisição de relatório Empréstimos Realizados");
 
     // Validar período de datas (prevenção de DoS via consultas muito amplas)
     validarPeriodoDatas(dataInicio, dataFim);
@@ -126,7 +125,7 @@ public class RelatorioController {
       @RequestParam(required = false) String nomeItem,
       @RequestParam(defaultValue = "PDF") FormatoRelatorio formato) {
 
-    log.info("Requisição de relatório Reservas do Item - ID: {}", itemId);
+    log.info("Requisição de relatório Reservas do Item");
 
     byte[] conteudo = relatorioGeneratorService.gerarReservasDoItem(itemId, nomeItem, formato);
 
@@ -148,7 +147,7 @@ public class RelatorioController {
       @RequestParam(required = false) String nomeItem,
       @RequestParam(defaultValue = "PDF") FormatoRelatorio formato) {
 
-    log.info("Requisição de relatório Solicitações do Item - ID: {}", itemId);
+    log.info("Requisição de relatório Solicitações do Item");
 
     byte[] conteudo = relatorioGeneratorService.gerarSolicitacoesDoItem(itemId, nomeItem, formato);
 

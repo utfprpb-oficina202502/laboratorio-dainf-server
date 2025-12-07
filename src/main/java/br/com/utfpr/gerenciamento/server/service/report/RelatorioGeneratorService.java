@@ -40,10 +40,7 @@ public class RelatorioGeneratorService {
    * @return Array de bytes do arquivo gerado
    */
   public byte[] gerarHistoricoEmprestimo(String documento, FormatoRelatorio formato) {
-    log.info(
-        "Gerando relatório Histórico de Empréstimo - Documento: {}, Formato: {}",
-        documento,
-        formato);
+    log.info("Gerando relatório Histórico de Empréstimo - Formato: {}", formato);
 
     List<HistoricoEmprestimoDto> dados = reportDataService.getHistoricoEmprestimo(documento);
 
@@ -120,11 +117,7 @@ public class RelatorioGeneratorService {
    */
   public byte[] gerarEmprestimosRealizados(
       LocalDate dataInicio, LocalDate dataFim, FormatoRelatorio formato) {
-    log.info(
-        "Gerando relatório Empréstimos Realizados - Período: {} a {}, Formato: {}",
-        dataInicio,
-        dataFim,
-        formato);
+    log.info("Gerando relatório Empréstimos Realizados - Formato: {}", formato);
 
     List<EmprestimoRealizadoDto> dados =
         reportDataService.getEmprestimosRealizados(dataInicio, dataFim);
@@ -163,7 +156,7 @@ public class RelatorioGeneratorService {
    * @return Array de bytes do arquivo gerado
    */
   public byte[] gerarReservasDoItem(Long itemId, String nomeItem, FormatoRelatorio formato) {
-    log.info("Gerando relatório Reservas do Item - Item ID: {}, Formato: {}", itemId, formato);
+    log.info("Gerando relatório Reservas do Item - Formato: {}", formato);
 
     List<ReservaItemDto> dados = reportDataService.getReservasDoItem(itemId);
 
@@ -200,7 +193,7 @@ public class RelatorioGeneratorService {
    * @return Array de bytes do arquivo gerado
    */
   public byte[] gerarSolicitacoesDoItem(Long itemId, String nomeItem, FormatoRelatorio formato) {
-    log.info("Gerando relatório Solicitações do Item - Item ID: {}, Formato: {}", itemId, formato);
+    log.info("Gerando relatório Solicitações do Item - Formato: {}", formato);
 
     List<SolicitacaoItemDto> dados = reportDataService.getSolicitacoesDoItem(itemId);
 

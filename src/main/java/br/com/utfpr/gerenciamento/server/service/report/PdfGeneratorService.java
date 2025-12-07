@@ -54,7 +54,7 @@ public class PdfGeneratorService {
    * @throws RelatorioException Se o template não for permitido ou ocorrer erro na geração
    */
   public byte[] generatePdf(String templateName, Map<String, Object> dados) {
-    log.debug("Gerando PDF para template: {}", templateName);
+    log.debug("Iniciando geração de PDF");
 
     // Validar template contra whitelist (prevenção de Path Traversal)
     validarTemplate(templateName);
@@ -67,16 +67,15 @@ public class PdfGeneratorService {
       return converterHtmlParaPdf(html);
 
     } catch (TemplateInputException e) {
-      log.error("Erro ao processar template {}: {}", templateName, e.getMessage(), e);
+      log.error("Erro ao processar template de relatório", e);
       throw new RelatorioException("Erro ao processar template de relatório", e);
     } catch (IOException e) {
-      log.error("Erro ao gerar PDF para template {}: {}", templateName, e.getMessage(), e);
+      log.error("Erro ao gerar arquivo PDF", e);
       throw new RelatorioException("Erro ao gerar arquivo PDF", e);
     } catch (RelatorioException e) {
       throw e; // Re-throw exceções já tratadas
     } catch (Exception e) {
-      log.error(
-          "Erro inesperado ao gerar PDF para template {}: {}", templateName, e.getMessage(), e);
+      log.error("Erro inesperado ao gerar PDF", e);
       throw new RelatorioException("Erro ao gerar relatório", e);
     }
   }
