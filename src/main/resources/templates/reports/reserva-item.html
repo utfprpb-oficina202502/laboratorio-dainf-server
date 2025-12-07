@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Reservas do Item</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            margin: 20px;
+            color: #333;
+        }
+        h1 {
+            color: #7b1fa2;
+            font-size: 18px;
+            margin-bottom: 5px;
+        }
+        .subtitulo {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        .info {
+            margin-bottom: 15px;
+            padding: 10px;
+            background-color: #f3e5f5;
+            border-radius: 4px;
+            border-left: 4px solid #7b1fa2;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th {
+            background-color: #7b1fa2;
+            color: white;
+            padding: 10px 8px;
+            text-align: left;
+            font-weight: bold;
+        }
+        td {
+            border: 1px solid #ddd;
+            padding: 8px;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        tr:hover {
+            background-color: #f3e5f5;
+        }
+        .numero {
+            text-align: right;
+        }
+        .rodape {
+            margin-top: 20px;
+            font-size: 10px;
+            color: #595959;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <h1>Reservas do Item</h1>
+    <p class="subtitulo">UTFPR - Laboratório DAINF</p>
+
+    <div class="info">
+        <strong>Item:</strong> <span th:text="${nomeItem}">Nome do Item</span>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Cód</th>
+                <th>Dt Reserva</th>
+                <th>Dt Retirada</th>
+                <th>Usuário da Reserva</th>
+                <th>Qtde</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="reserva : ${reservas}">
+                <td th:text="${reserva.cod}">1</td>
+                <td th:text="${reserva.dataReserva != null ? #temporals.format(reserva.dataReserva, 'dd/MM/yyyy') : '-'}">01/01/2024</td>
+                <td th:text="${reserva.dataRetirada != null ? #temporals.format(reserva.dataRetirada, 'dd/MM/yyyy') : '-'}">-</td>
+                <td th:text="${reserva.usuarioReserva}">Nome</td>
+                <td class="numero" th:text="${reserva.qtde}">1</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <p class="rodape">
+        Relatório gerado em <span th:text="${#temporals.format(#temporals.createNow(), 'dd/MM/yyyy HH:mm')}">01/01/2024 12:00</span>
+    </p>
+</body>
+</html>

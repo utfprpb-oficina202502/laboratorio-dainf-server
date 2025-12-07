@@ -17,6 +17,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
@@ -640,24 +642,11 @@ class EmprestimoSpecificationsTest {
             .allMatch(emp -> emp.getUsuarioEmprestimo().getUsername().equals(username)));
   }
 
-  @Test
-  @DisplayName("byUsuarioEmprestimoUsername - Deve lançar exceção quando username é null")
-  void testByUsuarioEmprestimoUsername_QuandoUsernameNull_DeveLancarExcecao() {
+  @ParameterizedTest
+  @NullAndEmptySource
+  @DisplayName("byUsuarioEmprestimoUsername - Deve lançar exceção quando username é null ou vazio")
+  void testByUsuarioEmprestimoUsername_QuandoUsernameInvalido_DeveLancarExcecao(String username) {
     // Given
-    String username = null;
-    Specification<Emprestimo> spec = EmprestimoSpecifications.byUsuarioEmprestimoUsername(username);
-
-    // When & Then
-    assertThrows(
-        org.springframework.dao.InvalidDataAccessApiUsageException.class,
-        () -> repository.findAll(spec));
-  }
-
-  @Test
-  @DisplayName("byUsuarioEmprestimoUsername - Deve lançar exceção quando username é vazio")
-  void testByUsuarioEmprestimoUsername_QuandoUsernameVazio_DeveLancarExcecao() {
-    // Given
-    String username = "";
     Specification<Emprestimo> spec = EmprestimoSpecifications.byUsuarioEmprestimoUsername(username);
 
     // When & Then
@@ -681,6 +670,58 @@ class EmprestimoSpecificationsTest {
 
     Specification<Emprestimo> spec =
         EmprestimoSpecifications.byUsuarioEmprestimoUsername(usuarioSemEmprestimos.getUsername());
+
+    // When
+    List<Emprestimo> resultado = repository.findAll(spec);
+
+    // Then
+    assertNotNull(resultado);
+    assertTrue(resultado.isEmpty());
+  }
+
+  @Test
+  @DisplayName("byUsuarioDocumento - Deve filtrar empréstimos por documento do usuário")
+  void testByUsuarioDocumento_QuandoDocumentoValido_DeveFiltrarCorretamente() {
+    // Given - Define documento no usuário
+    String documento = "12345678901";
+    usuarioEmprestimo.setDocumento(documento);
+    entityManager.merge(usuarioEmprestimo);
+    entityManager.flush();
+
+    Specification<Emprestimo> spec = EmprestimoSpecifications.byUsuarioDocumento(documento);
+
+    // When
+    List<Emprestimo> resultado = repository.findAll(spec);
+
+    // Then
+    assertNotNull(resultado);
+    assertEquals(3, resultado.size());
+    assertTrue(
+        resultado.stream()
+            .allMatch(emp -> emp.getUsuarioEmprestimo().getDocumento().equals(documento)));
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {"   "})
+  @DisplayName("byUsuarioDocumento - Deve lançar exceção quando documento é inválido (fail-fast)")
+  void testByUsuarioDocumento_QuandoDocumentoInvalido_DeveLancarExcecao(String documento) {
+    // Given
+    Specification<Emprestimo> spec = EmprestimoSpecifications.byUsuarioDocumento(documento);
+
+    // When & Then
+    assertThrows(
+        org.springframework.dao.InvalidDataAccessApiUsageException.class,
+        () -> repository.findAll(spec));
+  }
+
+  @Test
+  @DisplayName("byUsuarioDocumento - Deve retornar lista vazia quando documento não existe")
+  void testByUsuarioDocumento_QuandoDocumentoNaoExiste_DeveRetornarListaVazia() {
+    // Given
+    String documentoInexistente = "99999999999";
+    Specification<Emprestimo> spec =
+        EmprestimoSpecifications.byUsuarioDocumento(documentoInexistente);
 
     // When
     List<Emprestimo> resultado = repository.findAll(spec);

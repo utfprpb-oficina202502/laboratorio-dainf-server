@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Solicitações do Item</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            margin: 20px;
+            color: #333;
+        }
+        h1 {
+            color: #f57c00;
+            font-size: 18px;
+            margin-bottom: 5px;
+        }
+        .subtitulo {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        .info {
+            margin-bottom: 15px;
+            padding: 10px;
+            background-color: #fff3e0;
+            border-radius: 4px;
+            border-left: 4px solid #f57c00;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th {
+            background-color: #f57c00;
+            color: white;
+            padding: 10px 8px;
+            text-align: left;
+            font-weight: bold;
+        }
+        td {
+            border: 1px solid #ddd;
+            padding: 8px;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        tr:hover {
+            background-color: #fff3e0;
+        }
+        .numero {
+            text-align: right;
+        }
+        .descricao {
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .rodape {
+            margin-top: 20px;
+            font-size: 10px;
+            color: #595959;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <h1>Solicitações de Compra do Item</h1>
+    <p class="subtitulo">UTFPR - Laboratório DAINF</p>
+
+    <div class="info">
+        <strong>Item:</strong> <span th:text="${nomeItem}">Nome do Item</span>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Cód</th>
+                <th>Dt Solicitação</th>
+                <th>Descrição</th>
+                <th>Usuário Solicitação</th>
+                <th>Qtde</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="sol : ${solicitacoes}">
+                <td th:text="${sol.cod}">1</td>
+                <td th:text="${sol.dataSolicitacao != null ? #temporals.format(sol.dataSolicitacao, 'dd/MM/yyyy') : '-'}">01/01/2024</td>
+                <td class="descricao" th:text="${sol.descricao}" th:title="${sol.descricao}">Descrição</td>
+                <td th:text="${sol.usuarioSolicitacao}">Nome</td>
+                <td class="numero" th:text="${sol.qtde}">1</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <p class="rodape">
+        Relatório gerado em <span th:text="${#temporals.format(#temporals.createNow(), 'dd/MM/yyyy HH:mm')}">01/01/2024 12:00</span>
+    </p>
+</body>
+</html>

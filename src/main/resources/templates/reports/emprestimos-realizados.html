@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Empréstimos Realizados</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            margin: 20px;
+            color: #333;
+        }
+        h1 {
+            color: #1976d2;
+            font-size: 18px;
+            margin-bottom: 5px;
+        }
+        .subtitulo {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        .info {
+            margin-bottom: 15px;
+            padding: 10px;
+            background-color: #e3f2fd;
+            border-radius: 4px;
+            border-left: 4px solid #1976d2;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th {
+            background-color: #1976d2;
+            color: white;
+            padding: 10px 8px;
+            text-align: left;
+            font-weight: bold;
+        }
+        td {
+            border: 1px solid #ddd;
+            padding: 8px;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        tr:hover {
+            background-color: #e3f2fd;
+        }
+        .situacao-finalizado {
+            color: #2e7d32;
+            font-weight: bold;
+        }
+        .situacao-andamento {
+            color: #1976d2;
+            font-weight: bold;
+        }
+        .situacao-atraso {
+            color: #d32f2f;
+            font-weight: bold;
+        }
+        .rodape {
+            margin-top: 20px;
+            font-size: 10px;
+            color: #595959;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <h1>Empréstimos Realizados</h1>
+    <p class="subtitulo">UTFPR - Laboratório DAINF</p>
+
+    <div class="info">
+        <strong>Período:</strong>
+        <span th:text="${dataInicio != null ? #temporals.format(dataInicio, 'dd/MM/yyyy') : '-'}">01/01/2024</span>
+        a
+        <span th:text="${dataFim != null ? #temporals.format(dataFim, 'dd/MM/yyyy') : '-'}">31/01/2024</span>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Cód</th>
+                <th>Aluno/Professor</th>
+                <th>Usuário Responsável</th>
+                <th>Dt Empréstimo</th>
+                <th>Situação</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="emp : ${emprestimos}">
+                <td th:text="${emp.cod}">1</td>
+                <td th:text="${emp.usuarioEmprestimo}">Nome</td>
+                <td th:text="${emp.usuarioResponsavel}">Responsável</td>
+                <td th:text="${emp.dataEmprestimo != null ? #temporals.format(emp.dataEmprestimo, 'dd/MM/yyyy') : '-'}">01/01/2024</td>
+                <td th:class="${emp.situacao == 'Finalizado' ? 'situacao-finalizado' : (emp.situacao == 'Em andamento' ? 'situacao-andamento' : 'situacao-atraso')}"
+                    th:text="${emp.situacao}">Em andamento</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <p class="rodape">
+        Relatório gerado em <span th:text="${#temporals.format(#temporals.createNow(), 'dd/MM/yyyy HH:mm')}">01/01/2024 12:00</span>
+    </p>
+</body>
+</html>

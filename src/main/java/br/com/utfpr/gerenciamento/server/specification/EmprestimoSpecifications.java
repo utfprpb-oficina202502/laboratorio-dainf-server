@@ -30,6 +30,12 @@ public class EmprestimoSpecifications {
   static final String USERNAME = "username";
   static final String USUARIO_RESPONSAVEL = "usuarioResponsavel";
   static final String USUARIO_EMPRESTIMO = "usuarioEmprestimo";
+  static final String PERMISSOES = "permissoes";
+  static final String EMPRESTIMO_ITEM = "emprestimoItem";
+  static final String ITEM = "item";
+  static final String GRUPO = "grupo";
+  static final String ID = "id";
+  static final String DOCUMENTO = "documento";
 
   private EmprestimoSpecifications() {}
 
@@ -96,23 +102,23 @@ public class EmprestimoSpecifications {
         // JOIN FETCH para permissoes do usuario (elimina segundo N+1)
         // Nota: Permissoes agora é LAZY, mas precisamos carregar aqui para evitar
         // LazyInitializationException ao serializar para DTO
-        usuarioEmprestimoFetch.fetch("permissoes", JoinType.LEFT);
+        usuarioEmprestimoFetch.fetch(PERMISSOES, JoinType.LEFT);
 
         // JOIN FETCH para usuarioResponsavel (se necessário)
         Fetch<Emprestimo, Usuario> usuarioResponsavelFetch =
             root.fetch(USUARIO_RESPONSAVEL, JoinType.LEFT);
-        usuarioResponsavelFetch.fetch("permissoes", JoinType.LEFT);
+        usuarioResponsavelFetch.fetch(PERMISSOES, JoinType.LEFT);
 
         // JOIN FETCH condicional para emprestimoItem (previne N+1 quando necessário)
         // IMPORTANTE: Não fetch emprestimoDevolucaoItem aqui para evitar MultipleBagFetchException
         if (fetchCollections) {
-          Fetch<?, ?> emprestimoItemFetch = root.fetch("emprestimoItem", JoinType.LEFT);
+          Fetch<?, ?> emprestimoItemFetch = root.fetch(EMPRESTIMO_ITEM, JoinType.LEFT);
 
           // Fetch nested item to prevent N+1 (elimina ~30 queries adicionais)
-          Fetch<?, ?> itemFetch = emprestimoItemFetch.fetch("item", JoinType.LEFT);
+          Fetch<?, ?> itemFetch = emprestimoItemFetch.fetch(ITEM, JoinType.LEFT);
 
           // Fetch item.grupo to prevent additional N+1 (elimina ~10 queries adicionais)
-          itemFetch.fetch("grupo", JoinType.LEFT);
+          itemFetch.fetch(GRUPO, JoinType.LEFT);
         }
       }
 
@@ -142,25 +148,25 @@ public class EmprestimoSpecifications {
             root.fetch(USUARIO_EMPRESTIMO, JoinType.LEFT);
 
         // JOIN FETCH para permissoes do usuario (elimina segundo N+1)
-        usuarioEmprestimoFetch.fetch("permissoes", JoinType.LEFT);
+        usuarioEmprestimoFetch.fetch(PERMISSOES, JoinType.LEFT);
 
         // JOIN FETCH para usuarioResponsavel (se necessário)
         Fetch<Emprestimo, Usuario> usuarioResponsavelFetch =
             root.fetch(USUARIO_RESPONSAVEL, JoinType.LEFT);
-        usuarioResponsavelFetch.fetch("permissoes", JoinType.LEFT);
+        usuarioResponsavelFetch.fetch(PERMISSOES, JoinType.LEFT);
 
         // JOIN FETCH para emprestimoItem (elimina N+1)
-        Fetch<?, ?> emprestimoItemFetch = root.fetch("emprestimoItem", JoinType.LEFT);
+        Fetch<?, ?> emprestimoItemFetch = root.fetch(EMPRESTIMO_ITEM, JoinType.LEFT);
 
         // Fetch nested item to prevent N+1
-        Fetch<?, ?> itemFetch = emprestimoItemFetch.fetch("item", JoinType.LEFT);
+        Fetch<?, ?> itemFetch = emprestimoItemFetch.fetch(ITEM, JoinType.LEFT);
 
         // Fetch item.grupo to prevent additional N+1
-        itemFetch.fetch("grupo", JoinType.LEFT);
+        itemFetch.fetch(GRUPO, JoinType.LEFT);
       }
 
       // Filtro por itemId através da tabela emprestimoItem
-      return cb.equal(root.join("emprestimoItem", JoinType.LEFT).get("item").get("id"), itemId);
+      return cb.equal(root.join(EMPRESTIMO_ITEM, JoinType.LEFT).get(ITEM).get(ID), itemId);
     };
   }
 
@@ -246,7 +252,7 @@ public class EmprestimoSpecifications {
       Predicate predicado) {
 
     if (usuario.getId() != null) {
-      return cb.and(predicado, cb.equal(usuarioJoin.get("id"), usuario.getId()));
+      return cb.and(predicado, cb.equal(usuarioJoin.get(ID), usuario.getId()));
     }
 
     if (usuario.getUsername() != null) {
@@ -359,6 +365,53 @@ public class EmprestimoSpecifications {
       }
       Join<Emprestimo, Usuario> usuarioJoin = root.join(USUARIO_EMPRESTIMO, JoinType.LEFT);
       return cb.equal(usuarioJoin.get(USERNAME), username);
+    };
+  }
+
+  /**
+   * Cria Specification para filtrar empréstimos por documento (RA/SIAPE) do usuário.
+   *
+   * <p>Usado no relatório HistoricoEmprestimoUsuario.
+   *
+   * <p><b>Segurança:</b> Lança exceção se o parâmetro {@code documento} for {@code null} ou vazio
+   * para evitar retorno não autorizado de todos os registros (fail-fast).
+   *
+   * @param documento Documento (RA ou SIAPE) do usuário
+   * @return Specification que filtra por usuarioEmprestimo.documento
+   * @throws IllegalArgumentException se {@code documento} for {@code null} ou vazio
+   */
+  public static Specification<Emprestimo> byUsuarioDocumento(String documento) {
+    return (root, query, cb) -> {
+      if (documento == null || documento.isBlank()) {
+        throw new IllegalArgumentException(
+            "Documento não pode ser nulo ou vazio para filtro de relatório");
+      }
+      Join<Emprestimo, Usuario> usuarioJoin = root.join(USUARIO_EMPRESTIMO, JoinType.LEFT);
+      return cb.equal(usuarioJoin.get(DOCUMENTO), documento);
+    };
+  }
+
+  /**
+   * Cria Specification para filtrar empréstimos por período de data de empréstimo.
+   *
+   * <p>Usado no relatório EmprestimosRealizadosEntre.
+   *
+   * @param inicio Data inicial do período (inclusive)
+   * @param fim Data final do período (inclusive)
+   * @return Specification que filtra por dataEmprestimo BETWEEN inicio AND fim
+   */
+  public static Specification<Emprestimo> byDataEmprestimoBetween(LocalDate inicio, LocalDate fim) {
+    return (root, query, cb) -> {
+      if (inicio == null && fim == null) {
+        return cb.conjunction();
+      }
+      if (inicio != null && fim != null) {
+        return cb.between(root.get(DATA_EMPRESTIMO), inicio, fim);
+      }
+      if (inicio != null) {
+        return cb.greaterThanOrEqualTo(root.get(DATA_EMPRESTIMO), inicio);
+      }
+      return cb.lessThanOrEqualTo(root.get(DATA_EMPRESTIMO), fim);
     };
   }
 }
