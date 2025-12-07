@@ -4,6 +4,7 @@ import br.com.utfpr.gerenciamento.server.model.Reserva;
 import br.com.utfpr.gerenciamento.server.model.Usuario;
 import br.com.utfpr.gerenciamento.server.repository.projection.ReservaListProjection;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -136,4 +137,14 @@ public interface ReservaRepository
       """)
   List<Reserva> findReservasParaAtividadesByUsername(
       @Param("username") String username, Pageable pageable);
+
+  /**
+   * Busca reserva por ID com todas as relações carregadas para evitar LazyInitializationException.
+   *
+   * @param id ID da reserva
+   * @return Optional da reserva com relações carregadas
+   */
+  @EntityGraph(attributePaths = {"usuario", "reservaItem", "reservaItem.item"})
+  @Query("SELECT r FROM Reserva r WHERE r.id = :id")
+  Optional<Reserva> findReservaByIdWithRelations(@Param("id") Long id);
 }

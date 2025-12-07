@@ -33,6 +33,4 @@ public interface ReservaService extends CrudService<Reserva, Long, ReservaRespon
   List<ReservaResponseDto> findAllByIdItem(Long idItem);
 
   void finalizarReserva(Long idReserva);
-
-  void sendEmailConfirmacaoReserva(Reserva reserva);
 }

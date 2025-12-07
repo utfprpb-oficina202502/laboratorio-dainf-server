@@ -121,9 +121,4 @@ public class ReservaController extends CrudController<Reserva, Long, ReservaResp
 
     return reservaService.findAllPagedList(filter, pageRequest);
   }
-
-  @Override
-  public void postSave(Reserva object) {
-    reservaService.sendEmailConfirmacaoReserva(object);
-  }
 }
