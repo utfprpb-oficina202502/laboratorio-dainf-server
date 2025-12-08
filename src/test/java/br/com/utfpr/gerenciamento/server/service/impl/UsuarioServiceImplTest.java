@@ -11,6 +11,7 @@ import br.com.utfpr.gerenciamento.server.repository.RecoverPasswordRepository;
 import br.com.utfpr.gerenciamento.server.repository.UsuarioRepository;
 import br.com.utfpr.gerenciamento.server.service.EmailService;
 import br.com.utfpr.gerenciamento.server.service.PermissaoService;
+import br.com.utfpr.gerenciamento.server.util.SecurityUtils;
 import java.util.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,11 +19,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.modelmapper.ModelMapper;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 @ExtendWith(MockitoExtension.class)
@@ -716,5 +719,128 @@ class UsuarioServiceImplTest {
 
     // Verifica que a senha foi codificada
     verify(passwordEncoder).encode("123456");
+  }
+
+  // ========== Testes para updateUsuario() ==========
+
+  @Test
+  void updateUsuario_DeveAtualizarDadosQuandoUsuarioLogadoEditaPropriosDados() {
+    // Given: Usuário logado editando seus próprios dados
+    Usuario usuarioLogado = new Usuario();
+    usuarioLogado.setId(1L);
+    usuarioLogado.setUsername("usuario@utfpr.edu.br");
+    usuarioLogado.setTelefone("(41) 99999-0000");
+    usuarioLogado.setDocumento("123456");
+
+    Usuario usuarioAtualizado = new Usuario();
+    usuarioAtualizado.setId(1L); // Mesmo ID
+    usuarioAtualizado.setUsername("usuario@utfpr.edu.br");
+    usuarioAtualizado.setTelefone("(41) 88888-1111"); // Novo telefone
+    usuarioAtualizado.setDocumento("654321"); // Novo documento
+
+    try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+      securityUtils
+          .when(SecurityUtils::getAuthenticatedUsername)
+          .thenReturn("usuario@utfpr.edu.br");
+
+      when(usuarioRepository.findByUsername("usuario@utfpr.edu.br")).thenReturn(usuarioLogado);
+      when(usuarioRepository.save(any(Usuario.class))).thenReturn(usuarioLogado);
+      when(modelMapper.map(any(Usuario.class), any()))
+          .thenReturn(new br.com.utfpr.gerenciamento.server.dto.UsuarioResponseDto());
+
+      // When
+      br.com.utfpr.gerenciamento.server.dto.UsuarioResponseDto resultado =
+          usuarioService.updateUsuario(usuarioAtualizado);
+
+      // Then
+      assertNotNull(resultado);
+      verify(usuarioRepository).save(usuarioLogado);
+
+      // Verifica que os campos foram atualizados
+      assertEquals("(41) 88888-1111", usuarioLogado.getTelefone());
+      assertEquals("654321", usuarioLogado.getDocumento());
+    }
+  }
+
+  @Test
+  void updateUsuario_DeveLancarExcecaoQuandoUsuarioTentaEditarOutroUsuario() {
+    // Given: Usuário logado tentando editar dados de outro usuário
+    Usuario usuarioLogado = new Usuario();
+    usuarioLogado.setId(1L);
+    usuarioLogado.setUsername("usuario@utfpr.edu.br");
+
+    Usuario outroUsuario = new Usuario();
+    outroUsuario.setId(2L); // ID diferente
+    outroUsuario.setUsername("outro@utfpr.edu.br");
+    outroUsuario.setTelefone("(41) 77777-2222");
+
+    try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+      securityUtils
+          .when(SecurityUtils::getAuthenticatedUsername)
+          .thenReturn("usuario@utfpr.edu.br");
+
+      when(usuarioRepository.findByUsername("usuario@utfpr.edu.br")).thenReturn(usuarioLogado);
+
+      // When/Then
+      AccessDeniedException exception =
+          assertThrows(
+              AccessDeniedException.class, () -> usuarioService.updateUsuario(outroUsuario));
+
+      assertEquals("Usuário não autorizado a modificar este perfil", exception.getMessage());
+      verify(usuarioRepository, never()).save(any(Usuario.class));
+    }
+  }
+
+  @Test
+  void updateUsuario_DeveLancarExcecaoQuandoUsuarioLogadoNaoEncontrado() {
+    // Given: Username do token não encontrado no banco
+    Usuario usuarioParaAtualizar = new Usuario();
+    usuarioParaAtualizar.setId(1L);
+    usuarioParaAtualizar.setUsername("usuario@utfpr.edu.br");
+
+    try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+      securityUtils
+          .when(SecurityUtils::getAuthenticatedUsername)
+          .thenReturn("inexistente@utfpr.edu.br");
+
+      when(usuarioRepository.findByUsername("inexistente@utfpr.edu.br")).thenReturn(null);
+
+      // When/Then
+      AccessDeniedException exception =
+          assertThrows(
+              AccessDeniedException.class,
+              () -> usuarioService.updateUsuario(usuarioParaAtualizar));
+
+      assertEquals("Usuário autenticado não encontrado", exception.getMessage());
+      verify(usuarioRepository, never()).save(any(Usuario.class));
+    }
+  }
+
+  @Test
+  void updateUsuario_DeveValidarPorIdNaoPorUsername() {
+    // Given: Mesmo username mas IDs diferentes (cenário de segurança)
+    Usuario usuarioLogado = new Usuario();
+    usuarioLogado.setId(1L);
+    usuarioLogado.setUsername("Usuario@UTFPR.edu.br"); // Case diferente
+
+    Usuario usuarioAtualizado = new Usuario();
+    usuarioAtualizado.setId(2L); // ID DIFERENTE - tentativa de ataque
+    usuarioAtualizado.setUsername("usuario@utfpr.edu.br"); // Mesmo username (case diferente)
+
+    try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+      securityUtils
+          .when(SecurityUtils::getAuthenticatedUsername)
+          .thenReturn("Usuario@UTFPR.edu.br");
+
+      when(usuarioRepository.findByUsername("Usuario@UTFPR.edu.br")).thenReturn(usuarioLogado);
+
+      // When/Then: Deve bloquear porque IDs são diferentes
+      AccessDeniedException exception =
+          assertThrows(
+              AccessDeniedException.class, () -> usuarioService.updateUsuario(usuarioAtualizado));
+
+      assertEquals("Usuário não autorizado a modificar este perfil", exception.getMessage());
+      verify(usuarioRepository, never()).save(any(Usuario.class));
+    }
   }
 }
