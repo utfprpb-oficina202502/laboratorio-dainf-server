@@ -11,6 +11,7 @@ import br.com.utfpr.gerenciamento.server.model.Solicitacao;
 import br.com.utfpr.gerenciamento.server.model.Usuario;
 import br.com.utfpr.gerenciamento.server.repository.SolicitacaoRepository;
 import br.com.utfpr.gerenciamento.server.service.UsuarioService;
+import br.com.utfpr.gerenciamento.server.util.SecurityUtils;
 import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.Collections;
@@ -20,10 +21,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.modelmapper.ModelMapper;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class SolicitacaoServiceImplTest {
 
   @Mock private SolicitacaoRepository solicitacaoRepository;
@@ -131,7 +136,7 @@ class SolicitacaoServiceImplTest {
 
   @Test
   void testFindAllByUsername_DeveRetornarListaDeSolicitacoes() {
-    // Given
+    // Given: Usuário comum consultando suas próprias solicitações
     String username = "joao.silva";
 
     Solicitacao solicitacao1 = criarSolicitacao(1L, usuario);
@@ -148,48 +153,62 @@ class SolicitacaoServiceImplTest {
 
     List<Solicitacao> solicitacoes = Arrays.asList(solicitacao1, solicitacao2);
 
-    when(usuarioService.findByUsername(username)).thenReturn(usuarioResponseDto);
-    when(usuarioService.toEntity(usuarioResponseDto)).thenReturn(usuario);
-    when(solicitacaoRepository.findAllByUsuario(usuario)).thenReturn(solicitacoes);
-    when(modelMapper.map(solicitacao1, SolicitacaoResponseDto.class)).thenReturn(dto1);
-    when(modelMapper.map(solicitacao2, SolicitacaoResponseDto.class)).thenReturn(dto2);
+    try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+      securityUtils.when(SecurityUtils::getAuthenticatedUsername).thenReturn(username);
+      securityUtils
+          .when(SecurityUtils::getAuthenticatedUserRoles)
+          .thenReturn(List.of("ROLE_USUARIO"));
 
-    // When
-    List<SolicitacaoResponseDto> result = solicitacaoService.findAllByUsername(username);
+      when(usuarioService.findByUsername(username)).thenReturn(usuarioResponseDto);
+      when(usuarioService.toEntity(usuarioResponseDto)).thenReturn(usuario);
+      when(solicitacaoRepository.findAllByUsuario(usuario)).thenReturn(solicitacoes);
+      when(modelMapper.map(solicitacao1, SolicitacaoResponseDto.class)).thenReturn(dto1);
+      when(modelMapper.map(solicitacao2, SolicitacaoResponseDto.class)).thenReturn(dto2);
 
-    // Then
-    assertNotNull(result);
-    assertThat(result).hasSize(2);
-    assertThat(result.get(0).getDescricao()).isEqualTo("Solicitação 1");
-    assertThat(result.get(1).getDescricao()).isEqualTo("Solicitação 2");
-    verify(usuarioService).findByUsername(username);
-    verify(usuarioService).toEntity(usuarioResponseDto);
-    verify(solicitacaoRepository).findAllByUsuario(usuario);
+      // When
+      List<SolicitacaoResponseDto> result = solicitacaoService.findAllByUsername(username);
+
+      // Then
+      assertNotNull(result);
+      assertThat(result).hasSize(2);
+      assertThat(result.get(0).getDescricao()).isEqualTo("Solicitação 1");
+      assertThat(result.get(1).getDescricao()).isEqualTo("Solicitação 2");
+      verify(usuarioService, times(2)).findByUsername(username);
+      verify(usuarioService, times(2)).toEntity(usuarioResponseDto);
+      verify(solicitacaoRepository).findAllByUsuario(usuario);
+    }
   }
 
   @Test
   void testFindAllByUsername_SemSolicitacoes_DeveRetornarListaVazia() {
-    // Given
+    // Given: Admin consultando solicitações (bypass de validação)
     String username = "maria.santos";
 
-    when(usuarioService.findByUsername(username)).thenReturn(usuarioResponseDto);
-    when(usuarioService.toEntity(usuarioResponseDto)).thenReturn(usuario);
-    when(solicitacaoRepository.findAllByUsuario(usuario)).thenReturn(Collections.emptyList());
+    try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+      securityUtils.when(SecurityUtils::getAuthenticatedUsername).thenReturn("admin@test.com");
+      securityUtils
+          .when(SecurityUtils::getAuthenticatedUserRoles)
+          .thenReturn(List.of("ROLE_LABORATORISTA"));
 
-    // When
-    List<SolicitacaoResponseDto> result = solicitacaoService.findAllByUsername(username);
+      when(usuarioService.findByUsername(username)).thenReturn(usuarioResponseDto);
+      when(usuarioService.toEntity(usuarioResponseDto)).thenReturn(usuario);
+      when(solicitacaoRepository.findAllByUsuario(usuario)).thenReturn(Collections.emptyList());
 
-    // Then
-    assertNotNull(result);
-    assertThat(result).isEmpty();
-    verify(usuarioService).findByUsername(username);
-    verify(usuarioService).toEntity(usuarioResponseDto);
-    verify(solicitacaoRepository).findAllByUsuario(usuario);
+      // When
+      List<SolicitacaoResponseDto> result = solicitacaoService.findAllByUsername(username);
+
+      // Then
+      assertNotNull(result);
+      assertThat(result).isEmpty();
+      verify(usuarioService).findByUsername(username);
+      verify(usuarioService).toEntity(usuarioResponseDto);
+      verify(solicitacaoRepository).findAllByUsuario(usuario);
+    }
   }
 
   @Test
   void testFindAllByUsername_ComUmaSolicitacao_DeveRetornarLista() {
-    // Given
+    // Given: Admin consultando solicitações
     String username = "pedro.costa";
 
     Solicitacao solicitacaoUnica = criarSolicitacao(10L, usuario);
@@ -198,26 +217,33 @@ class SolicitacaoServiceImplTest {
     SolicitacaoResponseDto dtoUnico = criarSolicitacaoResponseDto(10L, usuarioResponseDto);
     dtoUnico.setDescricao("Solicitação única");
 
-    when(usuarioService.findByUsername(username)).thenReturn(usuarioResponseDto);
-    when(usuarioService.toEntity(usuarioResponseDto)).thenReturn(usuario);
-    when(solicitacaoRepository.findAllByUsuario(usuario))
-        .thenReturn(Collections.singletonList(solicitacaoUnica));
-    when(modelMapper.map(solicitacaoUnica, SolicitacaoResponseDto.class)).thenReturn(dtoUnico);
+    try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+      securityUtils.when(SecurityUtils::getAuthenticatedUsername).thenReturn("admin@test.com");
+      securityUtils
+          .when(SecurityUtils::getAuthenticatedUserRoles)
+          .thenReturn(List.of("ROLE_ADMINISTRADOR"));
 
-    // When
-    List<SolicitacaoResponseDto> result = solicitacaoService.findAllByUsername(username);
+      when(usuarioService.findByUsername(username)).thenReturn(usuarioResponseDto);
+      when(usuarioService.toEntity(usuarioResponseDto)).thenReturn(usuario);
+      when(solicitacaoRepository.findAllByUsuario(usuario))
+          .thenReturn(Collections.singletonList(solicitacaoUnica));
+      when(modelMapper.map(solicitacaoUnica, SolicitacaoResponseDto.class)).thenReturn(dtoUnico);
 
-    // Then
-    assertNotNull(result);
-    assertThat(result).hasSize(1);
-    assertThat(result.get(0).getId()).isEqualTo(10L);
-    assertThat(result.get(0).getDescricao()).isEqualTo("Solicitação única");
-    verify(solicitacaoRepository).findAllByUsuario(usuario);
+      // When
+      List<SolicitacaoResponseDto> result = solicitacaoService.findAllByUsername(username);
+
+      // Then
+      assertNotNull(result);
+      assertThat(result).hasSize(1);
+      assertThat(result.get(0).getId()).isEqualTo(10L);
+      assertThat(result.get(0).getDescricao()).isEqualTo("Solicitação única");
+      verify(solicitacaoRepository).findAllByUsuario(usuario);
+    }
   }
 
   @Test
   void testFindAllByUsername_DeveConverterTodasAsSolicitacoes() {
-    // Given
+    // Given: Admin consultando solicitações
     String username = "ana.oliveira";
 
     Solicitacao sol1 = criarSolicitacao(1L, usuario);
@@ -230,44 +256,58 @@ class SolicitacaoServiceImplTest {
 
     List<Solicitacao> solicitacoes = Arrays.asList(sol1, sol2, sol3);
 
-    when(usuarioService.findByUsername(username)).thenReturn(usuarioResponseDto);
-    when(usuarioService.toEntity(usuarioResponseDto)).thenReturn(usuario);
-    when(solicitacaoRepository.findAllByUsuario(usuario)).thenReturn(solicitacoes);
-    when(modelMapper.map(sol1, SolicitacaoResponseDto.class)).thenReturn(dto1);
-    when(modelMapper.map(sol2, SolicitacaoResponseDto.class)).thenReturn(dto2);
-    when(modelMapper.map(sol3, SolicitacaoResponseDto.class)).thenReturn(dto3);
+    try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+      securityUtils.when(SecurityUtils::getAuthenticatedUsername).thenReturn("admin@test.com");
+      securityUtils
+          .when(SecurityUtils::getAuthenticatedUserRoles)
+          .thenReturn(List.of("ROLE_ADMINISTRADOR"));
 
-    // When
-    List<SolicitacaoResponseDto> result = solicitacaoService.findAllByUsername(username);
+      when(usuarioService.findByUsername(username)).thenReturn(usuarioResponseDto);
+      when(usuarioService.toEntity(usuarioResponseDto)).thenReturn(usuario);
+      when(solicitacaoRepository.findAllByUsuario(usuario)).thenReturn(solicitacoes);
+      when(modelMapper.map(sol1, SolicitacaoResponseDto.class)).thenReturn(dto1);
+      when(modelMapper.map(sol2, SolicitacaoResponseDto.class)).thenReturn(dto2);
+      when(modelMapper.map(sol3, SolicitacaoResponseDto.class)).thenReturn(dto3);
 
-    // Then
-    assertNotNull(result);
-    assertThat(result).hasSize(3);
-    verify(modelMapper, times(3)).map(any(Solicitacao.class), eq(SolicitacaoResponseDto.class));
+      // When
+      List<SolicitacaoResponseDto> result = solicitacaoService.findAllByUsername(username);
+
+      // Then
+      assertNotNull(result);
+      assertThat(result).hasSize(3);
+      verify(modelMapper, times(3)).map(any(Solicitacao.class), eq(SolicitacaoResponseDto.class));
+    }
   }
 
   @Test
   void testFindAllByUsername_DeveChamarServicosNaOrdemCorreta() {
-    // Given
+    // Given: Admin consultando solicitações
     String username = "carlos.pereira";
 
-    when(usuarioService.findByUsername(username)).thenReturn(usuarioResponseDto);
-    when(usuarioService.toEntity(usuarioResponseDto)).thenReturn(usuario);
-    when(solicitacaoRepository.findAllByUsuario(usuario)).thenReturn(Collections.emptyList());
+    try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+      securityUtils.when(SecurityUtils::getAuthenticatedUsername).thenReturn("admin@test.com");
+      securityUtils
+          .when(SecurityUtils::getAuthenticatedUserRoles)
+          .thenReturn(List.of("ROLE_ADMINISTRADOR"));
 
-    // When
-    solicitacaoService.findAllByUsername(username);
+      when(usuarioService.findByUsername(username)).thenReturn(usuarioResponseDto);
+      when(usuarioService.toEntity(usuarioResponseDto)).thenReturn(usuario);
+      when(solicitacaoRepository.findAllByUsuario(usuario)).thenReturn(Collections.emptyList());
 
-    // Then
-    var inOrder = inOrder(usuarioService, solicitacaoRepository);
-    inOrder.verify(usuarioService).findByUsername(username);
-    inOrder.verify(usuarioService).toEntity(usuarioResponseDto);
-    inOrder.verify(solicitacaoRepository).findAllByUsuario(usuario);
+      // When
+      solicitacaoService.findAllByUsername(username);
+
+      // Then
+      var inOrder = inOrder(usuarioService, solicitacaoRepository);
+      inOrder.verify(usuarioService).findByUsername(username);
+      inOrder.verify(usuarioService).toEntity(usuarioResponseDto);
+      inOrder.verify(solicitacaoRepository).findAllByUsuario(usuario);
+    }
   }
 
   @Test
   void testFindAllByUsername_ComDiferentesUsuarios_DeveRetornarSolicitacoesCorretas() {
-    // Given
+    // Given: Admin consultando solicitações
     String username1 = "usuario1";
 
     Usuario usuario1 = criarUsuario(1L, username1);
@@ -278,26 +318,33 @@ class SolicitacaoServiceImplTest {
 
     SolicitacaoResponseDto dto1 = criarSolicitacaoResponseDto(1L, userDto1);
 
-    // Configurar mocks para usuario1
-    when(usuarioService.findByUsername(username1)).thenReturn(userDto1);
-    when(usuarioService.toEntity(userDto1)).thenReturn(usuario1);
-    when(solicitacaoRepository.findAllByUsuario(usuario1))
-        .thenReturn(Collections.singletonList(sol1));
-    when(modelMapper.map(sol1, SolicitacaoResponseDto.class)).thenReturn(dto1);
+    try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+      securityUtils.when(SecurityUtils::getAuthenticatedUsername).thenReturn("admin@test.com");
+      securityUtils
+          .when(SecurityUtils::getAuthenticatedUserRoles)
+          .thenReturn(List.of("ROLE_ADMINISTRADOR"));
 
-    // When
-    List<SolicitacaoResponseDto> result1 = solicitacaoService.findAllByUsername(username1);
+      // Configurar mocks para usuario1
+      when(usuarioService.findByUsername(username1)).thenReturn(userDto1);
+      when(usuarioService.toEntity(userDto1)).thenReturn(usuario1);
+      when(solicitacaoRepository.findAllByUsuario(usuario1))
+          .thenReturn(Collections.singletonList(sol1));
+      when(modelMapper.map(sol1, SolicitacaoResponseDto.class)).thenReturn(dto1);
 
-    // Then
-    assertNotNull(result1);
-    assertThat(result1).hasSize(1);
-    assertThat(result1.get(0).getId()).isEqualTo(1L);
-    verify(solicitacaoRepository).findAllByUsuario(usuario1);
+      // When
+      List<SolicitacaoResponseDto> result1 = solicitacaoService.findAllByUsername(username1);
+
+      // Then
+      assertNotNull(result1);
+      assertThat(result1).hasSize(1);
+      assertThat(result1.get(0).getId()).isEqualTo(1L);
+      verify(solicitacaoRepository).findAllByUsuario(usuario1);
+    }
   }
 
   @Test
   void testFindAllByUsername_ComSolicitacoesComObservacoes_DeveRetornarCompleto() {
-    // Given
+    // Given: Admin consultando solicitações
     String username = "teste.usuario";
 
     Solicitacao sol = criarSolicitacao(1L, usuario);
@@ -308,31 +355,38 @@ class SolicitacaoServiceImplTest {
     dto.setDescricao("Descrição teste");
     dto.setObservacao("Observação importante");
 
-    when(usuarioService.findByUsername(username)).thenReturn(usuarioResponseDto);
-    when(usuarioService.toEntity(usuarioResponseDto)).thenReturn(usuario);
-    when(solicitacaoRepository.findAllByUsuario(usuario))
-        .thenReturn(Collections.singletonList(sol));
-    when(modelMapper.map(sol, SolicitacaoResponseDto.class)).thenReturn(dto);
+    try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+      securityUtils.when(SecurityUtils::getAuthenticatedUsername).thenReturn("admin@test.com");
+      securityUtils
+          .when(SecurityUtils::getAuthenticatedUserRoles)
+          .thenReturn(List.of("ROLE_ADMINISTRADOR"));
 
-    // When
-    List<SolicitacaoResponseDto> result = solicitacaoService.findAllByUsername(username);
+      when(usuarioService.findByUsername(username)).thenReturn(usuarioResponseDto);
+      when(usuarioService.toEntity(usuarioResponseDto)).thenReturn(usuario);
+      when(solicitacaoRepository.findAllByUsuario(usuario))
+          .thenReturn(Collections.singletonList(sol));
+      when(modelMapper.map(sol, SolicitacaoResponseDto.class)).thenReturn(dto);
 
-    // Then
-    assertNotNull(result);
-    assertThat(result).hasSize(1);
-    assertThat(result.get(0).getObservacao()).isEqualTo("Observação importante");
+      // When
+      List<SolicitacaoResponseDto> result = solicitacaoService.findAllByUsername(username);
+
+      // Then
+      assertNotNull(result);
+      assertThat(result).hasSize(1);
+      assertThat(result.get(0).getObservacao()).isEqualTo("Observação importante");
+    }
   }
 
   // Métodos auxiliares para criar objetos de teste
 
   private Solicitacao criarSolicitacao(Long id, Usuario usuario) {
-    Solicitacao solicitacao = new Solicitacao();
-    solicitacao.setId(id);
-    solicitacao.setDescricao("Solicitação de teste");
-    solicitacao.setDataSolicitacao(LocalDate.now());
-    solicitacao.setUsuario(usuario);
-    solicitacao.setSolicitacaoItem(Collections.emptyList());
-    return solicitacao;
+    Solicitacao s = new Solicitacao();
+    s.setId(id);
+    s.setDescricao("Solicitação de teste");
+    s.setDataSolicitacao(LocalDate.now());
+    s.setUsuario(usuario);
+    s.setSolicitacaoItem(Collections.emptyList());
+    return s;
   }
 
   private SolicitacaoResponseDto criarSolicitacaoResponseDto(
@@ -347,11 +401,11 @@ class SolicitacaoServiceImplTest {
   }
 
   private Usuario criarUsuario(Long id, String username) {
-    Usuario usuario = new Usuario();
-    usuario.setId(id);
-    usuario.setUsername(username);
-    usuario.setNome("Nome " + username);
-    return usuario;
+    Usuario u = new Usuario();
+    u.setId(id);
+    u.setUsername(username);
+    u.setNome("Nome " + username);
+    return u;
   }
 
   private UsuarioResponseDto criarUsuarioResponseDto(Long id, String username) {

@@ -76,6 +76,7 @@ public abstract class CrudController<T, ID extends Serializable, DTO extends Bas
    * @param size Tamanho da pagina (1-100)
    * @param filter Texto para busca em todos os campos visiveis (case insensitive)
    * @param sort Ordenacao no formato "campo,direcao" (ex: "nome,desc"). Default: "id,asc"
+   * @param grupoId ID do grupo para filtrar (opcional - usado apenas em ItemController)
    * @return Pagina de DTOs (ou ListDTOs em subclasses)
    */
   @GetMapping("page")
@@ -83,7 +84,8 @@ public abstract class CrudController<T, ID extends Serializable, DTO extends Bas
       @RequestParam("page") @Min(0) int page,
       @RequestParam("size") @Min(1) @Max(100) int size,
       @RequestParam(required = false) String filter,
-      @RequestParam(required = false) String sort) {
+      @RequestParam(required = false) String sort,
+      @RequestParam(required = false) Long grupoId) {
     Sort sortObj = parseSortParameter(sort);
     PageRequest pageRequest = PageRequest.of(page, size, sortObj);
     if (filter != null && !filter.isEmpty()) {

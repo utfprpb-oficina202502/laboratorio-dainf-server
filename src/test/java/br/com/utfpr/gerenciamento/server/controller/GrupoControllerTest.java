@@ -315,7 +315,8 @@ class GrupoControllerTest {
     when(grupoService.findAllSpecification(any(), any())).thenReturn(pageResult);
 
     // When
-    Page<? extends BaseListDto> result = grupoController.findAllPaged(page, size, filter, sort);
+    Page<? extends BaseListDto> result =
+        grupoController.findAllPaged(page, size, filter, sort, null);
 
     // Then
     assertNotNull(result);
@@ -337,7 +338,7 @@ class GrupoControllerTest {
     when(grupoService.findAll(any(PageRequest.class))).thenReturn(pageResult);
 
     // When
-    Page<? extends BaseListDto> result = grupoController.findAllPaged(page, size, null, null);
+    Page<? extends BaseListDto> result = grupoController.findAllPaged(page, size, null, null, null);
 
     // Then
     assertNotNull(result);
@@ -356,7 +357,8 @@ class GrupoControllerTest {
     when(grupoService.findAll(any(PageRequest.class))).thenReturn(pageResult);
 
     // When
-    Page<? extends BaseListDto> result = grupoController.findAllPaged(page, size, filter, null);
+    Page<? extends BaseListDto> result =
+        grupoController.findAllPaged(page, size, filter, null, null);
 
     // Then
     assertNotNull(result);
@@ -377,7 +379,7 @@ class GrupoControllerTest {
     when(grupoService.findAll(pageRequest)).thenReturn(pageResult);
 
     // When
-    Page<? extends BaseListDto> result = grupoController.findAllPaged(page, size, null, null);
+    Page<? extends BaseListDto> result = grupoController.findAllPaged(page, size, null, null, null);
 
     // Then
     assertNotNull(result);
@@ -394,7 +396,7 @@ class GrupoControllerTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> {
-          grupoController.findAllPaged(page, size, null, null);
+          grupoController.findAllPaged(page, size, null, null, null);
         });
   }
 
@@ -426,7 +428,7 @@ class GrupoControllerTest {
     when(grupoService.findAllSpecification(any(), any())).thenReturn(pageResult);
 
     // When
-    grupoController.findAllPaged(page, size, filter, sort);
+    grupoController.findAllPaged(page, size, filter, sort, null);
 
     // Then - deve usar a ordenacao solicitada
     PageRequest expectedPageRequest =
@@ -448,7 +450,7 @@ class GrupoControllerTest {
     when(grupoService.findAll(expectedPageRequest)).thenReturn(pageResult);
 
     // When
-    grupoController.findAllPaged(page, size, null, sort);
+    grupoController.findAllPaged(page, size, null, sort, null);
 
     // Then - deve usar ordenacao padrao (id)
     verify(grupoService).findAll(expectedPageRequest);
@@ -469,7 +471,7 @@ class GrupoControllerTest {
     when(grupoService.findAllSpecification(any(), any())).thenReturn(pageResult);
 
     // When
-    grupoController.findAllPaged(page, size, filter, sort);
+    grupoController.findAllPaged(page, size, filter, sort, null);
 
     // Then - deve usar ordenacao DESC
     PageRequest expectedPageRequest =
@@ -493,7 +495,7 @@ class GrupoControllerTest {
     when(grupoService.findAllSpecification(any(), any())).thenReturn(pageResult);
 
     // When
-    grupoController.findAllPaged(page, size, filter, sort);
+    grupoController.findAllPaged(page, size, filter, sort, null);
 
     // Then - deve usar ordenacao ASC como padrao
     PageRequest expectedPageRequest =
@@ -514,7 +516,7 @@ class GrupoControllerTest {
     when(grupoService.findAll(expectedPageRequest)).thenReturn(pageResult);
 
     // When
-    grupoController.findAllPaged(page, size, null, sort);
+    grupoController.findAllPaged(page, size, null, sort, null);
 
     // Then - deve usar ordenacao padrao (id) pois propriedade nao e permitida
     verify(grupoService).findAll(expectedPageRequest);

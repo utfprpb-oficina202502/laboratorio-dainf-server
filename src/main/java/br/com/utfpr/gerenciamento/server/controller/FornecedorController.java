@@ -48,7 +48,8 @@ public class FornecedorController extends CrudController<Fornecedor, Long, Forne
       @RequestParam("page") int page,
       @RequestParam("size") int size,
       @RequestParam(required = false) String filter,
-      @RequestParam(required = false) String sort) {
+      @RequestParam(required = false) String sort,
+      @RequestParam(required = false) Long grupoId) {
     Sort sortObj = parseSortParameter(sort);
     PageRequest pageRequest = PageRequest.of(page, size, sortObj);
     return fornecedorService.findAllPagedList(filter, pageRequest);

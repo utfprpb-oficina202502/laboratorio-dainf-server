@@ -187,7 +187,7 @@ class FornecedorControllerTest {
     when(fornecedorService.findAllPagedList(eq(filter), any(PageRequest.class)))
         .thenReturn(pageResult);
 
-    Page<?> result = fornecedorController.findAllPaged(page, size, filter, sort);
+    Page<?> result = fornecedorController.findAllPaged(page, size, filter, sort, null);
 
     assertNotNull(result);
     assertEquals(1, result.getContent().size());
@@ -209,7 +209,7 @@ class FornecedorControllerTest {
     when(fornecedorService.findAllPagedList(isNull(), any(PageRequest.class)))
         .thenReturn(pageResult);
 
-    Page<?> result = fornecedorController.findAllPaged(page, size, null, null);
+    Page<?> result = fornecedorController.findAllPaged(page, size, null, null, null);
 
     assertNotNull(result);
     assertEquals(1, result.getContent().size());
@@ -232,7 +232,7 @@ class FornecedorControllerTest {
     when(fornecedorService.findAllPagedList(eq(filter), any(PageRequest.class)))
         .thenReturn(pageResult);
 
-    Page<?> result = fornecedorController.findAllPaged(page, size, filter, null);
+    Page<?> result = fornecedorController.findAllPaged(page, size, filter, null, null);
 
     assertNotNull(result);
     assertEquals(1, result.getContent().size());
@@ -255,7 +255,7 @@ class FornecedorControllerTest {
     when(fornecedorService.findAllPagedList(isNull(), any(PageRequest.class)))
         .thenReturn(pageResult);
 
-    Page<?> result = fornecedorController.findAllPaged(page, size, null, sort);
+    Page<?> result = fornecedorController.findAllPaged(page, size, null, sort, null);
 
     assertNotNull(result);
     assertEquals(1, result.getContent().size());

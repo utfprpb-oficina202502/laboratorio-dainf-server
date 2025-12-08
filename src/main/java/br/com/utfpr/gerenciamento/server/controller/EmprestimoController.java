@@ -155,19 +155,13 @@ public class EmprestimoController extends CrudController<Emprestimo, Long, Empre
   /**
    * Lista todos os empréstimos de um usuário específico.
    *
-   * <p>Endpoint mantido para compatibilidade. Acesso controlado por WebSecurity: - Usuário só pode
-   * ver seus próprios empréstimos - Admin/Laboratorista podem ver todos os empréstimos
+   * <p>Acesso controlado no service com validação por ID: - Usuário só pode ver seus próprios
+   * empréstimos - Admin/Laboratorista podem ver todos os empréstimos
    *
    * @param username Username do usuário a consultar
    * @return Lista de empréstimos do usuário especificado
    */
   @GetMapping("find-all-by-username/{username}")
-  @PreAuthorize(
-      "authentication.name == #username || hasAnyRole('"
-          + ROLE_LABORATORISTA_NAME
-          + "', '"
-          + ROLE_ADMINISTRADOR_NAME
-          + "')")
   public List<EmprestimoResponseDto> findAllByUsuarioEmprestimo(
       @PathVariable("username") String username) {
     return emprestimoService.findAllUsuarioEmprestimo(username);
@@ -176,13 +170,14 @@ public class EmprestimoController extends CrudController<Emprestimo, Long, Empre
   /**
    * Altera o prazo de devolução de um empréstimo.
    *
-   * <p>Endpoint administrativo para alterar prazos de devolução. Acesso controlado por WebSecurity
-   * (requer LABORATORISTA ou ADMINISTRADOR).
+   * <p>Endpoint administrativo para alterar prazos de devolução. Requer LABORATORISTA ou
+   * ADMINISTRADOR.
    *
    * @param id ID do empréstimo
    * @param novaData Nova data de devolução (formato: dd/MM/yyyy)
    */
   @GetMapping("change-prazo-devolucao")
+  @PreAuthorize("hasAnyRole('" + ROLE_LABORATORISTA_NAME + "', '" + ROLE_ADMINISTRADOR_NAME + "')")
   public void changePrazoDevolucao(
       @RequestParam("id") Long id, @RequestParam("novaData") String novaData) {
     emprestimoService.changePrazoDevolucao(id, DateUtil.parseStringToLocalDate(novaData));
@@ -234,7 +229,8 @@ public class EmprestimoController extends CrudController<Emprestimo, Long, Empre
       @RequestParam("page") @Min(0) int page,
       @RequestParam("size") @Min(1) @Max(100) int size,
       @RequestParam(required = false) String filter,
-      @RequestParam(required = false) String sort) {
+      @RequestParam(required = false) String sort,
+      @RequestParam(required = false) Long grupoId) {
     Sort sortObj = parseSortParameter(sort);
     PageRequest pageRequest = PageRequest.of(page, size, sortObj);
 

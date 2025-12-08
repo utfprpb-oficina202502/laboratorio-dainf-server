@@ -104,10 +104,10 @@ class ItemControllerTest {
 
     Page<ItemListDto> page = new PageImpl<>(List.of(itemListDto));
 
-    when(itemService.findAllPagedList(isNull(), any(PageRequest.class))).thenReturn(page);
+    when(itemService.findAllPagedList(isNull(), isNull(), any(PageRequest.class))).thenReturn(page);
 
     // When
-    Page<?> result = itemController.findAllPaged(0, 10, null, null);
+    Page<?> result = itemController.findAllPaged(0, 10, null, null, null);
 
     // Then
     assertThat(result.getContent()).hasSize(1);
@@ -122,14 +122,52 @@ class ItemControllerTest {
 
     Page<ItemListDto> page = new PageImpl<>(List.of(itemListDto));
 
-    when(itemService.findAllPagedList(eq("filtro"), any(PageRequest.class))).thenReturn(page);
+    when(itemService.findAllPagedList(isNull(), eq("filtro"), any(PageRequest.class)))
+        .thenReturn(page);
 
     // When
-    Page<?> result = itemController.findAllPaged(0, 10, "filtro", "nome,asc");
+    Page<?> result = itemController.findAllPaged(0, 10, "filtro", "nome,asc", null);
 
     // Then
     assertThat(result.getContent()).hasSize(1);
     assertThat(((ItemListDto) result.getContent().get(0)).getId()).isEqualTo(1L);
+  }
+
+  @Test
+  void testFindAllPaged_ComGrupoId_DeveRetornarItensFiltradosPorGrupo() {
+    // Given
+    ItemListDto itemListDto =
+        ItemListDto.builder().id(1L).nome("Item Teste").saldo(new BigDecimal("8")).build();
+
+    Page<ItemListDto> page = new PageImpl<>(List.of(itemListDto));
+
+    when(itemService.findAllPagedList(eq(1L), isNull(), any(PageRequest.class))).thenReturn(page);
+
+    // When
+    Page<?> result = itemController.findAllPaged(0, 10, null, null, 1L);
+
+    // Then
+    assertThat(result.getContent()).hasSize(1);
+    assertThat(((ItemListDto) result.getContent().get(0)).getId()).isEqualTo(1L);
+  }
+
+  @Test
+  void testFindAllPaged_ComGrupoIdEFiltro_DeveCombinarFiltros() {
+    // Given
+    ItemListDto itemListDto =
+        ItemListDto.builder().id(1L).nome("Notebook Dell").saldo(new BigDecimal("5")).build();
+
+    Page<ItemListDto> page = new PageImpl<>(List.of(itemListDto));
+
+    when(itemService.findAllPagedList(eq(2L), eq("Notebook"), any(PageRequest.class)))
+        .thenReturn(page);
+
+    // When
+    Page<?> result = itemController.findAllPaged(0, 10, "Notebook", null, 2L);
+
+    // Then
+    assertThat(result.getContent()).hasSize(1);
+    assertThat(((ItemListDto) result.getContent().get(0)).getNome()).isEqualTo("Notebook Dell");
   }
 
   @Test

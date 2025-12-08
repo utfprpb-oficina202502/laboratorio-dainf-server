@@ -120,8 +120,10 @@ public class WebSecurity {
                     .requestMatchers(HttpMethod.DELETE, GRUPO)
                     .hasAnyRole(ROLE_LABORATORISTA_NAME, ROLE_ADMINISTRADOR_NAME)
 
-                    // Item - POST/DELETE requerem LABORATORISTA ou ADMINISTRADOR
+                    // Item - POST/PUT/DELETE requerem LABORATORISTA ou ADMINISTRADOR
                     .requestMatchers(HttpMethod.POST, ITEM)
+                    .hasAnyRole(ROLE_LABORATORISTA_NAME, ROLE_ADMINISTRADOR_NAME)
+                    .requestMatchers(HttpMethod.PUT, ITEM)
                     .hasAnyRole(ROLE_LABORATORISTA_NAME, ROLE_ADMINISTRADOR_NAME)
                     .requestMatchers(HttpMethod.DELETE, ITEM)
                     .hasAnyRole(ROLE_LABORATORISTA_NAME, ROLE_ADMINISTRADOR_NAME)
@@ -178,8 +180,10 @@ public class WebSecurity {
                     .requestMatchers(HttpMethod.DELETE, USUARIO)
                     .hasRole(ROLE_ADMINISTRADOR_NAME)
 
-                    // Empréstimo - POST/DELETE requerem LABORATORISTA ou ADMINISTRADOR
+                    // Empréstimo - POST/PUT/DELETE requerem LABORATORISTA ou ADMINISTRADOR
                     .requestMatchers(HttpMethod.POST, EMPRESTIMO_SAVE, EMPRESTIMO_DEVOLUCAO)
+                    .hasAnyRole(ROLE_LABORATORISTA_NAME, ROLE_ADMINISTRADOR_NAME)
+                    .requestMatchers(HttpMethod.PUT, EMPRESTIMO)
                     .hasAnyRole(ROLE_LABORATORISTA_NAME, ROLE_ADMINISTRADOR_NAME)
                     .requestMatchers(HttpMethod.DELETE, EMPRESTIMO)
                     .hasAnyRole(ROLE_LABORATORISTA_NAME, ROLE_ADMINISTRADOR_NAME)

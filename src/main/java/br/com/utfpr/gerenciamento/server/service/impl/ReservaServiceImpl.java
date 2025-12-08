@@ -1,5 +1,8 @@
 package br.com.utfpr.gerenciamento.server.service.impl;
 
+import static br.com.utfpr.gerenciamento.server.enumeration.UserRole.ROLE_ADMINISTRADOR_NAME;
+import static br.com.utfpr.gerenciamento.server.enumeration.UserRole.ROLE_LABORATORISTA_NAME;
+
 import br.com.utfpr.gerenciamento.server.dto.ReservaListDto;
 import br.com.utfpr.gerenciamento.server.dto.ReservaResponseDto;
 import br.com.utfpr.gerenciamento.server.event.reserva.ReservaCriadaEvent;
@@ -16,14 +19,17 @@ import br.com.utfpr.gerenciamento.server.util.DateUtil;
 import br.com.utfpr.gerenciamento.server.util.SecurityUtils;
 import java.util.List;
 import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 public class ReservaServiceImpl extends CrudServiceImpl<Reserva, Long, ReservaResponseDto>
     implements ReservaService {
@@ -131,9 +137,37 @@ public class ReservaServiceImpl extends CrudServiceImpl<Reserva, Long, ReservaRe
             .findById(idReserva)
             .orElseThrow(() -> new EntityNotFoundException("Reserva não encontrada."));
 
+    // SEGURANÇA: Validação por ID - evita problemas de case-sensitivity
+    // Admins e laboratoristas podem finalizar qualquer reserva (conversão para empréstimo)
     String authenticatedUsername = SecurityUtils.getAuthenticatedUsername();
-    if (!reserva.getUsuario().getUsername().equals(authenticatedUsername)) {
-      throw new EntityNotFoundException("Usuário não tem permissão para finalizar esta reserva");
+    List<String> userRoles = SecurityUtils.getAuthenticatedUserRoles();
+
+    // As roles vêm do Spring Security com prefixo "ROLE_"
+    boolean isAdminOrLaboratorista =
+        userRoles.contains("ROLE_" + ROLE_ADMINISTRADOR_NAME)
+            || userRoles.contains("ROLE_" + ROLE_LABORATORISTA_NAME);
+
+    if (!isAdminOrLaboratorista) {
+      // Usuários comuns só podem finalizar suas próprias reservas
+      Usuario usuarioLogado =
+          usuarioService.toEntity(usuarioService.findByUsername(authenticatedUsername));
+      if (usuarioLogado == null) {
+        log.warn(
+            "Tentativa de finalizar reserva com usuário não encontrado: username={}",
+            authenticatedUsername);
+        throw new AccessDeniedException("Usuário autenticado não encontrado");
+      }
+
+      if (!reserva.getUsuario().getId().equals(usuarioLogado.getId())) {
+        log.warn(
+            "Tentativa de finalizar reserva não autorizada: usuário {} (ID: {}) tentou finalizar reserva ID: {} do usuário {} (ID: {})",
+            authenticatedUsername,
+            usuarioLogado.getId(),
+            idReserva,
+            reserva.getUsuario().getUsername(),
+            reserva.getUsuario().getId());
+        throw new AccessDeniedException("Usuário não tem permissão para finalizar esta reserva");
+      }
     }
 
     emailService.sendEmailWithTemplate(
