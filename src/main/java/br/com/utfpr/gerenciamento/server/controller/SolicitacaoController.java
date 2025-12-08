@@ -61,6 +61,15 @@ public class SolicitacaoController
     return solicitacaoService.findAllPagedList(filter, pageRequest);
   }
 
+  /**
+   * Lista todas as solicitações de um usuário específico.
+   *
+   * <p>Acesso controlado no service com validação por ID: - Usuário só pode ver suas próprias
+   * solicitações - Admin/Laboratorista podem ver todas as solicitações
+   *
+   * @param username Username do usuário a consultar
+   * @return Lista de solicitações do usuário especificado
+   */
   @GetMapping("find-all-by-username/{username}")
   public List<SolicitacaoResponseDto> findAllByUsername(@PathVariable("username") String username) {
     return solicitacaoService.findAllByUsername(username);

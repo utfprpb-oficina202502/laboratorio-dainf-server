@@ -249,24 +249,31 @@ class EmprestimoServiceImplTest {
 
   @Test
   void testFindAllUsuarioEmprestimo() {
-    // Given
+    // Given: Usuário comum consultando seus próprios empréstimos
     String username = "usuario@test.com";
     List<Emprestimo> emprestimos = Collections.singletonList(emprestimo);
 
-    when(usuarioService.findByUsername(username)).thenReturn(usuarioDto);
-    when(usuarioService.toEntity(usuarioDto)).thenReturn(usuarioEmprestimo);
-    when(emprestimoRepository.findAllByUsuarioEmprestimo(usuarioEmprestimo))
-        .thenReturn(emprestimos);
-    doReturn(emprestimoDto).when(service).toDto(emprestimo);
+    try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+      securityUtils.when(SecurityUtils::getAuthenticatedUsername).thenReturn(username);
+      securityUtils
+          .when(SecurityUtils::getAuthenticatedUserRoles)
+          .thenReturn(List.of("ROLE_USUARIO")); // Usuário comum
 
-    // When
-    List<EmprestimoResponseDto> result = service.findAllUsuarioEmprestimo(username);
+      when(usuarioService.findByUsername(username)).thenReturn(usuarioDto);
+      when(usuarioService.toEntity(usuarioDto)).thenReturn(usuarioEmprestimo);
+      when(emprestimoRepository.findAllByUsuarioEmprestimo(usuarioEmprestimo))
+          .thenReturn(emprestimos);
+      doReturn(emprestimoDto).when(service).toDto(emprestimo);
 
-    // Then
-    assertNotNull(result);
-    assertEquals(1, result.size());
-    verify(usuarioService).findByUsername(username);
-    verify(emprestimoRepository).findAllByUsuarioEmprestimo(usuarioEmprestimo);
+      // When
+      List<EmprestimoResponseDto> result = service.findAllUsuarioEmprestimo(username);
+
+      // Then
+      assertNotNull(result);
+      assertEquals(1, result.size());
+      verify(usuarioService, times(2)).findByUsername(username); // 2x: alvo + logado
+      verify(emprestimoRepository).findAllByUsuarioEmprestimo(usuarioEmprestimo);
+    }
   }
 
   @Test
