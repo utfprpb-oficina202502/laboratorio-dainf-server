@@ -378,15 +378,47 @@ public class EmprestimoServiceImpl extends CrudServiceImpl<Emprestimo, Long, Emp
 
   @Override
   @Transactional(readOnly = true)
-  @PreAuthorize(
-      "authentication.name == #username || hasAnyRole('"
-          + ROLE_LABORATORISTA_NAME
-          + "', '"
-          + ROLE_ADMINISTRADOR_NAME
-          + "')")
   public List<EmprestimoResponseDto> findAllUsuarioEmprestimo(String username) {
-    Usuario usuario = usuarioService.toEntity(usuarioService.findByUsername(username));
-    return emprestimoRepository.findAllByUsuarioEmprestimo(usuario).stream()
+    // Busca o usuário alvo pelo username fornecido
+    Usuario usuarioAlvo = usuarioService.toEntity(usuarioService.findByUsername(username));
+    if (usuarioAlvo == null) {
+      return Collections.emptyList();
+    }
+
+    // SEGURANÇA: Validação por ID - evita problemas de case-sensitivity
+    // Admins e laboratoristas podem ver empréstimos de qualquer usuário
+    String authenticatedUsername = SecurityUtils.getAuthenticatedUsername();
+    List<String> userRoles = SecurityUtils.getAuthenticatedUserRoles();
+
+    boolean isAdminOrLaboratorista =
+        userRoles.contains("ROLE_" + ROLE_ADMINISTRADOR_NAME)
+            || userRoles.contains("ROLE_" + ROLE_LABORATORISTA_NAME);
+
+    if (!isAdminOrLaboratorista) {
+      // Usuários comuns só podem ver seus próprios empréstimos
+      Usuario usuarioLogado =
+          usuarioService.toEntity(usuarioService.findByUsername(authenticatedUsername));
+      if (usuarioLogado == null) {
+        log.warn(
+            "Tentativa de consultar empréstimos com usuário não encontrado: username={}",
+            authenticatedUsername);
+        throw new org.springframework.security.access.AccessDeniedException(
+            "Usuário autenticado não encontrado");
+      }
+
+      if (!usuarioAlvo.getId().equals(usuarioLogado.getId())) {
+        log.warn(
+            "Tentativa de consultar empréstimos não autorizada: usuário {} (ID: {}) tentou consultar empréstimos do usuário {} (ID: {})",
+            authenticatedUsername,
+            usuarioLogado.getId(),
+            username,
+            usuarioAlvo.getId());
+        throw new org.springframework.security.access.AccessDeniedException(
+            "Usuário não tem permissão para consultar empréstimos de outro usuário");
+      }
+    }
+
+    return emprestimoRepository.findAllByUsuarioEmprestimo(usuarioAlvo).stream()
         .map(this::toDto)
         .toList();
   }
@@ -551,104 +583,150 @@ public class EmprestimoServiceImpl extends CrudServiceImpl<Emprestimo, Long, Emp
 
   @Override
   public void prepareEmprestimo(Emprestimo emprestimo) {
-    if (emprestimo.getId() != null) {
-      Emprestimo old = toEntity(super.findOne(emprestimo.getId()));
-      if (old != null && old.getEmprestimoItem() != null) {
-        old.getEmprestimoItem().stream()
-            .filter(empItem -> empItem != null && empItem.getItem() != null)
-            .forEach(
-                empItem ->
-                    itemService.aumentaSaldoItem(empItem.getItem().getId(), empItem.getQtde()));
-      }
-    }
-    if (emprestimo.getEmprestimoItem() != null) {
-      emprestimo.getEmprestimoItem().stream()
-          .filter(empItem -> empItem != null && empItem.getItem() != null)
-          .forEach(
-              empItem ->
-                  itemService.saldoItemIsValid(
-                      itemService.getSaldoItem(empItem.getItem().getId()), empItem.getQtde()));
-    }
+    restauraSaldoEmprestimoAnterior(emprestimo);
+    validaSaldoItensEmprestimo(emprestimo);
 
-    // ETAPA 1: Agrupa emprestimoItem por item.id, soma quantidades e mapeia Item
+    // Agrupa itens e calcula quantidades para devolução
     Map<Long, BigDecimal> qtdeTotalPorItem = new HashMap<>();
     Map<Long, Item> itemPorId = new HashMap<>();
-    if (emprestimo.getEmprestimoItem() != null) {
-      // Preserva IDs vindos em emprestimoDevolucaoItem para não perder pendentes já informados
-      Set<Long> idsFromExistingDevolucao =
-          Optional.ofNullable(emprestimo.getEmprestimoDevolucaoItem())
-              .orElse(Collections.emptyList())
-              .stream()
-              .filter(i -> i != null && i.getItem() != null)
-              .map(i -> i.getItem().getId())
-              .collect(Collectors.toSet());
+    agrupaItensPorId(emprestimo, qtdeTotalPorItem, itemPorId);
 
-      emprestimo.getEmprestimoItem().stream()
-          .filter(empItem -> empItem != null && empItem.getItem() != null)
-          // Agora só considera itens que o front-end sinalizou `devolver == true`
-          // ou que já constavam em emprestimoDevolucaoItem enviado (preservação)
-          .filter(
-              empItem ->
-                  Boolean.TRUE.equals(empItem.getDevolver())
-                      || idsFromExistingDevolucao.contains(empItem.getItem().getId()))
-          .forEach(
-              empItem -> {
-                Long itemId = empItem.getItem().getId();
-                qtdeTotalPorItem.merge(itemId, empItem.getQtde(), BigDecimal::add);
-                itemPorId.putIfAbsent(itemId, empItem.getItem());
-              });
+    // Filtra itens já processados e calcula pendentes
+    Map<Long, BigDecimal> qtdeProcessadaPorItem = new HashMap<>();
+    List<EmprestimoDevolucaoItem> itensProcessados =
+        filtraItensProcessados(emprestimo, qtdeProcessadaPorItem);
+
+    // Monta lista final com itens processados + novos pendentes
+    List<EmprestimoDevolucaoItem> resultadoFinal =
+        montaListaDevolucao(
+            emprestimo, qtdeTotalPorItem, itemPorId, qtdeProcessadaPorItem, itensProcessados);
+
+    emprestimo.setEmprestimoDevolucaoItem(resultadoFinal);
+  }
+
+  /** Restaura saldo dos itens do empréstimo anterior (se for atualização). */
+  private void restauraSaldoEmprestimoAnterior(Emprestimo emprestimo) {
+    if (emprestimo.getId() == null) {
+      return;
     }
+    Emprestimo old = toEntity(super.findOne(emprestimo.getId()));
+    if (old == null || old.getEmprestimoItem() == null) {
+      return;
+    }
+    old.getEmprestimoItem().stream()
+        .filter(empItem -> empItem != null && empItem.getItem() != null)
+        .forEach(
+            empItem -> itemService.aumentaSaldoItem(empItem.getItem().getId(), empItem.getQtde()));
+  }
 
-    // ETAPA 2: Filtra e preserva apenas itens já processados (D ou S), descartando pendentes
+  /** Valida se há saldo suficiente para todos os itens do empréstimo. */
+  private void validaSaldoItensEmprestimo(Emprestimo emprestimo) {
+    if (emprestimo.getEmprestimoItem() == null) {
+      return;
+    }
+    emprestimo.getEmprestimoItem().stream()
+        .filter(empItem -> empItem != null && empItem.getItem() != null)
+        .forEach(
+            empItem ->
+                itemService.saldoItemIsValid(
+                    itemService.getSaldoItem(empItem.getItem().getId()), empItem.getQtde()));
+  }
+
+  /** Agrupa emprestimoItem por item.id, soma quantidades e mapeia Item. */
+  private void agrupaItensPorId(
+      Emprestimo emprestimo, Map<Long, BigDecimal> qtdeTotalPorItem, Map<Long, Item> itemPorId) {
+    if (emprestimo.getEmprestimoItem() == null) {
+      return;
+    }
+    Set<Long> idsFromExistingDevolucao = extraiIdsDevolucaoExistente(emprestimo);
+
+    emprestimo.getEmprestimoItem().stream()
+        .filter(empItem -> empItem != null && empItem.getItem() != null)
+        .filter(empItem -> deveIncluirParaDevolucao(empItem, idsFromExistingDevolucao))
+        .forEach(
+            empItem -> {
+              Long itemId = empItem.getItem().getId();
+              qtdeTotalPorItem.merge(itemId, empItem.getQtde(), BigDecimal::add);
+              itemPorId.putIfAbsent(itemId, empItem.getItem());
+            });
+  }
+
+  /** Extrai IDs dos itens já existentes em emprestimoDevolucaoItem. */
+  private Set<Long> extraiIdsDevolucaoExistente(Emprestimo emprestimo) {
+    return Optional.ofNullable(emprestimo.getEmprestimoDevolucaoItem())
+        .orElse(Collections.emptyList())
+        .stream()
+        .filter(i -> i != null && i.getItem() != null)
+        .map(i -> i.getItem().getId())
+        .collect(Collectors.toSet());
+  }
+
+  /** Verifica se item deve ser incluído na devolução (devolver=true ou já existe). */
+  private boolean deveIncluirParaDevolucao(EmprestimoItem empItem, Set<Long> idsExistentes) {
+    return Boolean.TRUE.equals(empItem.getDevolver())
+        || idsExistentes.contains(empItem.getItem().getId());
+  }
+
+  /** Filtra e preserva apenas itens já processados (D ou S), descartando pendentes. */
+  private List<EmprestimoDevolucaoItem> filtraItensProcessados(
+      Emprestimo emprestimo, Map<Long, BigDecimal> qtdeProcessadaPorItem) {
     List<EmprestimoDevolucaoItem> itensExistentes =
         Optional.ofNullable(emprestimo.getEmprestimoDevolucaoItem())
             .orElse(Collections.emptyList());
 
-    Map<Long, BigDecimal> qtdeProcessadaPorItem = new HashMap<>();
     List<EmprestimoDevolucaoItem> itensProcessados = new ArrayList<>();
+    for (EmprestimoDevolucaoItem item : itensExistentes) {
+      if (item == null || item.getItem() == null) {
+        continue;
+      }
+      StatusDevolucao status = item.getStatusDevolucao();
+      if (status != null && !StatusDevolucao.P.equals(status)) {
+        itensProcessados.add(item);
+        qtdeProcessadaPorItem.merge(item.getItem().getId(), item.getQtde(), BigDecimal::add);
+      }
+    }
+    return itensProcessados;
+  }
 
-    itensExistentes.forEach(
-        item -> {
-          if (item != null && item.getItem() != null) {
-            StatusDevolucao status = item.getStatusDevolucao();
-            // Trata null como pendente (não processado)
-            if (status != null && !StatusDevolucao.P.equals(status)) {
-              // Preserva itens já processados (D ou S)
-              itensProcessados.add(item);
-              qtdeProcessadaPorItem.merge(item.getItem().getId(), item.getQtde(), BigDecimal::add);
-            }
-          }
-        });
-
-    // ETAPA 3: Calcula quantidades pendentes e cria novos itens de devolução
+  /** Monta lista final de devolução com itens processados + novos pendentes. */
+  private List<EmprestimoDevolucaoItem> montaListaDevolucao(
+      Emprestimo emprestimo,
+      Map<Long, BigDecimal> qtdeTotalPorItem,
+      Map<Long, Item> itemPorId,
+      Map<Long, BigDecimal> qtdeProcessadaPorItem,
+      List<EmprestimoDevolucaoItem> itensProcessados) {
     List<EmprestimoDevolucaoItem> resultadoFinal = new ArrayList<>(itensProcessados);
 
-    qtdeTotalPorItem.forEach(
-        (itemId, qtdeTotal) -> {
-          BigDecimal qtdeProcessada = qtdeProcessadaPorItem.getOrDefault(itemId, BigDecimal.ZERO);
-          BigDecimal qtdePendente = qtdeTotal.subtract(qtdeProcessada);
+    for (Map.Entry<Long, BigDecimal> entry : qtdeTotalPorItem.entrySet()) {
+      Long itemId = entry.getKey();
+      BigDecimal qtdeTotal = entry.getValue();
+      BigDecimal qtdeProcessada = qtdeProcessadaPorItem.getOrDefault(itemId, BigDecimal.ZERO);
+      BigDecimal qtdePendente = qtdeTotal.subtract(qtdeProcessada);
 
-          if (qtdePendente.compareTo(BigDecimal.ZERO) > 0) {
-            // Cria UM ÚNICO item pendente com a quantidade restante
-            EmprestimoDevolucaoItem itemPendente = new EmprestimoDevolucaoItem();
-            // Reutiliza a instância do Item já carregada
-            itemPendente.setItem(itemPorId.get(itemId));
-            itemPendente.setQtde(qtdePendente);
-            itemPendente.setStatusDevolucao(StatusDevolucao.P);
-            itemPendente.setEmprestimo(emprestimo);
-            resultadoFinal.add(itemPendente);
-          } else if (qtdePendente.compareTo(BigDecimal.ZERO) < 0) {
-            throw new IllegalStateException(
-                "Quantidade devolvida ("
-                    + qtdeProcessada
-                    + ") excede a quantidade no empréstimo ("
-                    + qtdeTotal
-                    + ") para item "
-                    + itemId);
-          }
-        });
+      if (qtdePendente.compareTo(BigDecimal.ZERO) > 0) {
+        resultadoFinal.add(criaItemPendente(emprestimo, itemPorId.get(itemId), qtdePendente));
+      } else if (qtdePendente.compareTo(BigDecimal.ZERO) < 0) {
+        throw new IllegalStateException(
+            "Quantidade devolvida ("
+                + qtdeProcessada
+                + ") excede a quantidade no empréstimo ("
+                + qtdeTotal
+                + ") para item "
+                + itemId);
+      }
+    }
+    return resultadoFinal;
+  }
 
-    emprestimo.setEmprestimoDevolucaoItem(resultadoFinal);
+  /** Cria um novo item de devolução pendente. */
+  private EmprestimoDevolucaoItem criaItemPendente(
+      Emprestimo emprestimo, Item item, BigDecimal qtde) {
+    EmprestimoDevolucaoItem itemPendente = new EmprestimoDevolucaoItem();
+    itemPendente.setItem(item);
+    itemPendente.setQtde(qtde);
+    itemPendente.setStatusDevolucao(StatusDevolucao.P);
+    itemPendente.setEmprestimo(emprestimo);
+    return itemPendente;
   }
 
   @Override
