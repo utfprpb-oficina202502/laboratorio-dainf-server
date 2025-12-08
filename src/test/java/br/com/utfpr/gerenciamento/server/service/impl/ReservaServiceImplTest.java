@@ -115,6 +115,9 @@ class ReservaServiceImplTest {
 
     try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
       securityUtils.when(SecurityUtils::getAuthenticatedUsername).thenReturn("dono@utfpr.edu.br");
+      securityUtils
+          .when(SecurityUtils::getAuthenticatedUserRoles)
+          .thenReturn(List.of("ROLE_USUARIO")); // Usuário comum, não admin
 
       when(reservaRepository.findById(1L)).thenReturn(Optional.of(reserva));
       when(usuarioService.findByUsername("dono@utfpr.edu.br")).thenReturn(usuarioDto);
@@ -164,6 +167,9 @@ class ReservaServiceImplTest {
 
     try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
       securityUtils.when(SecurityUtils::getAuthenticatedUsername).thenReturn("outro@utfpr.edu.br");
+      securityUtils
+          .when(SecurityUtils::getAuthenticatedUserRoles)
+          .thenReturn(List.of("ROLE_USUARIO")); // Usuário comum, não admin
 
       when(reservaRepository.findById(1L))
           .thenReturn(Optional.of(reserva)); // Reserva pertence ao usuário ID=1
@@ -188,6 +194,9 @@ class ReservaServiceImplTest {
       securityUtils
           .when(SecurityUtils::getAuthenticatedUsername)
           .thenReturn("inexistente@utfpr.edu.br");
+      securityUtils
+          .when(SecurityUtils::getAuthenticatedUserRoles)
+          .thenReturn(List.of("ROLE_USUARIO")); // Usuário comum, não admin
 
       when(reservaRepository.findById(1L)).thenReturn(Optional.of(reserva));
       when(usuarioService.findByUsername("inexistente@utfpr.edu.br")).thenReturn(null);
@@ -216,6 +225,9 @@ class ReservaServiceImplTest {
 
     try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
       securityUtils.when(SecurityUtils::getAuthenticatedUsername).thenReturn("DONO@UTFPR.edu.br");
+      securityUtils
+          .when(SecurityUtils::getAuthenticatedUserRoles)
+          .thenReturn(List.of("ROLE_USUARIO")); // Usuário comum, não admin
 
       when(reservaRepository.findById(1L))
           .thenReturn(Optional.of(reserva)); // Reserva do usuário ID=1
