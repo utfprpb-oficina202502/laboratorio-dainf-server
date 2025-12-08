@@ -1,5 +1,6 @@
 package br.com.utfpr.gerenciamento.server.event.email;
 
+import br.com.utfpr.gerenciamento.server.enumeration.FormatoRelatorio;
 import br.com.utfpr.gerenciamento.server.event.emprestimo.EmprestimoDevolvidoEvent;
 import br.com.utfpr.gerenciamento.server.event.emprestimo.EmprestimoFinalizadoEvent;
 import br.com.utfpr.gerenciamento.server.event.emprestimo.EmprestimoPrazoAlteradoEvent;
@@ -21,13 +22,12 @@ import br.com.utfpr.gerenciamento.server.repository.EmprestimoRepository;
 import br.com.utfpr.gerenciamento.server.repository.ReservaRepository;
 import br.com.utfpr.gerenciamento.server.repository.UsuarioRepository;
 import br.com.utfpr.gerenciamento.server.service.EmailService;
-import br.com.utfpr.gerenciamento.server.service.RelatorioService;
 import br.com.utfpr.gerenciamento.server.service.SystemConfigService;
+import br.com.utfpr.gerenciamento.server.service.report.RelatorioGeneratorService;
 import br.com.utfpr.gerenciamento.server.util.EmailUtils;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import net.sf.jasperreports.engine.JasperExportManager;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.MailException;
 import org.springframework.retry.annotation.Backoff;
@@ -81,9 +81,6 @@ public class EmailEventListener {
   /** Timeout em segundos para transação de processamento de email. */
   private static final int EMAIL_TRANSACTION_TIMEOUT_SECONDS = 30;
 
-  /** ID do relatório Jasper de estoque mínimo (itens que atingiram quantidade mínima). */
-  private static final long RELATORIO_ESTOQUE_MINIMO_ID = 6L;
-
   /**
    * Endereço de email remetente (conta SMTP autenticada).
    *
@@ -103,7 +100,7 @@ public class EmailEventListener {
   private final EmailService emailService;
   private final EmprestimoRepository emprestimoRepository;
   private final EmprestimoTemplateMapper templateMapper;
-  private final RelatorioService relatorioService;
+  private final RelatorioGeneratorService relatorioGeneratorService;
   private final ReservaRepository reservaRepository;
   private final ReservaTemplateMapper reservaTemplateMapper;
   private final SystemConfigService systemConfigService;
@@ -162,15 +159,15 @@ public class EmailEventListener {
    * Processa eventos de notificação de estoque mínimo com relatório PDF anexado.
    *
    * <p>Este handler especializado processa eventos {@link EstoqueMinNotificacaoEvent} de forma
-   * assíncrona APÓS commit da transação, gerando relatório Jasper e enviando email com anexo.
+   * assíncrona APÓS commit da transação, gerando relatório PDF e enviando email com anexo.
    *
    * <p><b>Características:</b>
    *
    * <ul>
-   *   <li>✅ Relatório PDF gerado dinamicamente (Jasper Report ID 6)
-   *   <li>✅ Email com anexo enviado de forma assíncrona
-   *   <li>✅ Retry automático em caso de falhas transientes (MailException)
-   *   <li>✅ Falhas não afetam transação de negócio original
+   *   <li>Relatório PDF gerado dinamicamente via Flying Saucer (HTML para PDF)
+   *   <li>Email com anexo enviado de forma assíncrona
+   *   <li>Retry automático em caso de falhas transientes (MailException)
+   *   <li>Falhas não afetam transação de negócio original
    * </ul>
    *
    * @param event Evento de notificação de estoque mínimo
@@ -186,9 +183,7 @@ public class EmailEventListener {
       timeout = EMAIL_TRANSACTION_TIMEOUT_SECONDS)
   public void handleEstoqueMinNotificacaoEvent(EstoqueMinNotificacaoEvent event) {
     try {
-      byte[] reportPdf =
-          JasperExportManager.exportReportToPdf(
-              relatorioService.generateReport(RELATORIO_ESTOQUE_MINIMO_ID, null));
+      byte[] reportPdf = relatorioGeneratorService.gerarItensQtdeMinima(FormatoRelatorio.PDF);
       String conteudo = emailService.buildTemplateEmail(null, event.getTemplateName());
       Email email =
           Email.builder()

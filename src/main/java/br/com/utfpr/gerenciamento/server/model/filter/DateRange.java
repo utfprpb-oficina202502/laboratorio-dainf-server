@@ -2,8 +2,8 @@ package br.com.utfpr.gerenciamento.server.model.filter;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.NotNull;
 import java.time.LocalDate;
-import org.jetbrains.annotations.NotNull;
 
 /** Value object representando um intervalo de datas. */
 public record DateRange(LocalDate inicio, LocalDate fim) {

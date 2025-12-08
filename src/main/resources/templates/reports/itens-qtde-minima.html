@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Itens com Quantidade Mínima</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            margin: 20px;
+            color: #333;
+        }
+        h1 {
+            color: #ff8f00;
+            font-size: 18px;
+            margin-bottom: 5px;
+        }
+        .subtitulo {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        .alerta {
+            background-color: #fff8e1;
+            border-left: 4px solid #ff8f00;
+            padding: 10px;
+            margin-bottom: 15px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th {
+            background-color: #ff8f00;
+            color: white;
+            padding: 10px 8px;
+            text-align: left;
+            font-weight: bold;
+        }
+        td {
+            border: 1px solid #ddd;
+            padding: 8px;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        tr:hover {
+            background-color: #fff8e1;
+        }
+        .numero {
+            text-align: right;
+        }
+        .saldo-critico {
+            color: #d32f2f;
+            font-weight: bold;
+        }
+        .saldo-baixo {
+            color: #c66900;
+            font-weight: bold;
+        }
+        .rodape {
+            margin-top: 20px;
+            font-size: 10px;
+            color: #595959;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <h1>Itens que Atingiram Quantidade Mínima</h1>
+    <p class="subtitulo">UTFPR - Laboratório DAINF</p>
+
+    <div class="alerta">
+        <strong>Atenção:</strong> Os itens listados abaixo possuem saldo menor ou igual à quantidade mínima definida e podem necessitar de reposição.
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Cód</th>
+                <th>Nome</th>
+                <th>Grupo</th>
+                <th>Qtde Mínima</th>
+                <th>Saldo</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="item : ${itens}">
+                <td th:text="${item.cod}">1</td>
+                <td th:text="${item.nome}">Item</td>
+                <td th:text="${item.grupo}">Grupo</td>
+                <td class="numero" th:text="${item.qtdeMinima}">5</td>
+                <td class="numero"
+                    th:class="${item.saldo == 0 ? 'numero saldo-critico' : 'numero saldo-baixo'}"
+                    th:text="${item.saldo}">3</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <p class="rodape">
+        Relatório gerado em <span th:text="${#temporals.format(#temporals.createNow(), 'dd/MM/yyyy HH:mm')}">01/01/2024 12:00</span>
+    </p>
+</body>
+</html>

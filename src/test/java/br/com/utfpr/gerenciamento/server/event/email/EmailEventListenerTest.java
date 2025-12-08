@@ -3,6 +3,7 @@ package br.com.utfpr.gerenciamento.server.event.email;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+import br.com.utfpr.gerenciamento.server.enumeration.FormatoRelatorio;
 import br.com.utfpr.gerenciamento.server.event.emprestimo.*;
 import br.com.utfpr.gerenciamento.server.event.item.EstoqueMinNotificacaoEvent;
 import br.com.utfpr.gerenciamento.server.event.nadaConsta.*;
@@ -17,8 +18,9 @@ import br.com.utfpr.gerenciamento.server.model.modelTemplateEmail.ReservaTemplat
 import br.com.utfpr.gerenciamento.server.repository.EmprestimoRepository;
 import br.com.utfpr.gerenciamento.server.repository.ReservaRepository;
 import br.com.utfpr.gerenciamento.server.service.EmailService;
-import br.com.utfpr.gerenciamento.server.service.RelatorioService;
+import br.com.utfpr.gerenciamento.server.service.report.RelatorioGeneratorService;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
 import org.junit.jupiter.api.BeforeEach;
@@ -33,7 +35,7 @@ class EmailEventListenerTest {
   @Mock EmailService emailService;
   @Mock EmprestimoRepository emprestimoRepository;
   @Mock EmprestimoTemplateMapper templateMapper;
-  @Mock RelatorioService relatorioService;
+  @Mock RelatorioGeneratorService relatorioGeneratorService;
   @Mock ReservaRepository reservaRepository;
   @Mock ReservaTemplateMapper reservaTemplateMapper;
   AutoCloseable mocks;
@@ -93,17 +95,11 @@ class EmailEventListenerTest {
     when(event.getSubject()).thenReturn("subject");
     when(event.getTemplateName()).thenReturn("template");
     byte[] pdf = new byte[] {1, 2, 3};
-    when(relatorioService.generateReport(anyLong(), isNull())).thenReturn(null);
-    try (MockedStatic<net.sf.jasperreports.engine.JasperExportManager> jasperMock =
-        mockStatic(net.sf.jasperreports.engine.JasperExportManager.class)) {
-      jasperMock
-          .when(() -> net.sf.jasperreports.engine.JasperExportManager.exportReportToPdf(null))
-          .thenReturn(pdf);
-      when(emailService.buildTemplateEmail(null, "template")).thenReturn("conteudo");
-      doNothing().when(emailService).enviar(any(Email.class));
-      listener.handleEstoqueMinNotificacaoEvent(event);
-      verify(emailService).enviar(any(Email.class));
-    }
+    when(relatorioGeneratorService.gerarItensQtdeMinima(FormatoRelatorio.PDF)).thenReturn(pdf);
+    when(emailService.buildTemplateEmail(null, "template")).thenReturn("conteudo");
+    doNothing().when(emailService).enviar(any(Email.class));
+    listener.handleEstoqueMinNotificacaoEvent(event);
+    verify(emailService).enviar(any(Email.class));
   }
 
   @Test
@@ -112,9 +108,13 @@ class EmailEventListenerTest {
     when(event.getRecipient()).thenReturn("to@email.com");
     when(event.getSubject()).thenReturn("subject");
     when(event.getTemplateName()).thenReturn("template");
-    when(relatorioService.generateReport(anyLong(), isNull()))
+    when(relatorioGeneratorService.gerarItensQtdeMinima(FormatoRelatorio.PDF))
         .thenThrow(new RuntimeException("fail"));
-    listener.handleEstoqueMinNotificacaoEvent(event);
+
+    // Não deve lançar exceção - método trata erro internamente
+    assertDoesNotThrow(() -> listener.handleEstoqueMinNotificacaoEvent(event));
+    // Email não deve ser enviado quando relatório falha
+    verify(emailService, never()).enviar(any(Email.class));
   }
 
   @Test
@@ -183,72 +183,54 @@ class EmailEventListenerTest {
   }
 
   @Test
-  void testProcessEmailWithTemplateSuccess() throws Exception {
+  void testProcessEmailWithTemplateSuccess() throws ReflectiveOperationException {
     doNothing()
         .when(emailService)
         .sendEmailWithTemplate("data", "to@email.com", "subject", "template");
-    Method m =
-        EmailEventListener.class.getDeclaredMethod(
-            "processEmailWithTemplate",
-            Object.class,
-            String.class,
-            String.class,
-            String.class,
-            String.class);
-    m.setAccessible(true);
+    Method m = getProcessEmailWithTemplateMethod();
     m.invoke(listener, "data", "to@email.com", "subject", "template", null);
     verify(emailService).sendEmailWithTemplate("data", "to@email.com", "subject", "template");
   }
 
   @Test
-  void testProcessEmailWithTemplateMailException() throws Exception {
+  void testProcessEmailWithTemplateMailException() throws ReflectiveOperationException {
     doThrow(new MailException("fail") {})
         .when(emailService)
         .sendEmailWithTemplate(any(), any(), any(), any());
-    Method m =
-        EmailEventListener.class.getDeclaredMethod(
-            "processEmailWithTemplate",
-            Object.class,
-            String.class,
-            String.class,
-            String.class,
-            String.class);
-    m.setAccessible(true);
-    assertThrows(
-        MailException.class,
-        () -> {
-          try {
-            m.invoke(listener, "data", "to@email.com", "subject", "template", null);
-          } catch (Exception ex) {
-            Throwable cause = ex.getCause();
-            if (cause instanceof MailException e) throw e;
-            throw new RuntimeException(ex);
-          }
-        });
+    Method m = getProcessEmailWithTemplateMethod();
+
+    InvocationTargetException exception =
+        assertThrows(
+            InvocationTargetException.class,
+            () -> m.invoke(listener, "data", "to@email.com", "subject", "template", null));
+    assertInstanceOf(MailException.class, exception.getCause());
   }
 
   @Test
-  void testProcessEmailWithTemplateEntityNotFoundException() throws Exception {
+  void testProcessEmailWithTemplateEntityNotFoundException() throws ReflectiveOperationException {
     doThrow(new EntityNotFoundException("fail"))
         .when(emailService)
         .sendEmailWithTemplate(any(), any(), any(), any());
-    Method m =
-        EmailEventListener.class.getDeclaredMethod(
-            "processEmailWithTemplate",
-            Object.class,
-            String.class,
-            String.class,
-            String.class,
-            String.class);
-    m.setAccessible(true);
-    m.invoke(listener, "data", "to@email.com", "subject", "template", null);
+    Method m = getProcessEmailWithTemplateMethod();
+
+    // EntityNotFoundException é tratada internamente - não deve propagar
+    assertDoesNotThrow(
+        () -> m.invoke(listener, "data", "to@email.com", "subject", "template", null));
   }
 
   @Test
-  void testProcessEmailWithTemplateIllegalArgumentException() throws Exception {
+  void testProcessEmailWithTemplateIllegalArgumentException() throws ReflectiveOperationException {
     doThrow(new IllegalArgumentException("fail"))
         .when(emailService)
         .sendEmailWithTemplate(any(), any(), any(), any());
+    Method m = getProcessEmailWithTemplateMethod();
+
+    // IllegalArgumentException é tratada internamente - não deve propagar
+    assertDoesNotThrow(
+        () -> m.invoke(listener, "data", "to@email.com", "subject", "template", null));
+  }
+
+  private Method getProcessEmailWithTemplateMethod() throws ReflectiveOperationException {
     Method m =
         EmailEventListener.class.getDeclaredMethod(
             "processEmailWithTemplate",
@@ -258,93 +240,73 @@ class EmailEventListenerTest {
             String.class,
             String.class);
     m.setAccessible(true);
-    m.invoke(listener, "data", "to@email.com", "subject", "template", null);
+    return m;
   }
 
   @Test
   void testProcessEmailWithAttachmentSuccess() throws Exception {
-    Email email =
-        Email.builder()
-            .para("to@email.com")
-            .de("from@email.com")
-            .titulo("subject")
-            .conteudo("body")
-            .build();
+    Email email = criarEmailTeste();
     doNothing().when(emailService).enviar(email);
-    Method m =
-        EmailEventListener.class.getDeclaredMethod(
-            "processEmailWithAttachment", Email.class, String.class, String.class);
-    m.setAccessible(true);
+    Method m = getProcessEmailWithAttachmentMethod();
     m.invoke(listener, email, "to@email.com", "subject");
     verify(emailService).enviar(email);
   }
 
   @Test
   void testProcessEmailWithAttachmentMailException() throws Exception {
-    Email email =
-        Email.builder()
-            .para("to@email.com")
-            .de("from@email.com")
-            .titulo("subject")
-            .conteudo("body")
-            .build();
+    Email email = criarEmailTeste();
     doThrow(new MailException("fail") {}).when(emailService).enviar(email);
-    Method m =
-        EmailEventListener.class.getDeclaredMethod(
-            "processEmailWithAttachment", Email.class, String.class, String.class);
-    m.setAccessible(true);
-    assertThrows(
-        MailException.class,
-        () -> {
-          try {
-            m.invoke(listener, email, "to@email.com", "subject");
-          } catch (Exception ex) {
-            Throwable cause = ex.getCause();
-            if (cause instanceof MailException e) throw e;
-            throw new RuntimeException(ex);
-          }
-        });
+    Method m = getProcessEmailWithAttachmentMethod();
+
+    InvocationTargetException exception =
+        assertThrows(
+            InvocationTargetException.class,
+            () -> m.invoke(listener, email, "to@email.com", "subject"));
+    assertInstanceOf(MailException.class, exception.getCause());
   }
 
   @Test
   void testProcessEmailWithAttachmentGenericException() throws Exception {
-    Email email =
-        Email.builder()
-            .para("to@email.com")
-            .de("from@email.com")
-            .titulo("subject")
-            .conteudo("body")
-            .build();
+    Email email = criarEmailTeste();
     doThrow(new RuntimeException("fail")).when(emailService).enviar(email);
+    Method m = getProcessEmailWithAttachmentMethod();
+
+    // RuntimeException genérica é tratada internamente - não deve propagar
+    assertDoesNotThrow(() -> m.invoke(listener, email, "to@email.com", "subject"));
+  }
+
+  private Method getProcessEmailWithAttachmentMethod() throws ReflectiveOperationException {
     Method m =
         EmailEventListener.class.getDeclaredMethod(
             "processEmailWithAttachment", Email.class, String.class, String.class);
     m.setAccessible(true);
-    m.invoke(listener, email, "to@email.com", "subject");
+    return m;
+  }
+
+  private Email criarEmailTeste() {
+    return Email.builder()
+        .para("to@email.com")
+        .de("from@email.com")
+        .titulo("subject")
+        .conteudo("body")
+        .build();
   }
 
   @Test
-  void testPrepareTemplateDataForEventUnsupportedType() throws Exception {
+  void testPrepareTemplateDataForEventUnsupportedType() throws ReflectiveOperationException {
     EmailEvent event = mock(EmailEvent.class);
     Method m =
         EmailEventListener.class.getDeclaredMethod("prepareTemplateDataForEvent", EmailEvent.class);
     m.setAccessible(true);
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> {
-          try {
-            m.invoke(listener, event);
-          } catch (Exception e) {
-            Throwable cause = e.getCause();
-            if (cause instanceof IllegalArgumentException ex) throw ex;
-            throw new RuntimeException(e);
-          }
-        });
+
+    InvocationTargetException exception =
+        assertThrows(InvocationTargetException.class, () -> m.invoke(listener, event));
+    assertInstanceOf(IllegalArgumentException.class, exception.getCause());
   }
 
   @SuppressWarnings("unchecked")
   @Test
-  void testPrepareEmprestimoTemplateDataSuccess() throws Exception {
+  void testPrepareEmprestimoTemplateDataSuccess() throws ReflectiveOperationException {
     Emprestimo emp = mock(Emprestimo.class);
     when(emprestimoRepository.findEmprestimoByIdWithRelations(10L)).thenReturn(Optional.of(emp));
     Map<String, Object> templateData = new HashMap<>();
@@ -357,22 +319,15 @@ class EmailEventListenerTest {
   }
 
   @Test
-  void testPrepareEmprestimoTemplateDataEntityNotFound() throws Exception {
+  void testPrepareEmprestimoTemplateDataEntityNotFound() throws ReflectiveOperationException {
     when(emprestimoRepository.findEmprestimoByIdWithRelations(11L)).thenReturn(Optional.empty());
     Method m =
         EmailEventListener.class.getDeclaredMethod("prepareEmprestimoTemplateData", Long.class);
     m.setAccessible(true);
-    assertThrows(
-        EntityNotFoundException.class,
-        () -> {
-          try {
-            m.invoke(listener, 11L);
-          } catch (Exception e) {
-            Throwable cause = e.getCause();
-            if (cause instanceof EntityNotFoundException ex) throw ex;
-            throw new RuntimeException(e);
-          }
-        });
+
+    InvocationTargetException exception =
+        assertThrows(InvocationTargetException.class, () -> m.invoke(listener, 11L));
+    assertInstanceOf(EntityNotFoundException.class, exception.getCause());
   }
 
   @Test

@@ -19,7 +19,6 @@ import br.com.utfpr.gerenciamento.server.repository.projection.ItemCompleteWithD
 import br.com.utfpr.gerenciamento.server.repository.projection.ItemSimpleProjection;
 import br.com.utfpr.gerenciamento.server.repository.projection.ItemWithQtdeEmprestada;
 import br.com.utfpr.gerenciamento.server.service.EmailService;
-import br.com.utfpr.gerenciamento.server.service.RelatorioService;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
@@ -45,7 +44,6 @@ class ItemServiceImplTest {
 
   @Mock private ItemRepository itemRepository;
   @Mock private EmailService emailService;
-  @Mock private RelatorioService relatorioService;
   @Mock private MinioService minioService;
   @Mock private MinioConfig minioConfig;
   @Mock private ItemImageRepository itemImageRepository;
