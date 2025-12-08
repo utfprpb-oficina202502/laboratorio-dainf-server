@@ -47,7 +47,7 @@ public class RelatorioGeneratorService {
     return switch (formato) {
       case PDF -> {
         Map<String, Object> model = new HashMap<>();
-        model.put("documento", documento);
+        model.put("documento", sanitizarTexto(documento));
         model.put("emprestimos", dados);
         yield pdfGeneratorService.generatePdf("historico-emprestimo", model);
       }
