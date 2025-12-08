@@ -284,18 +284,34 @@ public class RelatorioGeneratorService {
    * <p>Usa o nome fornecido se disponível, caso contrário tenta obter do primeiro registro da
    * lista. Se a lista estiver vazia, usa um fallback genérico.
    *
+   * <p>Sanitiza o input para prevenir log injection (SonarQube S5145).
+   *
    * @param <T> Tipo dos dados da lista
    * @param nomeItem Nome fornecido externamente (pode ser null ou vazio)
    * @param itemId ID do item (usado no fallback)
    * @param dados Lista de dados (para extrair nome do primeiro registro)
    * @param nomeExtractor Função para extrair o nome do item do DTO
-   * @return Nome do item para exibição
+   * @return Nome do item para exibição (sanitizado)
    */
   private <T> String resolverNomeItem(
       String nomeItem, Long itemId, List<T> dados, Function<T, String> nomeExtractor) {
     if (nomeItem != null && !nomeItem.isBlank()) {
-      return nomeItem;
+      return sanitizarTexto(nomeItem);
     }
     return dados.stream().findFirst().map(nomeExtractor).orElse("Item " + itemId);
+  }
+
+  /**
+   * Sanitiza texto removendo caracteres de controle que poderiam ser usados em log injection.
+   *
+   * @param texto Texto a sanitizar
+   * @return Texto sanitizado (sem caracteres de controle)
+   */
+  private String sanitizarTexto(String texto) {
+    if (texto == null) {
+      return null;
+    }
+    // Remove caracteres de controle (0x00-0x1F e 0x7F) que poderiam ser usados em log injection
+    return texto.replaceAll("[\\x00-\\x1F\\x7F]", "");
   }
 }
