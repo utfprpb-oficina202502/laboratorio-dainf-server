@@ -11,6 +11,8 @@ import br.com.utfpr.gerenciamento.server.repository.RecoverPasswordRepository;
 import br.com.utfpr.gerenciamento.server.repository.UsuarioRepository;
 import br.com.utfpr.gerenciamento.server.service.EmailService;
 import br.com.utfpr.gerenciamento.server.service.PermissaoService;
+import java.lang.reflect.Field;
+import java.time.LocalDateTime;
 import java.util.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -55,6 +57,15 @@ class UsuarioServiceImplTest {
 
   @BeforeEach
   void setUp() {
+    // Set expiracaoHoras to 24 for testing
+    try {
+      Field field = UsuarioServiceImpl.class.getDeclaredField("expiracaoHoras");
+      field.setAccessible(true);
+      field.set(usuarioService, 24);
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to set expiracaoHoras", e);
+    }
+
     usuario = new Usuario();
     usuario.setId(1L);
     usuario.setNome("João Silva");
@@ -716,5 +727,45 @@ class UsuarioServiceImplTest {
 
     // Verifica que a senha foi codificada
     verify(passwordEncoder).encode("123456");
+  }
+
+  @Test
+  void deleteUnverifiedUsers_DeveDeletarUsuariosNaoVerificadosExpirados() {
+    // Given
+    Usuario usuarioExpirado1 = new Usuario();
+    usuarioExpirado1.setId(1L);
+    usuarioExpirado1.setEmail("expirado1@test.com");
+
+    Usuario usuarioExpirado2 = new Usuario();
+    usuarioExpirado2.setId(2L);
+    usuarioExpirado2.setEmail("expirado2@test.com");
+
+    List<Usuario> usuariosExpirados = List.of(usuarioExpirado1, usuarioExpirado2);
+
+    when(usuarioRepository.findByEmailVerificadoFalseAndDataCriacaoBefore(any(LocalDateTime.class)))
+        .thenReturn(usuariosExpirados);
+
+    // When
+    usuarioService.deleteUnverifiedUsers();
+
+    // Then
+    verify(usuarioRepository)
+        .findByEmailVerificadoFalseAndDataCriacaoBefore(any(LocalDateTime.class));
+    verify(usuarioRepository).deleteAll(usuariosExpirados);
+  }
+
+  @Test
+  void deleteUnverifiedUsers_DeveNaoFazerNadaQuandoNaoHaUsuariosExpirados() {
+    // Given
+    when(usuarioRepository.findByEmailVerificadoFalseAndDataCriacaoBefore(any(LocalDateTime.class)))
+        .thenReturn(List.of());
+
+    // When
+    usuarioService.deleteUnverifiedUsers();
+
+    // Then
+    verify(usuarioRepository)
+        .findByEmailVerificadoFalseAndDataCriacaoBefore(any(LocalDateTime.class));
+    verify(usuarioRepository, never()).deleteAll(any());
   }
 }

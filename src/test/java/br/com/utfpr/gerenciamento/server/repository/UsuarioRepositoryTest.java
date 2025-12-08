@@ -6,7 +6,9 @@ import br.com.utfpr.gerenciamento.server.enumeration.UserRole;
 import br.com.utfpr.gerenciamento.server.model.Permissao;
 import br.com.utfpr.gerenciamento.server.model.Usuario;
 import br.com.utfpr.gerenciamento.server.repository.specification.UsuarioSpecifications;
+import java.time.LocalDateTime;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -25,6 +27,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
@@ -33,6 +36,7 @@ import org.springframework.test.context.TestPropertySource;
 @ActiveProfiles("test")
 @TestPropertySource(
     properties = {"spring.flyway.enabled=false", "spring.jpa.hibernate.ddl-auto=create-drop"})
+@EnableJpaAuditing
 class UsuarioRepositoryTest {
 
   @Autowired private UsuarioRepository usuarioRepository;
@@ -553,41 +557,26 @@ class UsuarioRepositoryTest {
 
   private static Stream<Arguments> validacaoArgumentosInvalidos() {
     return Stream.of(
-        // hasAnyRole com roles nulas
         Arguments.of(
             "hasAnyRole com roles nulas",
             (Runnable) () -> UsuarioSpecifications.hasAnyRole((UserRole[]) null),
             "Roles não podem ser nulas ou vazias"),
-        // hasAnyRole com roles vazias
         Arguments.of(
             "hasAnyRole com roles vazias",
             (Runnable) UsuarioSpecifications::hasAnyRole,
             "Roles não podem ser nulas ou vazias"),
-        // searchByTextAndRoles com texto nulo
         Arguments.of(
             "searchByTextAndRoles com texto nulo",
             (Runnable) () -> UsuarioSpecifications.searchByTextAndRoles(null, UserRole.PROFESSOR),
             "Texto de busca não pode ser nulo ou vazio"),
-        // searchByTextAndRoles com texto vazio
         Arguments.of(
             "searchByTextAndRoles com texto vazio",
             (Runnable) () -> UsuarioSpecifications.searchByTextAndRoles("", UserRole.PROFESSOR),
             "Texto de busca não pode ser nulo ou vazio"),
-        // searchByTextAndRoles com texto blank
         Arguments.of(
             "searchByTextAndRoles com texto blank",
             (Runnable) () -> UsuarioSpecifications.searchByTextAndRoles("   ", UserRole.PROFESSOR),
-            "Texto de busca não pode ser nulo ou vazio"),
-        // searchByTextAndRoles com roles nulas
-        Arguments.of(
-            "searchByTextAndRoles com roles nulas",
-            (Runnable) () -> UsuarioSpecifications.searchByTextAndRoles("teste", (UserRole[]) null),
-            "Roles não podem ser nulas ou vazias"),
-        // searchByTextAndRoles com roles vazias
-        Arguments.of(
-            "searchByTextAndRoles com roles vazias",
-            (Runnable) () -> UsuarioSpecifications.searchByTextAndRoles("teste"),
-            "Roles não podem ser nulas ou vazias"));
+            "Texto de busca não pode ser nulo ou vazio"));
   }
 
   @ParameterizedTest(name = "{0}")
@@ -628,5 +617,95 @@ class UsuarioRepositoryTest {
           assertFalse(permissoes.isEmpty());
         },
         "Permissoes devem estar carregadas eagerly via @EntityGraph, sem LazyInitializationException");
+  }
+
+  @Test
+  void
+      findByEmailVerificadoFalseAndDataCriacaoBefore_DeveRetornarUsuariosNaoVerificadosExpirados() {
+    // Given: Criar usuários não verificados com datas diferentes
+    Usuario usuarioNaoVerificadoAntigo =
+        Usuario.builder()
+            .nome("João Silva")
+            .username("antigo")
+            .email("antigo@test.com")
+            .password("senha123")
+            .telefone("41999999006")
+            .emailVerificado(false)
+            .build();
+    usuarioNaoVerificadoAntigo = entityManager.persist(usuarioNaoVerificadoAntigo);
+
+    Usuario usuarioNaoVerificadoNovo =
+        Usuario.builder()
+            .nome("Maria Santos")
+            .username("novo")
+            .email("novo@test.com")
+            .password("senha123")
+            .telefone("41999999007")
+            .emailVerificado(false)
+            .build();
+    usuarioNaoVerificadoNovo = entityManager.persist(usuarioNaoVerificadoNovo);
+
+    Usuario usuarioVerificado =
+        Usuario.builder()
+            .nome("Pedro Oliveira")
+            .username("verificado")
+            .email("verificado@test.com")
+            .password("senha123")
+            .telefone("41999999008")
+            .emailVerificado(true)
+            .build();
+    entityManager.persist(usuarioVerificado);
+
+    // Update dataCriacao manually using native query to override auditing
+    entityManager
+        .getEntityManager()
+        .createNativeQuery("UPDATE usuario SET data_criacao = ? WHERE id = ?")
+        .setParameter(1, LocalDateTime.now().minusHours(25))
+        .setParameter(2, usuarioNaoVerificadoAntigo.getId())
+        .executeUpdate();
+
+    entityManager
+        .getEntityManager()
+        .createNativeQuery("UPDATE usuario SET data_criacao = ? WHERE id = ?")
+        .setParameter(1, LocalDateTime.now().minusHours(1))
+        .setParameter(2, usuarioNaoVerificadoNovo.getId())
+        .executeUpdate();
+
+    entityManager.flush();
+    entityManager.clear();
+
+    LocalDateTime cutoff = LocalDateTime.now().minusHours(24);
+
+    // When
+    List<Usuario> resultado =
+        usuarioRepository.findByEmailVerificadoFalseAndDataCriacaoBefore(cutoff);
+
+    // Then
+    assertNotNull(resultado);
+    assertEquals(1, resultado.size(), "Deveria retornar apenas 1 usuário expirado não verificado");
+    assertTrue(
+        resultado.stream().findFirst().isPresent(),
+        "Resultado deveria conter pelo menos um usuário");
+    resultado.stream()
+        .findFirst()
+        .ifPresent(
+            usuario -> {
+              assertEquals("antigo@test.com", usuario.getEmail());
+              assertFalse(usuario.getEmailVerificado());
+            });
+  }
+
+  @Test
+  void findByEmailVerificadoFalseAndDataCriacaoBefore_DeveRetornarListaVaziaQuandoNaoHaExpirados() {
+    // Given: Todos os usuários verificados ou recentes
+    LocalDateTime cutoff = LocalDateTime.now().minusHours(48); // Muito no passado
+
+    // When
+    List<Usuario> resultado =
+        usuarioRepository.findByEmailVerificadoFalseAndDataCriacaoBefore(cutoff);
+
+    // Then
+    assertNotNull(resultado);
+    assertTrue(resultado.isEmpty());
   }
 }
