@@ -3,6 +3,7 @@ package br.com.utfpr.gerenciamento.server.service.impl;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+import br.com.utfpr.gerenciamento.server.dto.ItemListDto;
 import br.com.utfpr.gerenciamento.server.dto.ItemResponseDto;
 import br.com.utfpr.gerenciamento.server.dto.ItemSimpleDto;
 import br.com.utfpr.gerenciamento.server.enumeration.TipoItem;
@@ -16,6 +17,7 @@ import br.com.utfpr.gerenciamento.server.repository.EmprestimoItemRepository;
 import br.com.utfpr.gerenciamento.server.repository.ItemImageRepository;
 import br.com.utfpr.gerenciamento.server.repository.ItemRepository;
 import br.com.utfpr.gerenciamento.server.repository.projection.ItemCompleteWithDisponibilidade;
+import br.com.utfpr.gerenciamento.server.repository.projection.ItemListProjection;
 import br.com.utfpr.gerenciamento.server.repository.projection.ItemSimpleProjection;
 import br.com.utfpr.gerenciamento.server.repository.projection.ItemWithQtdeEmprestada;
 import br.com.utfpr.gerenciamento.server.service.EmailService;
@@ -29,6 +31,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -792,6 +796,175 @@ class ItemServiceImplTest {
       @Override
       public String getNome() {
         return nome;
+      }
+    };
+  }
+
+  // ==================== Testes para findAllPagedList com grupoId ====================
+
+  @Test
+  @DisplayName("findAllPagedList(grupoId) - Deve retornar itens filtrados por grupo")
+  void testFindAllPagedListWithGrupoId_DeveFiltrarPorGrupo() {
+    // Arrange
+    Long grupoId = 1L;
+    String filter = null;
+    Pageable pageable = PageRequest.of(0, 10);
+
+    ItemListProjection proj1 = createItemListProjection(1L, "Notebook Dell", "Sala 101");
+    ItemListProjection proj2 = createItemListProjection(2L, "Monitor LG", "Sala 102");
+
+    Page<ItemListProjection> pageResult = new PageImpl<>(List.of(proj1, proj2), pageable, 2);
+    when(itemRepository.findAllProjectedWithGroupFilter(grupoId, filter, pageable))
+        .thenReturn(pageResult);
+
+    // Act
+    Page<ItemListDto> result = service.findAllPagedList(grupoId, filter, pageable);
+
+    // Assert
+    assertNotNull(result);
+    assertEquals(2, result.getContent().size());
+    assertEquals("Notebook Dell", result.getContent().get(0).getNome());
+    assertEquals("Monitor LG", result.getContent().get(1).getNome());
+    verify(itemRepository).findAllProjectedWithGroupFilter(grupoId, filter, pageable);
+    verify(itemRepository, never()).findAllProjected(any());
+  }
+
+  @Test
+  @DisplayName("findAllPagedList(grupoId) - Deve combinar filtro de grupo com filtro de texto")
+  void testFindAllPagedListWithGrupoId_DeveCombinarFiltros() {
+    // Arrange
+    Long grupoId = 1L;
+    String filter = "Notebook";
+    Pageable pageable = PageRequest.of(0, 10);
+
+    ItemListProjection proj1 = createItemListProjection(1L, "Notebook Dell", "Sala 101");
+
+    Page<ItemListProjection> pageResult = new PageImpl<>(List.of(proj1), pageable, 1);
+    when(itemRepository.findAllProjectedWithGroupFilter(grupoId, filter, pageable))
+        .thenReturn(pageResult);
+
+    // Act
+    Page<ItemListDto> result = service.findAllPagedList(grupoId, filter, pageable);
+
+    // Assert
+    assertNotNull(result);
+    assertEquals(1, result.getContent().size());
+    assertEquals("Notebook Dell", result.getContent().get(0).getNome());
+    verify(itemRepository).findAllProjectedWithGroupFilter(grupoId, filter, pageable);
+  }
+
+  @Test
+  @DisplayName("findAllPagedList(grupoId) - Deve usar filtro sem grupo quando grupoId é null")
+  void testFindAllPagedListWithGrupoId_SemGrupoComFiltro() {
+    // Arrange
+    Long grupoId = null;
+    String filter = "Dell";
+    Pageable pageable = PageRequest.of(0, 10);
+
+    ItemListProjection proj1 = createItemListProjection(1L, "Notebook Dell", "Sala 101");
+
+    Page<ItemListProjection> pageResult = new PageImpl<>(List.of(proj1), pageable, 1);
+    when(itemRepository.findAllProjectedWithGroupFilter(grupoId, filter, pageable))
+        .thenReturn(pageResult);
+
+    // Act
+    Page<ItemListDto> result = service.findAllPagedList(grupoId, filter, pageable);
+
+    // Assert
+    assertNotNull(result);
+    assertEquals(1, result.getContent().size());
+    verify(itemRepository).findAllProjectedWithGroupFilter(grupoId, filter, pageable);
+  }
+
+  @ParameterizedTest(name = "filter=''{0}'' deve usar findAllProjected")
+  @NullAndEmptySource
+  @ValueSource(strings = {"   ", "\t", "\n"})
+  @DisplayName("findAllPagedList(grupoId) - Deve usar findAllProjected quando filter é inválido")
+  void testFindAllPagedListWithGrupoId_FilterInvalido_UsaFindAllProjected(String filter) {
+    // Arrange
+    Long grupoId = null;
+    Pageable pageable = PageRequest.of(0, 10);
+
+    ItemListProjection proj1 = createItemListProjection(1L, "Notebook Dell", "Sala 101");
+
+    Page<ItemListProjection> pageResult = new PageImpl<>(List.of(proj1), pageable, 1);
+    when(itemRepository.findAllProjected(pageable)).thenReturn(pageResult);
+
+    // Act
+    Page<ItemListDto> result = service.findAllPagedList(grupoId, filter, pageable);
+
+    // Assert
+    assertNotNull(result);
+    assertEquals(1, result.getContent().size());
+    verify(itemRepository).findAllProjected(pageable);
+    verify(itemRepository, never()).findAllProjectedWithGroupFilter(any(), any(), any());
+  }
+
+  @Test
+  @DisplayName("findAllPagedList(grupoId) - Deve retornar página vazia quando grupo não tem itens")
+  void testFindAllPagedListWithGrupoId_GrupoSemItens() {
+    // Arrange
+    Long grupoId = 999L;
+    String filter = null;
+    Pageable pageable = PageRequest.of(0, 10);
+
+    Page<ItemListProjection> pageResult = new PageImpl<>(List.of(), pageable, 0);
+    when(itemRepository.findAllProjectedWithGroupFilter(grupoId, filter, pageable))
+        .thenReturn(pageResult);
+
+    // Act
+    Page<ItemListDto> result = service.findAllPagedList(grupoId, filter, pageable);
+
+    // Assert
+    assertNotNull(result);
+    assertTrue(result.getContent().isEmpty());
+    assertEquals(0, result.getTotalElements());
+    verify(itemRepository).findAllProjectedWithGroupFilter(grupoId, filter, pageable);
+  }
+
+  /**
+   * Cria uma projeção de lista de Item para testes.
+   *
+   * @param id ID do item
+   * @param nome Nome do item
+   * @param localizacao Localização do item
+   * @return Projeção mockada
+   */
+  private ItemListProjection createItemListProjection(Long id, String nome, String localizacao) {
+    return new ItemListProjection() {
+      @Override
+      public Long getId() {
+        return id;
+      }
+
+      @Override
+      public String getNome() {
+        return nome;
+      }
+
+      @Override
+      public String getLocalizacao() {
+        return localizacao;
+      }
+
+      @Override
+      public BigDecimal getSaldo() {
+        return new BigDecimal("10.00");
+      }
+
+      @Override
+      public Long getGrupoId() {
+        return 1L;
+      }
+
+      @Override
+      public String getGrupoDescricao() {
+        return "Grupo Teste";
+      }
+
+      @Override
+      public String getImagemUrl() {
+        return "image.jpg";
       }
     };
   }

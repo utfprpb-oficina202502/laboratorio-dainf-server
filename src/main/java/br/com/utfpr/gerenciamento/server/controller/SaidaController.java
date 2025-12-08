@@ -54,7 +54,8 @@ public class SaidaController extends CrudController<Saida, Long, SaidaResponseDT
       @RequestParam("page") int page,
       @RequestParam("size") int size,
       @RequestParam(required = false) String filter,
-      @RequestParam(required = false) String sort) {
+      @RequestParam(required = false) String sort,
+      @RequestParam(required = false) Long grupoId) {
     Sort sortObj = parseSortParameter(sort);
     PageRequest pageRequest = PageRequest.of(page, size, sortObj);
     return saidaService.findAllPagedList(filter, pageRequest);

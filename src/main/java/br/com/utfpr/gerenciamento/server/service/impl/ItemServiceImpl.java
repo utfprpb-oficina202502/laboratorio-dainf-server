@@ -167,6 +167,18 @@ public class ItemServiceImpl extends CrudServiceImpl<Item, Long, ItemResponseDto
   }
 
   @Override
+  @Transactional(readOnly = true)
+  public Page<ItemListDto> findAllPagedList(Long grupoId, String filter, Pageable pageable) {
+    Page<ItemListProjection> page;
+    if (grupoId != null || (filter != null && !filter.isBlank())) {
+      page = itemRepository.findAllProjectedWithGroupFilter(grupoId, filter, pageable);
+    } else {
+      page = itemRepository.findAllProjected(pageable);
+    }
+    return page.map(ItemListDto::fromProjection);
+  }
+
+  @Override
   @Transactional
   public List<ItemResponseDto> itemComplete(String query, boolean disponivelParaEmprestimo) {
     // Normaliza query: null se for null, senão remove espaços em branco

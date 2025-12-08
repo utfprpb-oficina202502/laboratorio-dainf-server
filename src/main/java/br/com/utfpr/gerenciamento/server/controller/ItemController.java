@@ -74,18 +74,20 @@ public class ItemController extends CrudController<Item, Long, ItemResponseDto> 
    * @param size Tamanho da página
    * @param filter Filtro opcional (busca textual em todos os campos)
    * @param sort Ordenacao no formato "campo,direcao" (ex: "nome,desc")
+   * @param grupoId ID do grupo para filtrar (opcional - se null, retorna todos)
    * @return Página de itens simplificados
    */
   @Override
   @GetMapping("page")
-  public Page<? extends BaseListDto> findAllPaged(
+  public Page<ItemListDto> findAllPaged(
       @RequestParam("page") int page,
       @RequestParam("size") int size,
       @RequestParam(required = false) String filter,
-      @RequestParam(required = false) String sort) {
+      @RequestParam(required = false) String sort,
+      @RequestParam(required = false) Long grupoId) {
     Sort sortObj = parseSortParameter(sort);
     PageRequest pageRequest = PageRequest.of(page, size, sortObj);
-    return itemService.findAllPagedList(filter, pageRequest);
+    return itemService.findAllPagedList(grupoId, filter, pageRequest);
   }
 
   @Override

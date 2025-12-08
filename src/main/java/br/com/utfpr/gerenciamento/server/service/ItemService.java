@@ -23,6 +23,18 @@ public interface ItemService extends CrudService<Item, Long, ItemResponseDto> {
    */
   Page<ItemListDto> findAllPagedList(String filter, Pageable pageable);
 
+  /**
+   * Busca paginada para listagem com DTO simplificado e filtro por grupo.
+   *
+   * <p>Usado pela árvore e catálogo para filtrar itens de um grupo específico.
+   *
+   * @param grupoId ID do grupo (opcional - se null, retorna todos)
+   * @param filter Filtro textual opcional
+   * @param pageable Configuração de paginação
+   * @return Página de DTOs simplificados
+   */
+  Page<ItemListDto> findAllPagedList(Long grupoId, String filter, Pageable pageable);
+
   List<ItemResponseDto> itemComplete(String query, boolean disponivelParaEmprestimo);
 
   /**
