@@ -39,8 +39,7 @@ public class EmprestimoItem {
 
   // Indica se este item será devolvido pelo usuário (informado pela UI)
   // Não precisa ser persistido no banco, é apenas um sinal do front-end
-  @Transient
-  private Boolean devolver = Boolean.FALSE;
+  @Transient private Boolean devolver = Boolean.FALSE;
 
   @Override
   @SuppressWarnings(

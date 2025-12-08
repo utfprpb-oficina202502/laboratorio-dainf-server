@@ -576,7 +576,8 @@ public class EmprestimoServiceImpl extends CrudServiceImpl<Emprestimo, Long, Emp
     if (emprestimo.getEmprestimoItem() != null) {
       // Preserva IDs vindos em emprestimoDevolucaoItem para não perder pendentes já informados
       Set<Long> idsFromExistingDevolucao =
-          Optional.ofNullable(emprestimo.getEmprestimoDevolucaoItem()).orElse(Collections.emptyList())
+          Optional.ofNullable(emprestimo.getEmprestimoDevolucaoItem())
+              .orElse(Collections.emptyList())
               .stream()
               .filter(i -> i != null && i.getItem() != null)
               .map(i -> i.getItem().getId())
@@ -586,8 +587,10 @@ public class EmprestimoServiceImpl extends CrudServiceImpl<Emprestimo, Long, Emp
           .filter(empItem -> empItem != null && empItem.getItem() != null)
           // Agora só considera itens que o front-end sinalizou `devolver == true`
           // ou que já constavam em emprestimoDevolucaoItem enviado (preservação)
-          .filter(empItem -> Boolean.TRUE.equals(empItem.getDevolver())
-              || idsFromExistingDevolucao.contains(empItem.getItem().getId()))
+          .filter(
+              empItem ->
+                  Boolean.TRUE.equals(empItem.getDevolver())
+                      || idsFromExistingDevolucao.contains(empItem.getItem().getId()))
           .forEach(
               empItem -> {
                 Long itemId = empItem.getItem().getId();
