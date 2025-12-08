@@ -37,6 +37,11 @@ public class EmprestimoItem {
   @JoinColumn(name = "emprestimo_id", referencedColumnName = "id")
   private Emprestimo emprestimo;
 
+  // Indica se este item será devolvido pelo usuário (informado pela UI)
+  // Não precisa ser persistido no banco, é apenas um sinal do front-end
+  @Transient
+  private Boolean devolver = Boolean.FALSE;
+
   @Override
   @SuppressWarnings(
       "java:S2097") // False positive - type check via HibernateProxy pattern (SONARJAVA-5765)
