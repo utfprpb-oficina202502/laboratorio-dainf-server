@@ -542,7 +542,7 @@ public class UsuarioServiceImpl extends CrudServiceImpl<Usuario, Long, UsuarioRe
   }
 
   /**
-   * Valida se o código de recuperação não expirou (limite: 24 horas).
+   * Valida se o código de recuperação não expirou (limite configurável em horas).
    *
    * @param recoverPassword código de recuperação a validar
    * @throws RecoverCodeInvalidException se o código estiver expirado

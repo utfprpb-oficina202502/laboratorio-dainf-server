@@ -3,7 +3,6 @@ package br.com.utfpr.gerenciamento.server.component;
 import br.com.utfpr.gerenciamento.server.service.UsuarioService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -17,7 +16,6 @@ public class UsuarioScheduled {
     this.usuarioService = usuarioService;
   }
 
-  @Async
   @Scheduled(cron = "0 0 1 * * ?") // Executa diariamente às 01:00
   public void deleteUnverifiedUsers() {
     log.info("Iniciando limpeza de usuários não verificados");

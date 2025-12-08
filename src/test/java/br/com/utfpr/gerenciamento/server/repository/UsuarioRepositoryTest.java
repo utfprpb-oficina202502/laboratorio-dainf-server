@@ -627,7 +627,7 @@ class UsuarioRepositoryTest {
         Usuario.builder()
             .nome("João Silva")
             .username("antigo")
-            .email("antigo@test.com")
+            .email("antigo@alunos.utfpr.edu.br")
             .password("senha123")
             .telefone("41999999006")
             .emailVerificado(false)
@@ -638,7 +638,7 @@ class UsuarioRepositoryTest {
         Usuario.builder()
             .nome("Maria Santos")
             .username("novo")
-            .email("novo@test.com")
+            .email("novo@alunos.utfpr.edu.br")
             .password("senha123")
             .telefone("41999999007")
             .emailVerificado(false)
@@ -649,7 +649,7 @@ class UsuarioRepositoryTest {
         Usuario.builder()
             .nome("Pedro Oliveira")
             .username("verificado")
-            .email("verificado@test.com")
+            .email("verificado@alunos.utfpr.edu.br")
             .password("senha123")
             .telefone("41999999008")
             .emailVerificado(true)
@@ -690,7 +690,7 @@ class UsuarioRepositoryTest {
         .findFirst()
         .ifPresent(
             usuario -> {
-              assertEquals("antigo@test.com", usuario.getEmail());
+              assertEquals("antigo@alunos.utfpr.edu.br", usuario.getEmail());
               assertFalse(usuario.getEmailVerificado());
             });
   }
