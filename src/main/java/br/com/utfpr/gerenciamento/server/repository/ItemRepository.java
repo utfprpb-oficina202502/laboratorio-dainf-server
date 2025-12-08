@@ -278,4 +278,35 @@ public interface ItemRepository extends JpaRepository<Item, Long>, JpaSpecificat
       """)
   Page<ItemListProjection> findAllProjectedWithFilter(
       @Param("filter") String filter, Pageable pageable);
+
+  /**
+   * Busca paginada de itens com filtro opcional por grupo e texto.
+   *
+   * <p>Usado pela árvore e catálogo para filtrar itens de um grupo específico.
+   *
+   * @param grupoId ID do grupo (opcional - se null, retorna todos)
+   * @param filter texto para filtrar por id, nome, localização ou grupo (opcional)
+   * @param pageable paginação e ordenação
+   * @return Page de projeções filtradas
+   */
+  @Query(
+      """
+      SELECT i.id as id,
+             i.nome as nome,
+             i.localizacao as localizacao,
+             i.saldo as saldo,
+             g.id as grupoId,
+             g.descricao as grupoDescricao,
+             (SELECT ii.nameImage FROM ItemImage ii WHERE ii.item.id = i.id ORDER BY ii.isCover DESC, ii.id ASC LIMIT 1) as imagemUrl
+      FROM Item i
+      LEFT JOIN i.grupo g
+      WHERE (:grupoId IS NULL OR g.id = :grupoId)
+      AND (:filter IS NULL OR :filter = ''
+           OR CAST(i.id AS string) LIKE CONCAT('%', :filter, '%')
+           OR LOWER(i.nome) LIKE LOWER(CONCAT('%', :filter, '%'))
+           OR LOWER(i.localizacao) LIKE LOWER(CONCAT('%', :filter, '%'))
+           OR LOWER(g.descricao) LIKE LOWER(CONCAT('%', :filter, '%')))
+      """)
+  Page<ItemListProjection> findAllProjectedWithGroupFilter(
+      @Param("grupoId") Long grupoId, @Param("filter") String filter, Pageable pageable);
 }

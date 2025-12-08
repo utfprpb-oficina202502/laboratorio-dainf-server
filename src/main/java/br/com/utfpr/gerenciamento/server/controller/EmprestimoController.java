@@ -234,7 +234,8 @@ public class EmprestimoController extends CrudController<Emprestimo, Long, Empre
       @RequestParam("page") @Min(0) int page,
       @RequestParam("size") @Min(1) @Max(100) int size,
       @RequestParam(required = false) String filter,
-      @RequestParam(required = false) String sort) {
+      @RequestParam(required = false) String sort,
+      @RequestParam(required = false) Long grupoId) {
     Sort sortObj = parseSortParameter(sort);
     PageRequest pageRequest = PageRequest.of(page, size, sortObj);
 
