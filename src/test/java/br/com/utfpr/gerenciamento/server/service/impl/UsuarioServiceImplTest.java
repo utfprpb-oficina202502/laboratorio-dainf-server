@@ -734,11 +734,11 @@ class UsuarioServiceImplTest {
     // Given
     Usuario usuarioExpirado1 = new Usuario();
     usuarioExpirado1.setId(1L);
-    usuarioExpirado1.setEmail("expirado1@test.com");
+    usuarioExpirado1.setEmail("expirado1@utfpr.edu.br");
 
     Usuario usuarioExpirado2 = new Usuario();
     usuarioExpirado2.setId(2L);
-    usuarioExpirado2.setEmail("expirado2@test.com");
+    usuarioExpirado2.setEmail("expirado2@utfpr.edu.br");
 
     List<Usuario> usuariosExpirados = List.of(usuarioExpirado1, usuarioExpirado2);
 
