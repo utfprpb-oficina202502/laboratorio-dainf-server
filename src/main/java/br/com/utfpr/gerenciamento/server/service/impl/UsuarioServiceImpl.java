@@ -201,26 +201,29 @@ public class UsuarioServiceImpl extends CrudServiceImpl<Usuario, Long, UsuarioRe
   @Transactional
   public UsuarioResponseDto updateUsuario(Usuario usuario) {
     String usernameAutenticado = SecurityUtils.getAuthenticatedUsername();
-    // SEGURANÇA: Removida normalização - comparação direta de usernames completos
-    String usernameAlvo = usuario.getUsername();
 
-    if (!usernameAlvo.equals(usernameAutenticado)) {
+    // Busca o usuário logado pelo username do token
+    Usuario usuarioLogado = usuarioRepository.findByUsername(usernameAutenticado);
+    if (usuarioLogado == null) {
+      throw new AccessDeniedException("Usuário autenticado não encontrado");
+    }
+
+    // SEGURANÇA: Validação por ID - mais segura que comparação de strings
+    // Evita problemas de case-sensitivity e colisões de username
+    if (!usuarioLogado.getId().equals(usuario.getId())) {
       log.warn(
-          "Tentativa de atualização não autorizada: usuário {} tentou modificar {}",
+          "Tentativa de atualização não autorizada: usuário {} (ID: {}) tentou modificar ID: {}",
           usernameAutenticado,
-          usernameAlvo);
+          usuarioLogado.getId(),
+          usuario.getId());
       throw new AccessDeniedException("Usuário não autorizado a modificar este perfil");
     }
 
-    Usuario usuarioExistente = usuarioRepository.findByUsername(usuario.getUsername());
-    if (usuarioExistente == null) {
-      throw new EntityNotFoundException("Usuário não encontrado: " + usuario.getUsername());
-    }
+    // Atualiza apenas campos permitidos no usuário já carregado
+    usuarioLogado.setTelefone(usuario.getTelefone());
+    usuarioLogado.setDocumento(usuario.getDocumento());
 
-    usuarioExistente.setTelefone(usuario.getTelefone());
-    usuarioExistente.setDocumento(usuario.getDocumento());
-
-    return toDto(usuarioRepository.save(usuarioExistente));
+    return toDto(usuarioRepository.save(usuarioLogado));
   }
 
   @Override
