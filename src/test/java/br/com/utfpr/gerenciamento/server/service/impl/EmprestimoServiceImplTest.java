@@ -181,6 +181,7 @@ class EmprestimoServiceImplTest {
     EmprestimoItem item = new EmprestimoItem();
     item.setItem(itemModel);
     item.setQtde(BigDecimal.valueOf(2));
+    item.setDevolver(Boolean.TRUE);
     item.setEmprestimo(emprestimo);
 
     List<EmprestimoItem> itens = Collections.singletonList(item);
@@ -615,6 +616,7 @@ class EmprestimoServiceImplTest {
     EmprestimoItem empItem = new EmprestimoItem();
     empItem.setItem(itemModel);
     empItem.setQtde(java.math.BigDecimal.ONE);
+    empItem.setDevolver(Boolean.TRUE);
     java.util.Set<EmprestimoItem> itensSet = new HashSet<>();
     itensSet.add(empItem);
     emprestimoComItens.setEmprestimoItem(itensSet);
@@ -984,10 +986,12 @@ class EmprestimoServiceImplTest {
     EmprestimoItem emprestimoItem1 = new EmprestimoItem();
     emprestimoItem1.setItem(item1);
     emprestimoItem1.setQtde(BigDecimal.TEN);
+    emprestimoItem1.setDevolver(Boolean.TRUE);
 
     EmprestimoItem emprestimoItem2 = new EmprestimoItem();
     emprestimoItem2.setItem(item2);
     emprestimoItem2.setQtde(BigDecimal.valueOf(5));
+    emprestimoItem2.setDevolver(Boolean.TRUE);
 
     emprestimoTeste.setEmprestimoItem(new HashSet<>(List.of(emprestimoItem1, emprestimoItem2)));
 

@@ -40,6 +40,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.cache.annotation.CacheEvict;
@@ -351,7 +353,8 @@ public class EmprestimoServiceImpl extends CrudServiceImpl<Emprestimo, Long, Emp
 
     emprestimoItem.stream()
         .filter(empItem -> empItem != null && empItem.getItem() != null)
-        .filter(empItem -> empItem.getItem().getTipoItem().equals(TipoItem.C))
+        // Apenas cria itens de devolução quando o front-end sinalizou `devolver == true`
+        .filter(empItem -> Boolean.TRUE.equals(empItem.getDevolver()))
         .forEach(
             empItem1 -> {
               EmprestimoDevolucaoItem empDevItem = new EmprestimoDevolucaoItem();
@@ -571,9 +574,23 @@ public class EmprestimoServiceImpl extends CrudServiceImpl<Emprestimo, Long, Emp
     Map<Long, BigDecimal> qtdeTotalPorItem = new HashMap<>();
     Map<Long, Item> itemPorId = new HashMap<>();
     if (emprestimo.getEmprestimoItem() != null) {
+      // Preserva IDs vindos em emprestimoDevolucaoItem para não perder pendentes já informados
+      Set<Long> idsFromExistingDevolucao =
+          Optional.ofNullable(emprestimo.getEmprestimoDevolucaoItem())
+              .orElse(Collections.emptyList())
+              .stream()
+              .filter(i -> i != null && i.getItem() != null)
+              .map(i -> i.getItem().getId())
+              .collect(Collectors.toSet());
+
       emprestimo.getEmprestimoItem().stream()
           .filter(empItem -> empItem != null && empItem.getItem() != null)
-          .filter(empItem -> TipoItem.C.equals(empItem.getItem().getTipoItem()))
+          // Agora só considera itens que o front-end sinalizou `devolver == true`
+          // ou que já constavam em emprestimoDevolucaoItem enviado (preservação)
+          .filter(
+              empItem ->
+                  Boolean.TRUE.equals(empItem.getDevolver())
+                      || idsFromExistingDevolucao.contains(empItem.getItem().getId()))
           .forEach(
               empItem -> {
                 Long itemId = empItem.getItem().getId();

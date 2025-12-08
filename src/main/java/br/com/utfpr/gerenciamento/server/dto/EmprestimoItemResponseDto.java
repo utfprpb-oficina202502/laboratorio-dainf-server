@@ -10,4 +10,7 @@ public class EmprestimoItemResponseDto {
   private BigDecimal qtde;
 
   private ItemResponseDto item;
+
+  // Flag enviada pela UI indicando se o item deve ser devolvido
+  private Boolean devolver;
 }
