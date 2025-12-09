@@ -1,9 +1,12 @@
 package br.com.utfpr.gerenciamento.server.audit.controller;
 
+import static br.com.utfpr.gerenciamento.server.audit.AuditConstants.*;
+
 import br.com.utfpr.gerenciamento.server.audit.dto.AuditEntryDto;
+import br.com.utfpr.gerenciamento.server.audit.dto.AuditTimelineEntryDto;
 import br.com.utfpr.gerenciamento.server.audit.service.AuditService;
-import br.com.utfpr.gerenciamento.server.model.*;
 import jakarta.validation.constraints.Min;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -12,6 +15,7 @@ import org.hibernate.envers.Audited;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
@@ -34,30 +38,7 @@ import org.springframework.web.bind.annotation.*;
 @Slf4j
 public class AuditController {
 
-  private static final int MAX_PAGE_SIZE = 100;
-  private static final int DEFAULT_PAGE_SIZE = 20;
-
   private final AuditService auditService;
-
-  private static final Map<String, Class<?>> ENTITY_MAP =
-      Map.ofEntries(
-          Map.entry("emprestimo", Emprestimo.class),
-          Map.entry("emprestimo-item", EmprestimoItem.class),
-          Map.entry("emprestimo-devolucao-item", EmprestimoDevolucaoItem.class),
-          Map.entry("item", Item.class),
-          Map.entry("item-image", ItemImage.class),
-          Map.entry("usuario", Usuario.class),
-          Map.entry("saida", Saida.class),
-          Map.entry("saida-item", SaidaItem.class),
-          Map.entry("reserva", Reserva.class),
-          Map.entry("reserva-item", ReservaItem.class),
-          Map.entry("compra", Compra.class),
-          Map.entry("compra-item", CompraItem.class),
-          Map.entry("solicitacao", Solicitacao.class),
-          Map.entry("solicitacao-item", SolicitacaoItem.class),
-          Map.entry("grupo", Grupo.class),
-          Map.entry("fornecedor", Fornecedor.class),
-          Map.entry("nada-consta", NadaConsta.class));
 
   /**
    * Obtém o histórico de revisões de uma entidade com paginação.
@@ -80,10 +61,7 @@ public class AuditController {
       return ResponseEntity.notFound().build();
     }
 
-    int safeSize = Math.min(size, MAX_PAGE_SIZE);
-    if (safeSize <= 0) {
-      safeSize = DEFAULT_PAGE_SIZE;
-    }
+    int safeSize = normalizarTamanhoPagina(size);
 
     PageRequest pageRequest =
         PageRequest.of(page, safeSize, Sort.by(Sort.Direction.DESC, "revisao"));
@@ -134,6 +112,64 @@ public class AuditController {
   @GetMapping("/entidades")
   public ResponseEntity<List<String>> listarEntidades() {
     return ResponseEntity.ok(ENTITY_MAP.keySet().stream().sorted().toList());
+  }
+
+  /**
+   * Obtém a timeline global de auditoria com filtros opcionais.
+   *
+   * <p>Retorna uma visão consolidada de todas as alterações do sistema, ordenadas por data/hora
+   * decrescente. Suporta filtros por período, usuário, entidade e tipo de operação.
+   *
+   * <p><strong>Nota:</strong> Quando nenhum filtro de data é informado, retorna os últimos 30 dias.
+   * Cada entidade retorna no máximo 500 registros para garantir performance.
+   *
+   * @param page número da página (0-indexed)
+   * @param size tamanho da página (máximo 100)
+   * @param dataInicio data inicial do período (formato ISO: yyyy-MM-dd)
+   * @param dataFim data final do período (formato ISO: yyyy-MM-dd)
+   * @param usuario username do usuário que realizou a alteração
+   * @param entidade tipo de entidade (ex: emprestimo, item, usuario)
+   * @param tipoOperacao tipo de operação: CRIACAO, ALTERACAO, EXCLUSAO
+   * @return página de entradas da timeline
+   */
+  @GetMapping("/timeline")
+  public ResponseEntity<Page<AuditTimelineEntryDto>> getTimeline(
+      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(defaultValue = "20") int size,
+      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+          LocalDate dataInicio,
+      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+          LocalDate dataFim,
+      @RequestParam(required = false) String usuario,
+      @RequestParam(required = false) String entidade,
+      @RequestParam(required = false) String tipoOperacao) {
+
+    int safeSize = normalizarTamanhoPagina(size);
+
+    PageRequest pageRequest = PageRequest.of(page, safeSize);
+    Page<AuditTimelineEntryDto> timeline =
+        auditService.getTimelineGlobal(
+            pageRequest, dataInicio, dataFim, usuario, entidade, tipoOperacao);
+
+    return ResponseEntity.ok(timeline);
+  }
+
+  /**
+   * Retorna o mapa de labels das entidades em pt-BR.
+   *
+   * @return mapa de labels (chave técnica -> label pt-BR)
+   */
+  @GetMapping("/entidades/labels")
+  public ResponseEntity<Map<String, String>> getEntidadeLabels() {
+    return ResponseEntity.ok(ENTITY_LABELS);
+  }
+
+  private int normalizarTamanhoPagina(int size) {
+    int safeSize = Math.min(size, MAX_PAGE_SIZE);
+    if (safeSize <= 0) {
+      safeSize = DEFAULT_PAGE_SIZE;
+    }
+    return safeSize;
   }
 
   private Class<?> validarEntidade(String entidade) {
