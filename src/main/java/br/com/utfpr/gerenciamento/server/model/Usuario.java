@@ -9,6 +9,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import java.io.Serializable;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -16,6 +17,8 @@ import java.util.Set;
 import lombok.*;
 import org.hibernate.envers.Audited;
 import org.hibernate.envers.NotAudited;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
@@ -30,6 +33,7 @@ import org.springframework.security.core.userdetails.UserDetails;
     ignoreUnknown = true,
     value = {"emailVerificado"})
 @Builder
+@EntityListeners(AuditingEntityListener.class)
 public class Usuario implements Serializable, UserDetails {
 
   @Id
@@ -77,6 +81,11 @@ public class Usuario implements Serializable, UserDetails {
   @Builder.Default
   @Column(name = "ativo", nullable = false)
   private boolean ativo = false;
+
+  @CreatedDate
+  @Column(name = "data_criacao", nullable = false, updatable = false)
+  @NotAudited
+  private LocalDateTime dataCriacao;
 
   public boolean getEmailVerificado() {
     return emailVerificado;

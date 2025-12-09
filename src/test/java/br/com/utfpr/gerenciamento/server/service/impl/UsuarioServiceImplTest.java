@@ -12,6 +12,8 @@ import br.com.utfpr.gerenciamento.server.repository.UsuarioRepository;
 import br.com.utfpr.gerenciamento.server.service.EmailService;
 import br.com.utfpr.gerenciamento.server.service.PermissaoService;
 import br.com.utfpr.gerenciamento.server.util.SecurityUtils;
+import java.lang.reflect.Field;
+import java.time.LocalDateTime;
 import java.util.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -58,6 +60,15 @@ class UsuarioServiceImplTest {
 
   @BeforeEach
   void setUp() {
+    // Set expiracaoHoras to 24 for testing
+    try {
+      Field field = UsuarioServiceImpl.class.getDeclaredField("expiracaoHoras");
+      field.setAccessible(true);
+      field.set(usuarioService, 24);
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to set expiracaoHoras", e);
+    }
+
     usuario = new Usuario();
     usuario.setId(1L);
     usuario.setNome("João Silva");
@@ -842,5 +853,111 @@ class UsuarioServiceImplTest {
       assertEquals("Usuário não autorizado a modificar este perfil", exception.getMessage());
       verify(usuarioRepository, never()).save(any(Usuario.class));
     }
+  }
+
+  @Test
+  void deleteUnverifiedUsers_DeveDeletarUsuariosNaoVerificadosExpirados() {
+    // Given
+    Usuario usuarioExpirado1 = new Usuario();
+    usuarioExpirado1.setId(1L);
+    usuarioExpirado1.setEmail("expirado1@utfpr.edu.br");
+
+    Usuario usuarioExpirado2 = new Usuario();
+    usuarioExpirado2.setId(2L);
+    usuarioExpirado2.setEmail("expirado2@utfpr.edu.br");
+
+    List<Usuario> usuariosExpirados = List.of(usuarioExpirado1, usuarioExpirado2);
+
+    when(usuarioRepository.findByEmailVerificadoFalseAndDataCriacaoBefore(any(LocalDateTime.class)))
+        .thenReturn(usuariosExpirados);
+
+    // When
+    usuarioService.deleteUnverifiedUsers();
+
+    // Then
+    verify(usuarioRepository)
+        .findByEmailVerificadoFalseAndDataCriacaoBefore(any(LocalDateTime.class));
+    verify(usuarioRepository).deleteAll(usuariosExpirados);
+  }
+
+  @Test
+  void deleteUnverifiedUsers_DeveNaoFazerNadaQuandoNaoHaUsuariosExpirados() {
+    // Given
+    when(usuarioRepository.findByEmailVerificadoFalseAndDataCriacaoBefore(any(LocalDateTime.class)))
+        .thenReturn(List.of());
+
+    // When
+    usuarioService.deleteUnverifiedUsers();
+
+    // Then
+    verify(usuarioRepository)
+        .findByEmailVerificadoFalseAndDataCriacaoBefore(any(LocalDateTime.class));
+    verify(usuarioRepository, never()).deleteAll(any());
+  }
+
+  @Test
+  void deleteUnverifiedUsers_DeveUsarCutoffCorretoBaseadoEmExpiracaoHoras() {
+    // Given: expiracaoHoras configurado como 24 no setUp
+    when(usuarioRepository.findByEmailVerificadoFalseAndDataCriacaoBefore(any(LocalDateTime.class)))
+        .thenReturn(List.of());
+
+    LocalDateTime antesDaChamada = LocalDateTime.now();
+
+    // When
+    usuarioService.deleteUnverifiedUsers();
+
+    LocalDateTime depoisDaChamada = LocalDateTime.now();
+
+    // Then - Captura o argumento para validar o cutoff
+    ArgumentCaptor<LocalDateTime> cutoffCaptor = ArgumentCaptor.forClass(LocalDateTime.class);
+    verify(usuarioRepository)
+        .findByEmailVerificadoFalseAndDataCriacaoBefore(cutoffCaptor.capture());
+
+    LocalDateTime cutoffUsado = cutoffCaptor.getValue();
+    LocalDateTime cutoffEsperadoMin = antesDaChamada.minusHours(24);
+    LocalDateTime cutoffEsperadoMax = depoisDaChamada.minusHours(24);
+
+    // Verifica que o cutoff está dentro da janela esperada
+    assertTrue(
+        !cutoffUsado.isBefore(cutoffEsperadoMin.minusSeconds(1)),
+        "Cutoff deveria ser >= " + cutoffEsperadoMin + " mas foi " + cutoffUsado);
+    assertTrue(
+        !cutoffUsado.isAfter(cutoffEsperadoMax.plusSeconds(1)),
+        "Cutoff deveria ser <= " + cutoffEsperadoMax + " mas foi " + cutoffUsado);
+  }
+
+  @Test
+  void deleteUnverifiedUsers_DeveRespeitarConfiguracaoDeExpiracaoHorasDiferente() throws Exception {
+    // Given: Configurar para 48 horas ao invés de 24
+    Field field = UsuarioServiceImpl.class.getDeclaredField("expiracaoHoras");
+    field.setAccessible(true);
+    field.set(usuarioService, 48);
+
+    when(usuarioRepository.findByEmailVerificadoFalseAndDataCriacaoBefore(any(LocalDateTime.class)))
+        .thenReturn(List.of());
+
+    LocalDateTime antesDaChamada = LocalDateTime.now();
+
+    // When
+    usuarioService.deleteUnverifiedUsers();
+
+    // Then
+    ArgumentCaptor<LocalDateTime> cutoffCaptor = ArgumentCaptor.forClass(LocalDateTime.class);
+    verify(usuarioRepository)
+        .findByEmailVerificadoFalseAndDataCriacaoBefore(cutoffCaptor.capture());
+
+    LocalDateTime cutoffUsado = cutoffCaptor.getValue();
+    LocalDateTime cutoffEsperado48h = antesDaChamada.minusHours(48);
+
+    // Verifica que o cutoff está próximo de 48h atrás (não 24h)
+    assertTrue(
+        !cutoffUsado.isBefore(cutoffEsperado48h.minusSeconds(5)),
+        "Cutoff com 48h deveria ser >= " + cutoffEsperado48h);
+    assertTrue(
+        !cutoffUsado.isAfter(cutoffEsperado48h.plusSeconds(5)),
+        "Cutoff com 48h deveria ser <= " + cutoffEsperado48h);
+
+    // Restaura valor original para não afetar outros testes
+    field.set(usuarioService, 24);
   }
 }

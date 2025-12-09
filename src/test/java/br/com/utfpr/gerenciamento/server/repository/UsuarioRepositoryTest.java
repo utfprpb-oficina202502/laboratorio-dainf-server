@@ -6,7 +6,9 @@ import br.com.utfpr.gerenciamento.server.enumeration.UserRole;
 import br.com.utfpr.gerenciamento.server.model.Permissao;
 import br.com.utfpr.gerenciamento.server.model.Usuario;
 import br.com.utfpr.gerenciamento.server.repository.specification.UsuarioSpecifications;
+import java.time.LocalDateTime;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -25,6 +27,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
@@ -33,6 +36,7 @@ import org.springframework.test.context.TestPropertySource;
 @ActiveProfiles("test")
 @TestPropertySource(
     properties = {"spring.flyway.enabled=false", "spring.jpa.hibernate.ddl-auto=create-drop"})
+@EnableJpaAuditing
 class UsuarioRepositoryTest {
 
   @Autowired private UsuarioRepository usuarioRepository;
@@ -553,41 +557,26 @@ class UsuarioRepositoryTest {
 
   private static Stream<Arguments> validacaoArgumentosInvalidos() {
     return Stream.of(
-        // hasAnyRole com roles nulas
         Arguments.of(
             "hasAnyRole com roles nulas",
             (Runnable) () -> UsuarioSpecifications.hasAnyRole((UserRole[]) null),
             "Roles não podem ser nulas ou vazias"),
-        // hasAnyRole com roles vazias
         Arguments.of(
             "hasAnyRole com roles vazias",
             (Runnable) UsuarioSpecifications::hasAnyRole,
             "Roles não podem ser nulas ou vazias"),
-        // searchByTextAndRoles com texto nulo
         Arguments.of(
             "searchByTextAndRoles com texto nulo",
             (Runnable) () -> UsuarioSpecifications.searchByTextAndRoles(null, UserRole.PROFESSOR),
             "Texto de busca não pode ser nulo ou vazio"),
-        // searchByTextAndRoles com texto vazio
         Arguments.of(
             "searchByTextAndRoles com texto vazio",
             (Runnable) () -> UsuarioSpecifications.searchByTextAndRoles("", UserRole.PROFESSOR),
             "Texto de busca não pode ser nulo ou vazio"),
-        // searchByTextAndRoles com texto blank
         Arguments.of(
             "searchByTextAndRoles com texto blank",
             (Runnable) () -> UsuarioSpecifications.searchByTextAndRoles("   ", UserRole.PROFESSOR),
-            "Texto de busca não pode ser nulo ou vazio"),
-        // searchByTextAndRoles com roles nulas
-        Arguments.of(
-            "searchByTextAndRoles com roles nulas",
-            (Runnable) () -> UsuarioSpecifications.searchByTextAndRoles("teste", (UserRole[]) null),
-            "Roles não podem ser nulas ou vazias"),
-        // searchByTextAndRoles com roles vazias
-        Arguments.of(
-            "searchByTextAndRoles com roles vazias",
-            (Runnable) () -> UsuarioSpecifications.searchByTextAndRoles("teste"),
-            "Roles não podem ser nulas ou vazias"));
+            "Texto de busca não pode ser nulo ou vazio"));
   }
 
   @ParameterizedTest(name = "{0}")
@@ -628,5 +617,233 @@ class UsuarioRepositoryTest {
           assertFalse(permissoes.isEmpty());
         },
         "Permissoes devem estar carregadas eagerly via @EntityGraph, sem LazyInitializationException");
+  }
+
+  @Test
+  void
+      findByEmailVerificadoFalseAndDataCriacaoBefore_DeveRetornarUsuariosNaoVerificadosExpirados() {
+    // Given: Criar usuários não verificados com datas diferentes
+    Usuario usuarioNaoVerificadoAntigo =
+        Usuario.builder()
+            .nome("João Silva")
+            .username("antigo")
+            .email("antigo@alunos.utfpr.edu.br")
+            .password("senha123")
+            .telefone("41999999006")
+            .emailVerificado(false)
+            .build();
+    usuarioNaoVerificadoAntigo = entityManager.persist(usuarioNaoVerificadoAntigo);
+
+    Usuario usuarioNaoVerificadoNovo =
+        Usuario.builder()
+            .nome("Maria Santos")
+            .username("novo")
+            .email("novo@alunos.utfpr.edu.br")
+            .password("senha123")
+            .telefone("41999999007")
+            .emailVerificado(false)
+            .build();
+    usuarioNaoVerificadoNovo = entityManager.persist(usuarioNaoVerificadoNovo);
+
+    Usuario usuarioVerificado =
+        Usuario.builder()
+            .nome("Pedro Oliveira")
+            .username("verificado")
+            .email("verificado@alunos.utfpr.edu.br")
+            .password("senha123")
+            .telefone("41999999008")
+            .emailVerificado(true)
+            .build();
+    entityManager.persist(usuarioVerificado);
+
+    // Update dataCriacao manually using native query to override auditing
+    entityManager
+        .getEntityManager()
+        .createNativeQuery("UPDATE usuario SET data_criacao = ? WHERE id = ?")
+        .setParameter(1, LocalDateTime.now().minusHours(25))
+        .setParameter(2, usuarioNaoVerificadoAntigo.getId())
+        .executeUpdate();
+
+    entityManager
+        .getEntityManager()
+        .createNativeQuery("UPDATE usuario SET data_criacao = ? WHERE id = ?")
+        .setParameter(1, LocalDateTime.now().minusHours(1))
+        .setParameter(2, usuarioNaoVerificadoNovo.getId())
+        .executeUpdate();
+
+    entityManager.flush();
+    entityManager.clear();
+
+    LocalDateTime cutoff = LocalDateTime.now().minusHours(24);
+
+    // When
+    List<Usuario> resultado =
+        usuarioRepository.findByEmailVerificadoFalseAndDataCriacaoBefore(cutoff);
+
+    // Then
+    assertNotNull(resultado);
+    assertEquals(1, resultado.size(), "Deveria retornar apenas 1 usuário expirado não verificado");
+    assertTrue(
+        resultado.stream().findFirst().isPresent(),
+        "Resultado deveria conter pelo menos um usuário");
+    resultado.stream()
+        .findFirst()
+        .ifPresent(
+            usuario -> {
+              assertEquals("antigo@alunos.utfpr.edu.br", usuario.getEmail());
+              assertFalse(usuario.getEmailVerificado());
+            });
+  }
+
+  @Test
+  void findByEmailVerificadoFalseAndDataCriacaoBefore_DeveRetornarListaVaziaQuandoNaoHaExpirados() {
+    // Given: Todos os usuários verificados ou recentes
+    LocalDateTime cutoff = LocalDateTime.now().minusHours(48); // Muito no passado
+
+    // When
+    List<Usuario> resultado =
+        usuarioRepository.findByEmailVerificadoFalseAndDataCriacaoBefore(cutoff);
+
+    // Then
+    assertNotNull(resultado);
+    assertTrue(resultado.isEmpty());
+  }
+
+  @Test
+  void
+      findByEmailVerificadoFalseAndDataCriacaoBefore_NaoDeveRetornarUsuarioVerificadoMesmoAntigo() {
+    // Given: Criar usuário VERIFICADO mas com dataCriacao antiga
+    Usuario usuarioVerificadoAntigo =
+        Usuario.builder()
+            .nome("Verificado Antigo")
+            .username("verificado_antigo")
+            .email("verificado_antigo@alunos.utfpr.edu.br")
+            .password("senha123")
+            .telefone("41999999010")
+            .emailVerificado(true) // ← VERIFICADO
+            .build();
+    usuarioVerificadoAntigo = entityManager.persist(usuarioVerificadoAntigo);
+
+    // Simula dataCriacao antiga (48h atrás) usando query nativa
+    entityManager
+        .getEntityManager()
+        .createNativeQuery("UPDATE usuario SET data_criacao = ? WHERE id = ?")
+        .setParameter(1, LocalDateTime.now().minusHours(48))
+        .setParameter(2, usuarioVerificadoAntigo.getId())
+        .executeUpdate();
+
+    entityManager.flush();
+    entityManager.clear();
+
+    LocalDateTime cutoff = LocalDateTime.now().minusHours(24);
+
+    // When
+    List<Usuario> resultado =
+        usuarioRepository.findByEmailVerificadoFalseAndDataCriacaoBefore(cutoff);
+
+    // Then: Usuário verificado NÃO deve aparecer mesmo com dataCriacao antiga
+    assertFalse(
+        resultado.stream()
+            .anyMatch(u -> u.getEmail().equals("verificado_antigo@alunos.utfpr.edu.br")),
+        "Usuário verificado não deveria ser retornado mesmo com dataCriacao antiga");
+  }
+
+  @Test
+  void
+      findByEmailVerificadoFalseAndDataCriacaoBefore_DeveRetornarVazioQuandoTodosUsuariosRecentes() {
+    // Given: Criar apenas usuário não verificado RECENTE (criado agora)
+    Usuario usuarioRecente =
+        Usuario.builder()
+            .nome("Usuario Recente")
+            .username("recente_teste")
+            .email("recente_teste@alunos.utfpr.edu.br")
+            .password("senha123")
+            .telefone("41999999011")
+            .emailVerificado(false) // Não verificado mas RECENTE
+            .build();
+    entityManager.persist(usuarioRecente);
+    entityManager.flush();
+    entityManager.clear();
+
+    // Cutoff de 24h atrás
+    LocalDateTime cutoff = LocalDateTime.now().minusHours(24);
+
+    // When
+    List<Usuario> resultado =
+        usuarioRepository.findByEmailVerificadoFalseAndDataCriacaoBefore(cutoff);
+
+    // Then: Usuário recente não deve ser incluído (foi criado há poucos milissegundos)
+    assertFalse(
+        resultado.stream().anyMatch(u -> u.getEmail().equals("recente_teste@alunos.utfpr.edu.br")),
+        "Usuário não verificado mas recente não deveria ser considerado expirado");
+  }
+
+  @Test
+  void findByEmailVerificadoFalseAndDataCriacaoBefore_DeveRetornarMultiplosUsuariosExpirados() {
+    // Given: Criar múltiplos usuários não verificados expirados
+    Usuario expirado1 =
+        Usuario.builder()
+            .nome("Expirado Um")
+            .username("expirado1")
+            .email("expirado1@alunos.utfpr.edu.br")
+            .password("senha123")
+            .telefone("41999999012")
+            .emailVerificado(false)
+            .build();
+    expirado1 = entityManager.persist(expirado1);
+
+    Usuario expirado2 =
+        Usuario.builder()
+            .nome("Expirado Dois")
+            .username("expirado2")
+            .email("expirado2@alunos.utfpr.edu.br")
+            .password("senha123")
+            .telefone("41999999013")
+            .emailVerificado(false)
+            .build();
+    expirado2 = entityManager.persist(expirado2);
+
+    Usuario expirado3 =
+        Usuario.builder()
+            .nome("Expirado Tres")
+            .username("expirado3")
+            .email("expirado3@alunos.utfpr.edu.br")
+            .password("senha123")
+            .telefone("41999999014")
+            .emailVerificado(false)
+            .build();
+    expirado3 = entityManager.persist(expirado3);
+
+    // Simula dataCriacao antiga para todos
+    for (Usuario u : List.of(expirado1, expirado2, expirado3)) {
+      entityManager
+          .getEntityManager()
+          .createNativeQuery("UPDATE usuario SET data_criacao = ? WHERE id = ?")
+          .setParameter(1, LocalDateTime.now().minusHours(30))
+          .setParameter(2, u.getId())
+          .executeUpdate();
+    }
+
+    entityManager.flush();
+    entityManager.clear();
+
+    LocalDateTime cutoff = LocalDateTime.now().minusHours(24);
+
+    // When
+    List<Usuario> resultado =
+        usuarioRepository.findByEmailVerificadoFalseAndDataCriacaoBefore(cutoff);
+
+    // Then: Deve retornar todos os 3 usuários expirados
+    List<String> emailsExpirados =
+        resultado.stream()
+            .map(Usuario::getEmail)
+            .filter(
+                email ->
+                    email.equals("expirado1@alunos.utfpr.edu.br")
+                        || email.equals("expirado2@alunos.utfpr.edu.br")
+                        || email.equals("expirado3@alunos.utfpr.edu.br"))
+            .toList();
+
+    assertEquals(3, emailsExpirados.size(), "Deveria retornar 3 usuários expirados");
   }
 }

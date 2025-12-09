@@ -55,4 +55,6 @@ public interface UsuarioService extends CrudService<Usuario, Long, UsuarioRespon
   UsuarioResponseDto findByDocumento(String documento);
 
   boolean hasSolicitacaoNadaConstaPendingOrCompleted(String username);
+
+  void deleteUnverifiedUsers();
 }

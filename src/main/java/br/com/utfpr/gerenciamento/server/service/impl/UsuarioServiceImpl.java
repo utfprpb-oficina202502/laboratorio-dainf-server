@@ -62,6 +62,9 @@ public class UsuarioServiceImpl extends CrudServiceImpl<Usuario, Long, UsuarioRe
   @Value("${utfpr.front.url}")
   private String frontBaseUrl;
 
+  @Value("${app.usuario.expiracao-horas:24}")
+  private int expiracaoHoras;
+
   private final UsuarioRepository usuarioRepository;
 
   private final ModelMapper modelMapper;
@@ -542,13 +545,13 @@ public class UsuarioServiceImpl extends CrudServiceImpl<Usuario, Long, UsuarioRe
   }
 
   /**
-   * Valida se o código de recuperação não expirou (limite: 24 horas).
+   * Valida se o código de recuperação não expirou (limite configurável em horas).
    *
    * @param recoverPassword código de recuperação a validar
    * @throws RecoverCodeInvalidException se o código estiver expirado
    */
   private void validarCodigoNaoExpirado(RecoverPassword recoverPassword) {
-    LocalDateTime limiteExpiracao = LocalDateTime.now().minusHours(24);
+    LocalDateTime limiteExpiracao = LocalDateTime.now().minusHours(expiracaoHoras);
     if (recoverPassword.getDateTime().isBefore(limiteExpiracao)) {
       recoverPasswordRepository.delete(recoverPassword); // Cleanup
       throw new RecoverCodeInvalidException(
@@ -596,5 +599,19 @@ public class UsuarioServiceImpl extends CrudServiceImpl<Usuario, Long, UsuarioRe
     if (usuario == null) return false;
     return nadaConstaRepository.existsByUsuarioAndStatusIn(
         usuario, Set.of(NadaConstaStatus.PENDING, NadaConstaStatus.COMPLETED));
+  }
+
+  @Override
+  @Transactional
+  public void deleteUnverifiedUsers() {
+    LocalDateTime cutoff = LocalDateTime.now().minusHours(expiracaoHoras);
+    var unverifiedUsers = usuarioRepository.findByEmailVerificadoFalseAndDataCriacaoBefore(cutoff);
+    if (!unverifiedUsers.isEmpty()) {
+      usuarioRepository.deleteAll(unverifiedUsers);
+      log.info(
+          "Deletados {} usuários não verificados criados antes de {}",
+          unverifiedUsers.size(),
+          cutoff);
+    }
   }
 }

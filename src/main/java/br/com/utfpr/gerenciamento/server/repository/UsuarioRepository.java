@@ -2,6 +2,8 @@ package br.com.utfpr.gerenciamento.server.repository;
 
 import br.com.utfpr.gerenciamento.server.model.Usuario;
 import br.com.utfpr.gerenciamento.server.repository.projection.UsuarioListProjection;
+import java.time.LocalDateTime;
+import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -91,4 +93,6 @@ public interface UsuarioRepository
       """)
   Page<UsuarioListProjection> findAllProjectedWithFilter(
       @Param("filter") String filter, Pageable pageable);
+
+  List<Usuario> findByEmailVerificadoFalseAndDataCriacaoBefore(LocalDateTime date);
 }
