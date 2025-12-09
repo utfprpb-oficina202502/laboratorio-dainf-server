@@ -2,17 +2,20 @@ package br.com.utfpr.gerenciamento.server.service.impl;
 
 import br.com.utfpr.gerenciamento.server.dto.SaidaListDto;
 import br.com.utfpr.gerenciamento.server.dto.SaidaResponseDTO;
+import br.com.utfpr.gerenciamento.server.model.Emprestimo;
 import br.com.utfpr.gerenciamento.server.model.EmprestimoDevolucaoItem;
 import br.com.utfpr.gerenciamento.server.model.Saida;
 import br.com.utfpr.gerenciamento.server.model.SaidaItem;
+import br.com.utfpr.gerenciamento.server.model.Usuario;
 import br.com.utfpr.gerenciamento.server.model.dashboards.DashboardItensSaidas;
 import br.com.utfpr.gerenciamento.server.repository.SaidaRepository;
 import br.com.utfpr.gerenciamento.server.repository.projection.SaidaListProjection;
 import br.com.utfpr.gerenciamento.server.service.SaidaService;
+import br.com.utfpr.gerenciamento.server.util.HistoricoTransicaoUtil;
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -83,24 +86,50 @@ public class SaidaServiceImpl extends CrudServiceImpl<Saida, Long, SaidaResponse
       throw new IllegalArgumentException("Lista de itens de devolução não pode estar vazia");
     }
 
-    Saida saida = new Saida();
-    List<SaidaItem> saidaItemList = new ArrayList<>();
-    saida.setIdEmprestimo(emprestimoDevolucaoItem.get(0).getEmprestimo().getId());
-    saida.setDataSaida(LocalDate.now());
-    saida.setObservacao(
-        "Saída originada do empréstimo: " + emprestimoDevolucaoItem.get(0).getEmprestimo().getId());
-    saida.setUsuarioResponsavel(
-        emprestimoDevolucaoItem.get(0).getEmprestimo().getUsuarioResponsavel());
+    Emprestimo emprestimo =
+        Objects.requireNonNull(
+            emprestimoDevolucaoItem.get(0).getEmprestimo(),
+            "Empréstimo do item de devolução não pode ser nulo");
 
-    emprestimoDevolucaoItem.stream()
-        .forEach(
-            itemDevToSaida -> {
-              SaidaItem saidaItem = new SaidaItem();
-              saidaItem.setItem(itemDevToSaida.getItem());
-              saidaItem.setQtde(itemDevToSaida.getQtde());
-              saidaItem.setSaida(saida);
-              saidaItemList.add(saidaItem);
-            });
+    Usuario usuarioResponsavel =
+        Objects.requireNonNull(
+            emprestimo.getUsuarioResponsavel(), "Usuário responsável do empréstimo é obrigatório");
+    Usuario usuarioEmprestimo =
+        Objects.requireNonNull(
+            emprestimo.getUsuarioEmprestimo(), "Usuário do empréstimo é obrigatório");
+
+    String responsavelNome =
+        Objects.requireNonNull(
+            usuarioResponsavel.getNome(), "Nome do usuário responsável não pode ser nulo");
+    String usuarioEmprestimoNome =
+        Objects.requireNonNull(
+            usuarioEmprestimo.getNome(), "Nome do usuário do empréstimo não pode ser nulo");
+
+    Saida saida = new Saida();
+    saida.setIdEmprestimo(emprestimo.getId());
+    saida.setDataSaida(LocalDate.now());
+
+    String observacaoComHistorico =
+        HistoricoTransicaoUtil.formatarHistoricoEmprestimoParaSaida(
+            emprestimo.getId(),
+            responsavelNome,
+            emprestimo.getDataEmprestimo(),
+            usuarioEmprestimoNome,
+            emprestimo.getObservacao());
+    saida.setObservacao(observacaoComHistorico);
+    saida.setUsuarioResponsavel(usuarioResponsavel);
+
+    List<SaidaItem> saidaItemList =
+        emprestimoDevolucaoItem.stream()
+            .map(
+                itemDevToSaida -> {
+                  SaidaItem saidaItem = new SaidaItem();
+                  saidaItem.setItem(itemDevToSaida.getItem());
+                  saidaItem.setQtde(itemDevToSaida.getQtde());
+                  saidaItem.setSaida(saida);
+                  return saidaItem;
+                })
+            .toList();
 
     saida.setSaidaItem(saidaItemList);
     saidaRepository.save(saida);

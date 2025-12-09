@@ -1,6 +1,7 @@
 package br.com.utfpr.gerenciamento.server.service.impl;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -199,7 +200,9 @@ class SaidaServiceImplTest {
     assertThat(saidaCriada.getIdEmprestimo()).isEqualTo(emprestimoId);
     assertThat(saidaCriada.getDataSaida()).isEqualTo(LocalDate.now());
     assertThat(saidaCriada.getObservacao())
-        .contains("Saída originada do empréstimo: " + emprestimoId);
+        .contains("--- Histórico de Transição ---")
+        .contains("[EMPRÉSTIMO #" + emprestimoId + "]")
+        .contains("------------------------------");
     assertThat(saidaCriada.getUsuarioResponsavel()).isEqualTo(usuario);
     assertThat(saidaCriada.getSaidaItem()).hasSize(2);
     assertThat(saidaCriada.getSaidaItem().get(0).getItem()).isEqualTo(item1);
@@ -385,14 +388,168 @@ class SaidaServiceImplTest {
         .isEqualByComparingTo(new BigDecimal("30"));
   }
 
+  @Test
+  void testCreateSaidaByDevolucaoEmprestimo_ComListaNula_DeveLancarExcecao() {
+    // When/Then
+    assertThatThrownBy(() -> saidaService.createSaidaByDevolucaoEmprestimo(null))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Lista de itens de devolução não pode estar vazia");
+
+    verify(saidaRepository, never()).save(any());
+  }
+
+  @Test
+  void testCreateSaidaByDevolucaoEmprestimo_ComListaVazia_DeveLancarExcecao() {
+    // Given
+    List<EmprestimoDevolucaoItem> listaVazia = Collections.emptyList();
+
+    // When/Then
+    assertThatThrownBy(() -> saidaService.createSaidaByDevolucaoEmprestimo(listaVazia))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Lista de itens de devolução não pode estar vazia");
+
+    verify(saidaRepository, never()).save(any());
+  }
+
+  @Test
+  void testCreateSaidaByDevolucaoEmprestimo_ComUsuarioResponsavelNulo_DeveLancarExcecao() {
+    // Given
+    Long emprestimoId = 99L;
+    Usuario usuarioEmprestimo = criarUsuario(2L, "usuario.emprestimo");
+
+    Emprestimo emprestimo = new Emprestimo();
+    emprestimo.setId(emprestimoId);
+    emprestimo.setUsuarioResponsavel(null); // null
+    emprestimo.setUsuarioEmprestimo(usuarioEmprestimo);
+    emprestimo.setDataEmprestimo(LocalDate.now());
+
+    Item item = criarItem(1L, "Item Teste");
+    EmprestimoDevolucaoItem devItem =
+        criarEmprestimoDevolucaoItem(1L, emprestimo, item, new java.math.BigDecimal("1"));
+
+    List<EmprestimoDevolucaoItem> devolucaoItens = Collections.singletonList(devItem);
+
+    // When/Then
+    assertThatThrownBy(() -> saidaService.createSaidaByDevolucaoEmprestimo(devolucaoItens))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessage("Usuário responsável do empréstimo é obrigatório");
+
+    verify(saidaRepository, never()).save(any());
+  }
+
+  @Test
+  void testCreateSaidaByDevolucaoEmprestimo_ComUsuarioEmprestimoNulo_DeveLancarExcecao() {
+    // Given
+    Long emprestimoId = 99L;
+    Usuario usuarioResponsavel = criarUsuario(1L, "responsavel");
+
+    Emprestimo emprestimo = new Emprestimo();
+    emprestimo.setId(emprestimoId);
+    emprestimo.setUsuarioResponsavel(usuarioResponsavel);
+    emprestimo.setUsuarioEmprestimo(null); // null
+    emprestimo.setDataEmprestimo(LocalDate.now());
+
+    Item item = criarItem(1L, "Item Teste");
+    EmprestimoDevolucaoItem devItem =
+        criarEmprestimoDevolucaoItem(1L, emprestimo, item, new java.math.BigDecimal("1"));
+
+    List<EmprestimoDevolucaoItem> devolucaoItens = Collections.singletonList(devItem);
+
+    // When/Then
+    assertThatThrownBy(() -> saidaService.createSaidaByDevolucaoEmprestimo(devolucaoItens))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessage("Usuário do empréstimo é obrigatório");
+
+    verify(saidaRepository, never()).save(any());
+  }
+
+  @Test
+  void testCreateSaidaByDevolucaoEmprestimo_ComEmprestimoNulo_DeveLancarExcecao() {
+    // Given
+    EmprestimoDevolucaoItem devItem = new EmprestimoDevolucaoItem();
+    devItem.setId(1L);
+    devItem.setEmprestimo(null); // null emprestimo
+
+    List<EmprestimoDevolucaoItem> devolucaoItens = Collections.singletonList(devItem);
+
+    // When/Then
+    assertThatThrownBy(() -> saidaService.createSaidaByDevolucaoEmprestimo(devolucaoItens))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessage("Empréstimo do item de devolução não pode ser nulo");
+
+    verify(saidaRepository, never()).save(any());
+  }
+
+  @Test
+  void testCreateSaidaByDevolucaoEmprestimo_ComNomeResponsavelNulo_DeveLancarExcecao() {
+    // Given
+    Long emprestimoId = 99L;
+    Usuario usuarioResponsavel = new Usuario();
+    usuarioResponsavel.setId(1L);
+    usuarioResponsavel.setUsername("responsavel");
+    usuarioResponsavel.setNome(null); // null nome
+
+    Usuario usuarioEmprestimo = criarUsuario(2L, "usuario.emprestimo");
+
+    Emprestimo emprestimo = new Emprestimo();
+    emprestimo.setId(emprestimoId);
+    emprestimo.setUsuarioResponsavel(usuarioResponsavel);
+    emprestimo.setUsuarioEmprestimo(usuarioEmprestimo);
+    emprestimo.setDataEmprestimo(LocalDate.now());
+
+    Item item = criarItem(1L, "Item Teste");
+    EmprestimoDevolucaoItem devItem =
+        criarEmprestimoDevolucaoItem(1L, emprestimo, item, new java.math.BigDecimal("1"));
+
+    List<EmprestimoDevolucaoItem> devolucaoItens = Collections.singletonList(devItem);
+
+    // When/Then
+    assertThatThrownBy(() -> saidaService.createSaidaByDevolucaoEmprestimo(devolucaoItens))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessage("Nome do usuário responsável não pode ser nulo");
+
+    verify(saidaRepository, never()).save(any());
+  }
+
+  @Test
+  void testCreateSaidaByDevolucaoEmprestimo_ComNomeUsuarioEmprestimoNulo_DeveLancarExcecao() {
+    // Given
+    Long emprestimoId = 99L;
+    Usuario usuarioResponsavel = criarUsuario(1L, "responsavel");
+
+    Usuario usuarioEmprestimo = new Usuario();
+    usuarioEmprestimo.setId(2L);
+    usuarioEmprestimo.setUsername("usuario.emprestimo");
+    usuarioEmprestimo.setNome(null); // null nome
+
+    Emprestimo emprestimo = new Emprestimo();
+    emprestimo.setId(emprestimoId);
+    emprestimo.setUsuarioResponsavel(usuarioResponsavel);
+    emprestimo.setUsuarioEmprestimo(usuarioEmprestimo);
+    emprestimo.setDataEmprestimo(LocalDate.now());
+
+    Item item = criarItem(1L, "Item Teste");
+    EmprestimoDevolucaoItem devItem =
+        criarEmprestimoDevolucaoItem(1L, emprestimo, item, new java.math.BigDecimal("1"));
+
+    List<EmprestimoDevolucaoItem> devolucaoItens = Collections.singletonList(devItem);
+
+    // When/Then
+    assertThatThrownBy(() -> saidaService.createSaidaByDevolucaoEmprestimo(devolucaoItens))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessage("Nome do usuário do empréstimo não pode ser nulo");
+
+    verify(saidaRepository, never()).save(any());
+  }
+
   // Métodos auxiliares para criar objetos de teste
 
   private Saida criarSaida(Long id) {
-    Saida saida = new Saida();
-    saida.setId(id);
-    saida.setDataSaida(LocalDate.now());
-    saida.setSaidaItem(Collections.emptyList());
-    return saida;
+    Saida s = new Saida();
+    s.setId(id);
+    s.setDataSaida(LocalDate.now());
+    s.setSaidaItem(Collections.emptyList());
+    return s;
   }
 
   private SaidaResponseDTO criarSaidaResponseDTO(Long id) {
@@ -418,10 +575,18 @@ class SaidaServiceImplTest {
     return usuario;
   }
 
-  private Emprestimo criarEmprestimo(Long id, Usuario usuario) {
+  private Emprestimo criarEmprestimo(Long id, Usuario usuarioResponsavel) {
+    Usuario usuarioEmprestimo =
+        criarUsuario(usuarioResponsavel.getId() + 100, "usuario.emprestimo");
+    return criarEmprestimo(id, usuarioResponsavel, usuarioEmprestimo);
+  }
+
+  private Emprestimo criarEmprestimo(
+      Long id, Usuario usuarioResponsavel, Usuario usuarioEmprestimo) {
     Emprestimo emprestimo = new Emprestimo();
     emprestimo.setId(id);
-    emprestimo.setUsuarioResponsavel(usuario);
+    emprestimo.setUsuarioResponsavel(usuarioResponsavel);
+    emprestimo.setUsuarioEmprestimo(usuarioEmprestimo);
     emprestimo.setDataEmprestimo(LocalDate.now());
     return emprestimo;
   }
