@@ -1,21 +1,27 @@
 package br.com.utfpr.gerenciamento.server.audit.service;
 
+import static br.com.utfpr.gerenciamento.server.audit.AuditConstants.ENTITY_LABELS;
+import static br.com.utfpr.gerenciamento.server.audit.AuditConstants.ENTITY_MAP;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 import br.com.utfpr.gerenciamento.server.audit.AuditRevision;
 import br.com.utfpr.gerenciamento.server.audit.dto.AuditEntryDto;
+import br.com.utfpr.gerenciamento.server.audit.dto.AuditTimelineEntryDto;
 import br.com.utfpr.gerenciamento.server.model.Emprestimo;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.envers.AuditReader;
@@ -531,6 +537,203 @@ class AuditServiceTest {
       Method method = AuditService.class.getDeclaredMethod("entityToMap", Object.class);
       method.setAccessible(true);
       return (Map<String, Object>) method.invoke(auditService, entity);
+    }
+  }
+
+  @Nested
+  @DisplayName("getTimelineGlobal")
+  class GetTimelineGlobal {
+
+    @Test
+    @DisplayName("Deve aplicar filtro de data default quando nenhum filtro é informado")
+    void deveAplicarFiltroDeDataDefaultQuandoNenhumFiltroEhInformado() {
+      // Arrange - mock para retornar lista vazia para todas as entidades
+      AuditQuery dataQuery = mock(AuditQuery.class);
+      AuditQueryCreator queryCreator = mock(AuditQueryCreator.class);
+
+      when(auditReader.createQuery()).thenReturn(queryCreator);
+      when(queryCreator.forRevisionsOfEntity(any(), eq(false), eq(true))).thenReturn(dataQuery);
+      when(dataQuery.add(any(AuditCriterion.class))).thenReturn(dataQuery);
+      when(dataQuery.addOrder(any(AuditOrder.class))).thenReturn(dataQuery);
+      when(dataQuery.setMaxResults(anyInt())).thenReturn(dataQuery);
+      when(dataQuery.getResultList()).thenReturn(Collections.emptyList());
+
+      // Act - sem filtros de data
+      Page<AuditTimelineEntryDto> resultado =
+          auditService.getTimelineGlobal(PageRequest.of(0, 20), null, null, null, null, null);
+
+      // Assert - deve retornar página vazia (sem erro)
+      assertThat(resultado).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Deve filtrar por entidade específica")
+    void deveFiltrarPorEntidadeEspecifica() {
+      // Arrange
+      long timestamp = System.currentTimeMillis();
+
+      Emprestimo emprestimo = new Emprestimo();
+      emprestimo.setId(1L);
+
+      AuditRevision revInfo = criarRevInfo(1L, timestamp, "admin");
+
+      AuditQuery dataQuery = mock(AuditQuery.class);
+      AuditQueryCreator queryCreator = mock(AuditQueryCreator.class);
+
+      when(auditReader.createQuery()).thenReturn(queryCreator);
+      when(queryCreator.forRevisionsOfEntity(Emprestimo.class, false, true)).thenReturn(dataQuery);
+      when(dataQuery.add(any(AuditCriterion.class))).thenReturn(dataQuery);
+      when(dataQuery.addOrder(any(AuditOrder.class))).thenReturn(dataQuery);
+      when(dataQuery.setMaxResults(anyInt())).thenReturn(dataQuery);
+
+      List<Object[]> resultList = new ArrayList<>();
+      resultList.add(new Object[] {emprestimo, revInfo, RevisionType.ADD});
+      when(dataQuery.getResultList()).thenReturn(resultList);
+
+      // Act - filtra apenas por "emprestimo"
+      Page<AuditTimelineEntryDto> resultado =
+          auditService.getTimelineGlobal(
+              PageRequest.of(0, 20),
+              LocalDate.now().minusDays(7),
+              LocalDate.now(),
+              null,
+              "emprestimo",
+              null);
+
+      // Assert
+      assertThat(resultado.getContent()).hasSize(1);
+      assertThat(resultado.getContent().getFirst().getEntidadeTipo()).isEqualTo("emprestimo");
+      assertThat(resultado.getContent().getFirst().getEntidadeLabel()).isEqualTo("Empréstimo");
+    }
+
+    @Test
+    @DisplayName("Deve filtrar por usuário")
+    void deveFiltrarPorUsuario() {
+      // Arrange
+      long timestamp = System.currentTimeMillis();
+
+      Emprestimo emprestimo = new Emprestimo();
+      emprestimo.setId(1L);
+
+      AuditRevision revInfoAdmin = criarRevInfo(1L, timestamp, "admin");
+      AuditRevision revInfoMaria = criarRevInfo(2L, timestamp - 1000, "maria");
+
+      AuditQuery dataQuery = mock(AuditQuery.class);
+      AuditQueryCreator queryCreator = mock(AuditQueryCreator.class);
+
+      when(auditReader.createQuery()).thenReturn(queryCreator);
+      when(queryCreator.forRevisionsOfEntity(Emprestimo.class, false, true)).thenReturn(dataQuery);
+      when(dataQuery.add(any(AuditCriterion.class))).thenReturn(dataQuery);
+      when(dataQuery.addOrder(any(AuditOrder.class))).thenReturn(dataQuery);
+      when(dataQuery.setMaxResults(anyInt())).thenReturn(dataQuery);
+
+      List<Object[]> resultList = new ArrayList<>();
+      resultList.add(new Object[] {emprestimo, revInfoAdmin, RevisionType.ADD});
+      resultList.add(new Object[] {emprestimo, revInfoMaria, RevisionType.MOD});
+      when(dataQuery.getResultList()).thenReturn(resultList);
+
+      // Act - filtra apenas por usuário "admin"
+      Page<AuditTimelineEntryDto> resultado =
+          auditService.getTimelineGlobal(
+              PageRequest.of(0, 20),
+              LocalDate.now().minusDays(7),
+              LocalDate.now(),
+              "admin",
+              "emprestimo",
+              null);
+
+      // Assert - deve retornar apenas a revisão do admin
+      assertThat(resultado.getContent()).hasSize(1);
+      assertThat(resultado.getContent().getFirst().getUsuario()).isEqualTo("admin");
+    }
+
+    @Test
+    @DisplayName("Deve ordenar por data/hora decrescente")
+    void deveOrdenarPorDataHoraDecrescente() {
+      // Arrange
+      long timestamp = System.currentTimeMillis();
+
+      Emprestimo emprestimo = new Emprestimo();
+      emprestimo.setId(1L);
+
+      AuditRevision revInfo1 = criarRevInfo(1L, timestamp - 2000, "user1");
+      AuditRevision revInfo2 = criarRevInfo(2L, timestamp, "user2");
+      AuditRevision revInfo3 = criarRevInfo(3L, timestamp - 1000, "user3");
+
+      AuditQuery dataQuery = mock(AuditQuery.class);
+      AuditQueryCreator queryCreator = mock(AuditQueryCreator.class);
+
+      when(auditReader.createQuery()).thenReturn(queryCreator);
+      when(queryCreator.forRevisionsOfEntity(Emprestimo.class, false, true)).thenReturn(dataQuery);
+      when(dataQuery.add(any(AuditCriterion.class))).thenReturn(dataQuery);
+      when(dataQuery.addOrder(any(AuditOrder.class))).thenReturn(dataQuery);
+      when(dataQuery.setMaxResults(anyInt())).thenReturn(dataQuery);
+
+      List<Object[]> resultList = new ArrayList<>();
+      resultList.add(new Object[] {emprestimo, revInfo1, RevisionType.ADD});
+      resultList.add(new Object[] {emprestimo, revInfo2, RevisionType.MOD});
+      resultList.add(new Object[] {emprestimo, revInfo3, RevisionType.MOD});
+      when(dataQuery.getResultList()).thenReturn(resultList);
+
+      // Act
+      Page<AuditTimelineEntryDto> resultado =
+          auditService.getTimelineGlobal(
+              PageRequest.of(0, 20),
+              LocalDate.now().minusDays(7),
+              LocalDate.now(),
+              null,
+              "emprestimo",
+              null);
+
+      // Assert - deve estar ordenado por data decrescente (mais recente primeiro)
+      assertThat(resultado.getContent()).hasSize(3);
+      assertThat(resultado.getContent().get(0).getRevisao()).isEqualTo(2L); // mais recente
+      assertThat(resultado.getContent().get(1).getRevisao()).isEqualTo(3L);
+      assertThat(resultado.getContent().get(2).getRevisao()).isEqualTo(1L); // mais antigo
+    }
+
+    private AuditRevision criarRevInfo(Long id, long timestamp, String usuario) {
+      AuditRevision revInfo = new AuditRevision();
+      revInfo.setId(id);
+      revInfo.setTimestamp(timestamp);
+      revInfo.setUsuario(usuario);
+      revInfo.setIp("127.0.0.1");
+      return revInfo;
+    }
+  }
+
+  @Nested
+  @DisplayName("getEntidadesAuditaveis")
+  class GetEntidadesAuditaveis {
+
+    @Test
+    @DisplayName("Deve retornar conjunto de chaves de entidades")
+    void deveRetornarConjuntoDeChavesDeEntidades() {
+      // Act
+      Set<String> resultado = auditService.getEntidadesAuditaveis();
+
+      // Assert
+      assertThat(resultado)
+          .isEqualTo(ENTITY_MAP.keySet())
+          .contains("emprestimo", "item", "usuario");
+    }
+  }
+
+  @Nested
+  @DisplayName("getEntityLabels")
+  class GetEntityLabels {
+
+    @Test
+    @DisplayName("Deve retornar mapa de labels em pt-BR")
+    void deveRetornarMapaDeLabelsEmPtBr() {
+      // Act
+      Map<String, String> resultado = auditService.getEntityLabels();
+
+      // Assert
+      assertThat(resultado)
+          .isEqualTo(ENTITY_LABELS)
+          .containsEntry("emprestimo", "Empréstimo")
+          .containsEntry("usuario", "Usuário");
     }
   }
 }

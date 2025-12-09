@@ -1,13 +1,16 @@
 package br.com.utfpr.gerenciamento.server.audit.controller;
 
+import static br.com.utfpr.gerenciamento.server.audit.AuditConstants.ENTITY_LABELS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 import br.com.utfpr.gerenciamento.server.audit.dto.AuditEntryDto;
+import br.com.utfpr.gerenciamento.server.audit.dto.AuditTimelineEntryDto;
 import br.com.utfpr.gerenciamento.server.audit.service.AuditService;
 import br.com.utfpr.gerenciamento.server.model.Emprestimo;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -277,6 +280,184 @@ class AuditControllerTest {
               "grupo",
               "fornecedor",
               "nada-consta");
+    }
+  }
+
+  @Nested
+  @DisplayName("GET /audit/timeline")
+  class GetTimeline {
+
+    @Test
+    @DisplayName("Deve retornar timeline paginada com sucesso")
+    void deveRetornarTimelinePaginadaComSucesso() {
+      // Arrange
+      AuditTimelineEntryDto entry =
+          AuditTimelineEntryDto.builder()
+              .revisao(1L)
+              .dataHora(LocalDateTime.of(2025, 12, 1, 10, 0))
+              .usuario("admin")
+              .ip("192.168.1.1")
+              .tipoOperacao("CRIACAO")
+              .entidadeTipo("emprestimo")
+              .entidadeLabel("Empréstimo")
+              .entidadeId(100L)
+              .entidade(Map.of("id", 100L, "observacao", "Teste"))
+              .build();
+
+      Page<AuditTimelineEntryDto> page = new PageImpl<>(List.of(entry), PageRequest.of(0, 20), 1);
+      when(auditService.getTimelineGlobal(any(), any(), any(), any(), any(), any()))
+          .thenReturn(page);
+
+      // Act
+      ResponseEntity<Page<AuditTimelineEntryDto>> response =
+          auditController.getTimeline(0, 20, null, null, null, null, null);
+
+      // Assert
+      assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+      assertThat(response.getBody().getContent()).hasSize(1);
+      assertThat(response.getBody().getContent().getFirst().getEntidadeTipo())
+          .isEqualTo("emprestimo");
+      assertThat(response.getBody().getContent().getFirst().getEntidadeLabel())
+          .isEqualTo("Empréstimo");
+    }
+
+    @Test
+    @DisplayName("Deve aceitar filtros de data")
+    void deveAceitarFiltrosDeData() {
+      // Arrange
+      LocalDate dataInicio = LocalDate.of(2025, 11, 1);
+      LocalDate dataFim = LocalDate.of(2025, 11, 30);
+
+      Page<AuditTimelineEntryDto> emptyPage = Page.empty();
+      when(auditService.getTimelineGlobal(any(), eq(dataInicio), eq(dataFim), any(), any(), any()))
+          .thenReturn(emptyPage);
+
+      // Act
+      ResponseEntity<Page<AuditTimelineEntryDto>> response =
+          auditController.getTimeline(0, 20, dataInicio, dataFim, null, null, null);
+
+      // Assert
+      assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    @Test
+    @DisplayName("Deve aceitar filtro de usuário")
+    void deveAceitarFiltroDeUsuario() {
+      // Arrange
+      Page<AuditTimelineEntryDto> emptyPage = Page.empty();
+      when(auditService.getTimelineGlobal(any(), any(), any(), eq("admin"), any(), any()))
+          .thenReturn(emptyPage);
+
+      // Act
+      ResponseEntity<Page<AuditTimelineEntryDto>> response =
+          auditController.getTimeline(0, 20, null, null, "admin", null, null);
+
+      // Assert
+      assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    @Test
+    @DisplayName("Deve aceitar filtro de entidade")
+    void deveAceitarFiltroDeEntidade() {
+      // Arrange
+      Page<AuditTimelineEntryDto> emptyPage = Page.empty();
+      when(auditService.getTimelineGlobal(any(), any(), any(), any(), eq("emprestimo"), any()))
+          .thenReturn(emptyPage);
+
+      // Act
+      ResponseEntity<Page<AuditTimelineEntryDto>> response =
+          auditController.getTimeline(0, 20, null, null, null, "emprestimo", null);
+
+      // Assert
+      assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    @Test
+    @DisplayName("Deve aceitar filtro de tipo de operação")
+    void deveAceitarFiltroDeTipoDeOperacao() {
+      // Arrange
+      Page<AuditTimelineEntryDto> emptyPage = Page.empty();
+      when(auditService.getTimelineGlobal(any(), any(), any(), any(), any(), eq("CRIACAO")))
+          .thenReturn(emptyPage);
+
+      // Act
+      ResponseEntity<Page<AuditTimelineEntryDto>> response =
+          auditController.getTimeline(0, 20, null, null, null, null, "CRIACAO");
+
+      // Assert
+      assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    @Test
+    @DisplayName("Deve limitar tamanho máximo da página a 100")
+    void deveLimitarTamanhoMaximoDaPaginaA100() {
+      // Arrange
+      Page<AuditTimelineEntryDto> emptyPage = Page.empty();
+      when(auditService.getTimelineGlobal(any(), any(), any(), any(), any(), any()))
+          .thenReturn(emptyPage);
+
+      // Act - solicita 500 itens
+      ResponseEntity<Page<AuditTimelineEntryDto>> response =
+          auditController.getTimeline(0, 500, null, null, null, null, null);
+
+      // Assert
+      assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    @Test
+    @DisplayName("Deve usar tamanho padrão quando size é inválido")
+    void deveUsarTamanhoPadraoQuandoSizeEhInvalido() {
+      // Arrange
+      Page<AuditTimelineEntryDto> emptyPage = Page.empty();
+      when(auditService.getTimelineGlobal(any(), any(), any(), any(), any(), any()))
+          .thenReturn(emptyPage);
+
+      // Act - size negativo deve usar DEFAULT_PAGE_SIZE
+      ResponseEntity<Page<AuditTimelineEntryDto>> response =
+          auditController.getTimeline(0, -1, null, null, null, null, null);
+
+      // Assert
+      assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+  }
+
+  @Nested
+  @DisplayName("GET /audit/entidades/labels")
+  class GetEntidadeLabels {
+
+    @Test
+    @DisplayName("Deve retornar mapa de labels das entidades")
+    void deveRetornarMapaDeLabels() {
+      // Act
+      ResponseEntity<Map<String, String>> response = auditController.getEntidadeLabels();
+
+      // Assert
+      assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+      assertThat(response.getBody()).isNotEmpty();
+      assertThat(response.getBody()).containsEntry("emprestimo", "Empréstimo");
+      assertThat(response.getBody()).containsEntry("usuario", "Usuário");
+    }
+
+    @Test
+    @DisplayName("Deve retornar labels em português brasileiro")
+    void deveRetornarLabelsEmPortugues() {
+      // Act
+      ResponseEntity<Map<String, String>> response = auditController.getEntidadeLabels();
+
+      // Assert
+      assertThat(response.getBody())
+          .containsEntry("saida", "Saída")
+          .containsEntry("solicitacao", "Solicitação de Compra");
+    }
+
+    @Test
+    @DisplayName("Deve retornar o mesmo mapa que AuditConstants.ENTITY_LABELS")
+    void deveRetornarOMesmoMapaQueAuditConstants() {
+      // Act
+      ResponseEntity<Map<String, String>> response = auditController.getEntidadeLabels();
+
+      // Assert
+      assertThat(response.getBody()).isEqualTo(ENTITY_LABELS);
     }
   }
 }
