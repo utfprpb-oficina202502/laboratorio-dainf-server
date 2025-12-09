@@ -4,7 +4,6 @@ import br.com.utfpr.gerenciamento.server.security.PreconditionRequiredAuthentica
 import br.com.utfpr.gerenciamento.server.util.TraceIdUtil;
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.exceptions.TokenExpiredException;
-import jakarta.annotation.Nullable;
 import java.net.URI;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
@@ -12,11 +11,13 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.lang.Nullable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
@@ -133,10 +134,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
   }
 
   // ==================== Validação ====================
-
-  /** Override do método padrão para adicionar traceId e detalhes por campo. */
+  /** Override do metodo padrão para adicionar traceId e detalhes por campo. */
   @Override
-  protected @Nullable ResponseEntity<Object> handleMethodArgumentNotValid(
+  @Nullable protected ResponseEntity<Object> handleMethodArgumentNotValid(
       MethodArgumentNotValidException ex,
       HttpHeaders headers,
       HttpStatusCode status,
@@ -203,6 +203,63 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         "Data inválida",
         "Formato de data inválido ou não reconhecido.",
         URI.create("/errors/data-invalida"));
+  }
+
+  // ==================== Exceções de Integridade de Dados ====================
+
+  /**
+   * Violação de integridade de dados (FK constraint, unique constraint, etc.) - 409 Conflict
+   *
+   * <p>Captura tentativas de excluir entidades que estão vinculadas a outros registros ou inserir
+   * dados que violam constraints de unicidade.
+   */
+  @ExceptionHandler(DataIntegrityViolationException.class)
+  public ProblemDetail handleDataIntegrityViolation(DataIntegrityViolationException ex) {
+    String mensagem = extrairMensagemAmigavel(ex);
+    log.warn("Violação de integridade de dados: {}", ex.getMessage());
+    return criarProblemDetail(
+        HttpStatus.CONFLICT, "Conflito de dados", mensagem, URI.create("/errors/conflito-dados"));
+  }
+
+  /**
+   * Extrai uma mensagem amigável a partir da exceção de integridade de dados.
+   *
+   * <p>Analisa a mensagem da exceção para identificar o tipo de violação (FK constraint vs unique
+   * constraint).
+   *
+   * @param ex exceção de violação de integridade
+   * @return mensagem amigável em português
+   */
+  private String extrairMensagemAmigavel(DataIntegrityViolationException ex) {
+    String rootMessage = getRootCauseMessage(ex);
+
+    // Detecta violação de FK (tentativa de exclusão) - PostgreSQL e H2
+    if (rootMessage != null
+        && (rootMessage.contains("violates foreign key constraint") // PostgreSQL
+            || rootMessage.contains("Referential integrity constraint violation"))) { // H2
+      return "Não é possível excluir este registro pois ele está vinculado a outros registros no sistema.";
+    }
+
+    // Detecta violação de constraint unique - PostgreSQL e H2
+    if (rootMessage != null
+        && (rootMessage.contains("duplicate key value violates unique constraint") // PostgreSQL
+            || rootMessage.contains("Unique index or primary key violation"))) { // H2
+      return "Já existe um registro com os mesmos dados únicos no sistema.";
+    }
+
+    // Fallback genérico
+    return "Não foi possível completar a operação devido a um conflito de dados.";
+  }
+
+  /**
+   * Obtém a mensagem da causa raiz da exceção.
+   *
+   * @param ex exceção a analisar
+   * @return mensagem da causa raiz, ou null se não encontrada
+   */
+  private String getRootCauseMessage(DataIntegrityViolationException ex) {
+    Throwable rootCause = ex.getRootCause();
+    return rootCause != null ? rootCause.getMessage() : ex.getMessage();
   }
 
   // ==================== Exceção Genérica (Fallback) ====================
