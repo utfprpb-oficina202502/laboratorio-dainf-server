@@ -713,7 +713,9 @@ class AuditServiceTest {
       Set<String> resultado = auditService.getEntidadesAuditaveis();
 
       // Assert
-      assertThat(resultado).isEqualTo(ENTITY_MAP.keySet()).contains("emprestimo", "item", "usuario");
+      assertThat(resultado)
+          .isEqualTo(ENTITY_MAP.keySet())
+          .contains("emprestimo", "item", "usuario");
     }
   }
 
