@@ -1,5 +1,6 @@
 package br.com.utfpr.gerenciamento.server.component;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.Mockito.*;
 
 import br.com.utfpr.gerenciamento.server.service.UsuarioService;
@@ -41,5 +42,33 @@ class UsuarioScheduledTest {
     verify(usuarioService).deleteUnverifiedUsers();
     // Nota: O log de erro seria verificado em um teste de integração,
     // mas aqui focamos no comportamento do metodo
+  }
+
+  @Test
+  void deleteUnverifiedUsers_NaoDevePropararExcecaoParaScheduler() {
+    // Given: Serviço lança exceção grave
+    doThrow(new RuntimeException("Falha crítica no banco de dados"))
+        .when(usuarioService)
+        .deleteUnverifiedUsers();
+
+    // When/Then: Exceção NÃO deve ser propagada (importante para jobs scheduled)
+    assertDoesNotThrow(
+        () -> usuarioScheduled.deleteUnverifiedUsers(),
+        "Exceção não deve ser propagada para o scheduler - evita interromper outros jobs");
+
+    verify(usuarioService).deleteUnverifiedUsers();
+  }
+
+  @Test
+  void deleteUnverifiedUsers_DeveChamarServicoExatamenteUmaVez() {
+    // Given
+    doNothing().when(usuarioService).deleteUnverifiedUsers();
+
+    // When
+    usuarioScheduled.deleteUnverifiedUsers();
+
+    // Then: Verifica que o serviço é chamado exatamente uma vez
+    verify(usuarioService, times(1)).deleteUnverifiedUsers();
+    verifyNoMoreInteractions(usuarioService);
   }
 }

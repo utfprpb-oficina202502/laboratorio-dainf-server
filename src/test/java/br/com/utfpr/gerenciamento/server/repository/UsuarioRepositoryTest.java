@@ -708,4 +708,142 @@ class UsuarioRepositoryTest {
     assertNotNull(resultado);
     assertTrue(resultado.isEmpty());
   }
+
+  @Test
+  void
+      findByEmailVerificadoFalseAndDataCriacaoBefore_NaoDeveRetornarUsuarioVerificadoMesmoAntigo() {
+    // Given: Criar usuário VERIFICADO mas com dataCriacao antiga
+    Usuario usuarioVerificadoAntigo =
+        Usuario.builder()
+            .nome("Verificado Antigo")
+            .username("verificado_antigo")
+            .email("verificado_antigo@alunos.utfpr.edu.br")
+            .password("senha123")
+            .telefone("41999999010")
+            .emailVerificado(true) // ← VERIFICADO
+            .build();
+    usuarioVerificadoAntigo = entityManager.persist(usuarioVerificadoAntigo);
+
+    // Simula dataCriacao antiga (48h atrás) usando query nativa
+    entityManager
+        .getEntityManager()
+        .createNativeQuery("UPDATE usuario SET data_criacao = ? WHERE id = ?")
+        .setParameter(1, LocalDateTime.now().minusHours(48))
+        .setParameter(2, usuarioVerificadoAntigo.getId())
+        .executeUpdate();
+
+    entityManager.flush();
+    entityManager.clear();
+
+    LocalDateTime cutoff = LocalDateTime.now().minusHours(24);
+
+    // When
+    List<Usuario> resultado =
+        usuarioRepository.findByEmailVerificadoFalseAndDataCriacaoBefore(cutoff);
+
+    // Then: Usuário verificado NÃO deve aparecer mesmo com dataCriacao antiga
+    assertFalse(
+        resultado.stream()
+            .anyMatch(u -> u.getEmail().equals("verificado_antigo@alunos.utfpr.edu.br")),
+        "Usuário verificado não deveria ser retornado mesmo com dataCriacao antiga");
+  }
+
+  @Test
+  void
+      findByEmailVerificadoFalseAndDataCriacaoBefore_DeveRetornarVazioQuandoTodosUsuariosRecentes() {
+    // Given: Criar apenas usuário não verificado RECENTE (criado agora)
+    Usuario usuarioRecente =
+        Usuario.builder()
+            .nome("Usuario Recente")
+            .username("recente_teste")
+            .email("recente_teste@alunos.utfpr.edu.br")
+            .password("senha123")
+            .telefone("41999999011")
+            .emailVerificado(false) // Não verificado mas RECENTE
+            .build();
+    entityManager.persist(usuarioRecente);
+    entityManager.flush();
+    entityManager.clear();
+
+    // Cutoff de 24h atrás
+    LocalDateTime cutoff = LocalDateTime.now().minusHours(24);
+
+    // When
+    List<Usuario> resultado =
+        usuarioRepository.findByEmailVerificadoFalseAndDataCriacaoBefore(cutoff);
+
+    // Then: Usuário recente não deve ser incluído (foi criado há poucos milissegundos)
+    assertFalse(
+        resultado.stream().anyMatch(u -> u.getEmail().equals("recente_teste@alunos.utfpr.edu.br")),
+        "Usuário não verificado mas recente não deveria ser considerado expirado");
+  }
+
+  @Test
+  void findByEmailVerificadoFalseAndDataCriacaoBefore_DeveRetornarMultiplosUsuariosExpirados() {
+    // Given: Criar múltiplos usuários não verificados expirados
+    Usuario expirado1 =
+        Usuario.builder()
+            .nome("Expirado Um")
+            .username("expirado1")
+            .email("expirado1@alunos.utfpr.edu.br")
+            .password("senha123")
+            .telefone("41999999012")
+            .emailVerificado(false)
+            .build();
+    expirado1 = entityManager.persist(expirado1);
+
+    Usuario expirado2 =
+        Usuario.builder()
+            .nome("Expirado Dois")
+            .username("expirado2")
+            .email("expirado2@alunos.utfpr.edu.br")
+            .password("senha123")
+            .telefone("41999999013")
+            .emailVerificado(false)
+            .build();
+    expirado2 = entityManager.persist(expirado2);
+
+    Usuario expirado3 =
+        Usuario.builder()
+            .nome("Expirado Tres")
+            .username("expirado3")
+            .email("expirado3@alunos.utfpr.edu.br")
+            .password("senha123")
+            .telefone("41999999014")
+            .emailVerificado(false)
+            .build();
+    expirado3 = entityManager.persist(expirado3);
+
+    // Simula dataCriacao antiga para todos
+    for (Usuario u : List.of(expirado1, expirado2, expirado3)) {
+      entityManager
+          .getEntityManager()
+          .createNativeQuery("UPDATE usuario SET data_criacao = ? WHERE id = ?")
+          .setParameter(1, LocalDateTime.now().minusHours(30))
+          .setParameter(2, u.getId())
+          .executeUpdate();
+    }
+
+    entityManager.flush();
+    entityManager.clear();
+
+    LocalDateTime cutoff = LocalDateTime.now().minusHours(24);
+
+    // When
+    List<Usuario> resultado =
+        usuarioRepository.findByEmailVerificadoFalseAndDataCriacaoBefore(cutoff);
+
+    // Then: Deve retornar todos os 3 usuários expirados
+    List<String> emailsExpirados =
+        resultado.stream()
+            .map(Usuario::getEmail)
+            .filter(
+                email ->
+                    email.equals("expirado1@alunos.utfpr.edu.br")
+                        || email.equals("expirado2@alunos.utfpr.edu.br")
+                        || email.equals("expirado3@alunos.utfpr.edu.br"))
+            .toList();
+
+    assertEquals(3, emailsExpirados.size(), "Deveria retornar 3 usuários expirados");
+  }
 }
