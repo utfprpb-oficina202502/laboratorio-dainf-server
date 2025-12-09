@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+import br.com.utfpr.gerenciamento.server.exception.CampoNaoEditavelException;
 import br.com.utfpr.gerenciamento.server.model.Permissao;
 import br.com.utfpr.gerenciamento.server.model.Usuario;
 import br.com.utfpr.gerenciamento.server.repository.NadaConstaRepository;
@@ -740,12 +741,14 @@ class UsuarioServiceImplTest {
     Usuario usuarioLogado = new Usuario();
     usuarioLogado.setId(1L);
     usuarioLogado.setUsername("usuario@utfpr.edu.br");
+    usuarioLogado.setNome("Nome Antigo");
     usuarioLogado.setTelefone("(41) 99999-0000");
     usuarioLogado.setDocumento("123456");
 
     Usuario usuarioAtualizado = new Usuario();
     usuarioAtualizado.setId(1L); // Mesmo ID
     usuarioAtualizado.setUsername("usuario@utfpr.edu.br");
+    usuarioAtualizado.setNome("Nome Novo"); // Novo nome
     usuarioAtualizado.setTelefone("(41) 88888-1111"); // Novo telefone
     usuarioAtualizado.setDocumento("654321"); // Novo documento
 
@@ -768,6 +771,7 @@ class UsuarioServiceImplTest {
       verify(usuarioRepository).save(usuarioLogado);
 
       // Verifica que os campos foram atualizados
+      assertEquals("Nome Novo", usuarioLogado.getNome());
       assertEquals("(41) 88888-1111", usuarioLogado.getTelefone());
       assertEquals("654321", usuarioLogado.getDocumento());
     }
@@ -851,6 +855,113 @@ class UsuarioServiceImplTest {
               AccessDeniedException.class, () -> usuarioService.updateUsuario(usuarioAtualizado));
 
       assertEquals("Usuário não autorizado a modificar este perfil", exception.getMessage());
+      verify(usuarioRepository, never()).save(any(Usuario.class));
+    }
+  }
+
+  @Test
+  void updateUsuario_DeveLancarExcecaoQuandoTentarAlterarEmail() {
+    // Given: Usuário tentando alterar o próprio email
+    Usuario usuarioLogado = new Usuario();
+    usuarioLogado.setId(1L);
+    usuarioLogado.setUsername("usuario@utfpr.edu.br");
+    usuarioLogado.setEmail("usuario@utfpr.edu.br");
+    usuarioLogado.setNome("Nome Original");
+
+    Usuario usuarioAtualizado = new Usuario();
+    usuarioAtualizado.setId(1L);
+    usuarioAtualizado.setUsername("usuario@utfpr.edu.br");
+    usuarioAtualizado.setEmail("novoemail@utfpr.edu.br"); // Tentando alterar email
+    usuarioAtualizado.setNome("Nome Original");
+
+    try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+      securityUtils
+          .when(SecurityUtils::getAuthenticatedUsername)
+          .thenReturn("usuario@utfpr.edu.br");
+
+      when(usuarioRepository.findByUsername("usuario@utfpr.edu.br")).thenReturn(usuarioLogado);
+
+      // When/Then
+      CampoNaoEditavelException exception =
+          assertThrows(
+              CampoNaoEditavelException.class,
+              () -> usuarioService.updateUsuario(usuarioAtualizado));
+
+      assertTrue(exception.getBody().getDetail().contains("email"));
+      verify(usuarioRepository, never()).save(any(Usuario.class));
+    }
+  }
+
+  @Test
+  void updateUsuario_DeveLancarExcecaoQuandoTentarAlterarPermissoes() {
+    // Given: Usuário tentando alterar as próprias permissões
+    Permissao permissaoAluno = new Permissao();
+    permissaoAluno.setId(1L);
+    permissaoAluno.setNome("ROLE_ALUNO");
+
+    Permissao permissaoAdmin = new Permissao();
+    permissaoAdmin.setId(2L);
+    permissaoAdmin.setNome("ROLE_ADMINISTRADOR");
+
+    Usuario usuarioLogado = new Usuario();
+    usuarioLogado.setId(1L);
+    usuarioLogado.setUsername("usuario@utfpr.edu.br");
+    usuarioLogado.setEmail("usuario@utfpr.edu.br");
+    usuarioLogado.setPermissoes(Set.of(permissaoAluno)); // Apenas aluno
+
+    Usuario usuarioAtualizado = new Usuario();
+    usuarioAtualizado.setId(1L);
+    usuarioAtualizado.setUsername("usuario@utfpr.edu.br");
+    usuarioAtualizado.setEmail("usuario@utfpr.edu.br");
+    usuarioAtualizado.setPermissoes(Set.of(permissaoAdmin)); // Tentando virar admin
+
+    try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+      securityUtils
+          .when(SecurityUtils::getAuthenticatedUsername)
+          .thenReturn("usuario@utfpr.edu.br");
+
+      when(usuarioRepository.findByUsername("usuario@utfpr.edu.br")).thenReturn(usuarioLogado);
+
+      // When/Then
+      CampoNaoEditavelException exception =
+          assertThrows(
+              CampoNaoEditavelException.class,
+              () -> usuarioService.updateUsuario(usuarioAtualizado));
+
+      assertTrue(exception.getBody().getDetail().contains("permissões"));
+      verify(usuarioRepository, never()).save(any(Usuario.class));
+    }
+  }
+
+  @Test
+  void updateUsuario_DeveLancarExcecaoQuandoTentarAlterarMultiplosCampos() {
+    // Given: Usuário tentando alterar email e username simultaneamente
+    Usuario usuarioLogado = new Usuario();
+    usuarioLogado.setId(1L);
+    usuarioLogado.setUsername("usuario@utfpr.edu.br");
+    usuarioLogado.setEmail("usuario@utfpr.edu.br");
+
+    Usuario usuarioAtualizado = new Usuario();
+    usuarioAtualizado.setId(1L);
+    usuarioAtualizado.setUsername("novousername@utfpr.edu.br"); // Alterado
+    usuarioAtualizado.setEmail("novoemail@utfpr.edu.br"); // Alterado
+
+    try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+      securityUtils
+          .when(SecurityUtils::getAuthenticatedUsername)
+          .thenReturn("usuario@utfpr.edu.br");
+
+      when(usuarioRepository.findByUsername("usuario@utfpr.edu.br")).thenReturn(usuarioLogado);
+
+      // When/Then
+      CampoNaoEditavelException exception =
+          assertThrows(
+              CampoNaoEditavelException.class,
+              () -> usuarioService.updateUsuario(usuarioAtualizado));
+
+      String detail = exception.getBody().getDetail();
+      assertTrue(detail.contains("email"));
+      assertTrue(detail.contains("username"));
       verify(usuarioRepository, never()).save(any(Usuario.class));
     }
   }

@@ -9,6 +9,7 @@ import br.com.utfpr.gerenciamento.server.dto.UsuarioResponseDto;
 import br.com.utfpr.gerenciamento.server.enumeration.NadaConstaStatus;
 import br.com.utfpr.gerenciamento.server.enumeration.UserRole;
 import br.com.utfpr.gerenciamento.server.event.usuario.UsuarioCriadoEvent;
+import br.com.utfpr.gerenciamento.server.exception.CampoNaoEditavelException;
 import br.com.utfpr.gerenciamento.server.exception.EmailException;
 import br.com.utfpr.gerenciamento.server.exception.EntityNotFoundException;
 import br.com.utfpr.gerenciamento.server.exception.InvalidPasswordException;
@@ -27,8 +28,10 @@ import br.com.utfpr.gerenciamento.server.service.UsuarioService;
 import br.com.utfpr.gerenciamento.server.util.SecurityUtils;
 import br.com.utfpr.gerenciamento.server.util.Util;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -222,7 +225,11 @@ public class UsuarioServiceImpl extends CrudServiceImpl<Usuario, Long, UsuarioRe
       throw new AccessDeniedException("Usuário não autorizado a modificar este perfil");
     }
 
+    // Valida tentativa de alteração de campos não editáveis
+    validarCamposNaoEditaveis(usuarioLogado, usuario);
+
     // Atualiza apenas campos permitidos no usuário já carregado
+    usuarioLogado.setNome(usuario.getNome());
     usuarioLogado.setTelefone(usuario.getTelefone());
     usuarioLogado.setDocumento(usuario.getDocumento());
 
@@ -612,6 +619,53 @@ public class UsuarioServiceImpl extends CrudServiceImpl<Usuario, Long, UsuarioRe
           "Deletados {} usuários não verificados criados antes de {}",
           unverifiedUsers.size(),
           cutoff);
+    }
+  }
+
+  /**
+   * Valida se o usuário está tentando alterar campos que não são editáveis pelo próprio usuário.
+   *
+   * <p>Campos editáveis: nome, telefone, documento. Campos NÃO editáveis: email, username,
+   * permissões, senha (via endpoint específico).
+   *
+   * @param usuarioAtual usuário atual do banco de dados
+   * @param usuarioNovo dados enviados para atualização
+   * @throws CampoNaoEditavelException se houver tentativa de alteração de campo não permitido
+   */
+  private void validarCamposNaoEditaveis(Usuario usuarioAtual, Usuario usuarioNovo) {
+    List<String> camposAlterados = new ArrayList<>();
+
+    // Verifica email
+    if (usuarioNovo.getEmail() != null
+        && !usuarioNovo.getEmail().equalsIgnoreCase(usuarioAtual.getEmail())) {
+      camposAlterados.add("email");
+    }
+
+    // Verifica username
+    if (usuarioNovo.getUsername() != null
+        && !usuarioNovo.getUsername().equalsIgnoreCase(usuarioAtual.getUsername())) {
+      camposAlterados.add("username");
+    }
+
+    // Verifica permissões (comparação por IDs)
+    if (usuarioNovo.getPermissoes() != null && usuarioAtual.getPermissoes() != null) {
+      Set<Long> idsAtuais =
+          usuarioAtual.getPermissoes().stream().map(Permissao::getId).collect(Collectors.toSet());
+      Set<Long> idsNovos =
+          usuarioNovo.getPermissoes().stream().map(Permissao::getId).collect(Collectors.toSet());
+      if (!idsAtuais.equals(idsNovos)) {
+        camposAlterados.add("permissões");
+      }
+    }
+
+    if (!camposAlterados.isEmpty()) {
+      String campos = String.join(", ", camposAlterados);
+      log.warn(
+          "Tentativa de alteração de campos não editáveis pelo usuário {}: {}",
+          usuarioAtual.getUsername(),
+          campos);
+      throw new CampoNaoEditavelException(
+          "Os seguintes campos não podem ser alterados pelo próprio usuário: " + campos);
     }
   }
 }
