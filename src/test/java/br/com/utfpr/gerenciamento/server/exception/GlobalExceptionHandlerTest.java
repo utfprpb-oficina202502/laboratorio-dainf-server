@@ -9,12 +9,17 @@ import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.exceptions.TokenExpiredException;
 import java.time.Instant;
 import java.util.NoSuchElementException;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.core.MethodParameter;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -286,6 +291,95 @@ class GlobalExceptionHandlerTest {
       assertEquals("Elemento não encontrado", result.getTitle());
       assertTrue(result.getType().toString().contains("/errors/elemento-nao-encontrado"));
     }
+  }
+
+  // ==================== Testes de Integridade de Dados ====================
+
+  @Nested
+  @DisplayName("Exceções de Integridade de Dados")
+  class IntegridadeDadosTests {
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource(
+        "br.com.utfpr.gerenciamento.server.exception.GlobalExceptionHandlerTest#constraintViolationProvider")
+    @DisplayName("DataIntegrityViolationException deve retornar 409 com mensagem correta")
+    void handleConstraintViolation(
+        String descricao, String mensagemErro, String substringEsperada) {
+      var rootCause = new RuntimeException(mensagemErro);
+      var ex = new DataIntegrityViolationException("could not execute statement", rootCause);
+
+      ProblemDetail result = handler.handleDataIntegrityViolation(ex);
+
+      assertEquals(HttpStatus.CONFLICT.value(), result.getStatus());
+      assertEquals("Conflito de dados", result.getTitle());
+      assertTrue(
+          result.getDetail().contains(substringEsperada),
+          "Esperava '" + substringEsperada + "' em: " + result.getDetail());
+      assertTrue(result.getType().toString().contains("/errors/conflito-dados"));
+    }
+
+    @Test
+    @DisplayName("DataIntegrityViolationException genérica deve retornar 409 com fallback")
+    void handleGenericViolation() {
+      var ex = new DataIntegrityViolationException("Unknown constraint violation");
+
+      ProblemDetail result = handler.handleDataIntegrityViolation(ex);
+
+      assertEquals(HttpStatus.CONFLICT.value(), result.getStatus());
+      assertTrue(result.getDetail().contains("conflito de dados"));
+    }
+
+    @Test
+    @DisplayName("DataIntegrityViolationException deve incluir traceId e timestamp")
+    void handleDataIntegrityViolationComTraceIdTimestamp() {
+      var ex = new DataIntegrityViolationException("test");
+
+      ProblemDetail result = handler.handleDataIntegrityViolation(ex);
+
+      assertNotNull(result.getProperties());
+      assertNotNull(result.getProperties().get("traceId"));
+      assertNotNull(result.getProperties().get("timestamp"));
+    }
+
+    @Test
+    @DisplayName("DataIntegrityViolationException sem rootCause deve usar fallback")
+    void handleViolationSemRootCause() {
+      var ex =
+          new DataIntegrityViolationException("constraint violation") {
+            @Override
+            public Throwable getRootCause() {
+              return null;
+            }
+          };
+
+      ProblemDetail result = handler.handleDataIntegrityViolation(ex);
+
+      assertEquals(HttpStatus.CONFLICT.value(), result.getStatus());
+      assertTrue(result.getDetail().contains("conflito de dados"));
+    }
+  }
+
+  static Stream<Arguments> constraintViolationProvider() {
+    return Stream.of(
+        Arguments.of(
+            "FK violation PostgreSQL",
+            "ERROR: update or delete on table \"fornecedor\" violates foreign key constraint "
+                + "\"fk_fornecedor\" on table \"compra\"",
+            "vinculado a outros registros"),
+        Arguments.of(
+            "FK violation H2",
+            "Referential integrity constraint violation: \"FK_FORNECEDOR: PUBLIC.COMPRA "
+                + "FOREIGN KEY(FORNECEDOR_ID) REFERENCES PUBLIC.FORNECEDOR(ID) (1)\"",
+            "vinculado a outros registros"),
+        Arguments.of(
+            "Unique violation PostgreSQL",
+            "ERROR: duplicate key value violates unique constraint \"uk_username\"",
+            "mesmos dados únicos"),
+        Arguments.of(
+            "Unique violation H2",
+            "Unique index or primary key violation: \"UK_USERNAME_INDEX_1 ON "
+                + "PUBLIC.USUARIO(USERNAME) VALUES 1\"",
+            "mesmos dados únicos"));
   }
 
   // ==================== Testes de Exceção Genérica ====================

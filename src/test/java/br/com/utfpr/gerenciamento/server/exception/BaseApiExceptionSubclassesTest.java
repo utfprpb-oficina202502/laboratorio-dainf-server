@@ -132,6 +132,12 @@ class BaseApiExceptionSubclassesTest {
             422,
             "Saldo insuficiente",
             "/errors/saldo-insuficiente",
-            (Supplier<BaseApiException>) () -> new SaldoInsuficienteException(TEST_MESSAGE)));
+            (Supplier<BaseApiException>) () -> new SaldoInsuficienteException(TEST_MESSAGE)),
+        Arguments.of(
+            "EntidadeEmUsoException",
+            409,
+            "Entidade em uso",
+            "/errors/entidade-em-uso",
+            (Supplier<BaseApiException>) () -> new EntidadeEmUsoException(TEST_MESSAGE)));
   }
 }
